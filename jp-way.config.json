@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 3,
+  "project": {
+    "name": "Bookparking",
+    "slug": "bookparking",
+    "root": "/Users/ethanlaloum/dev/bookparking"
+  },
+  "repo": {
+    "layout": "monorepo",
+    "slug": "ethanlaloum/bookparking",
+    "defaultBranch": "main",
+    "packageManager": "pnpm"
+  },
+  "apps": [
+    {
+      "name": "api",
+      "path": "apps/api",
+      "role": "backend",
+      "rungs": ["unit", "int-repo", "int-http", "journey"],
+      "commands": {},
+      "testGlobs": {
+        "unit": "src/**/*.unit.spec.ts",
+        "int-repo": "src/**/adapters/{repositories,services}/**/*.int.spec.ts",
+        "int-http": "src/**/adapters/rest/**/*.int.spec.ts",
+        "journey": "src/**/*.journey.int.spec.ts"
+      }
+    },
+    {
+      "name": "front",
+      "path": "apps/front",
+      "role": "frontend",
+      "rungs": ["unit"],
+      "commands": {},
+      "testGlobs": {
+        "unit": "src/**/*.unit.spec.ts"
+      }
+    },
+    {
+      "name": "e2e",
+      "path": "apps/e2e",
+      "role": "e2e",
+      "rungs": ["e2e"],
+      "commands": {},
+      "testGlobs": {
+        "e2e": "tests/real/**/*.spec.ts"
+      }
+    }
+  ],
+  "specs": {
+    "mode": "embedded",
+    "root": "docs"
+  },
+  "github": {
+    "issues": true,
+    "milestones": true,
+    "labels": true,
+    "subIssues": true
+  },
+  "quality": {
+    "conventions": true,
+    "security": true,
+    "compliance": {
+      "enabled": false
+    },
+    "documentation": {
+      "developer": true,
+      "user": true,
+      "adr": true,
+      "openapi": false
+    }
+  },
+  "workflow": {
+    "build": {
+      "mode": "supervised"
+    },
+    "gates": {
+      "perStory": true,
+      "artifactPr": false
+    },
+    "sync": {
+      "onRemovedExample": "ask",
+      "openPr": true
+    },
+    "brainstorm": {
+      "maxQuestions": 25
+    }
+  },
+  "notion": {
+    "enabled": false
+  },
+  "ux": {
+    "outputs": ["markdown"],
+    "viewports": ["mobile", "desktop"]
+  },
+  "guard": {
+    "enabled": true
+  }
+}

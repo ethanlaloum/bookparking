@@ -3,10 +3,10 @@ spec: SPEC-001
 statut: valide
 valide_le: 2026-09-16
 valide_par: JP
-revision: 1
+revision: 2
 derive_de: SPEC-001@c3f04ea70b1f612ba674d0b2d07cc95ffe0bc2a7
 apps: [api, e2e]
-cas: 36
+cas: 37
 stories: 10
 ---
 
@@ -16,15 +16,16 @@ stories: 10
 
 | Barreau | api | e2e | Cas | Exemples |
 |---|---|---|---|---|
-| unit | 28 | — | 28 | 28 |
+| unit | 29 | — | 29 | 29 |
 | int-repo | 3 | — | 3 | 3 |
 | int-http | 4 | — | 4 | 4 |
 | journey | 0 | — | 0 | 0 |
 | e2e | — | 1 | 1 | 1 |
-| **total** | **35** | **1** | **36** | 35 exemples, 0 sans cas |
+| **total** | **36** | **1** | **37** | 35 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 - EX-03 — suggéré `e2e` seul, planifié `unit` **et** `e2e` : sa première ligne `Alors` (« l'annonce est active ») est une décision de domaine (ligne 1, T1) ; sans cas `unit`, le chemin nominal de RG-02 ne serait prouvé qu'en haut de la pyramide. Redondance assumée (T7), seul `e2e` de la spec (T3).
+- EX-19 — suggéré `int-repo`, planifié `unit` **et** `int-repo` (révision 2, 16/09/2026, pendant la construction de US-002) : sa ligne `Alors` « la publication est refusée avec « Impossible d'enregistrer les photos » » est un refus de domaine, observable au plus bas en `unit` (ligne 1, T1) ; sa ligne `Et` « aucune annonce, même incomplète, n'existe » est une garantie transactionnelle que seule une vraie base prouve (ligne 2). La révision 1 n'avait posé que le cas `int-repo`, ce qui obligeait `backend-data` à écrire dans un use-case. Redondance assumée (T7).
 - EX-16 — suggéré `int-repo`, planifié `unit` : reconnaître deux écritures d'une même adresse comme la même place est une normalisation observable sans base (T1) ; la contrainte d'unicité en base est le filet ² de la sonde (T5).
 
 **Découpage — le rouge d'abord**
@@ -46,6 +47,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | EX-12 | unit | api | US-001 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | publishes a listing without identity document or IBAN |
 | EX-34 | unit | api | US-001 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | publishes a listing despite an unfinished identity verification |
 | EX-18 | unit | api | US-002 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a listing whose availability period is entirely in the past |
+| EX-19 | unit | api | US-002 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a listing when photo storage fails |
 | EX-19 | int-repo | api | US-002 | `apps/api/src/listing/adapters/repositories/listing/KnexListingRepository.int.spec.ts` | leaves no partial listing when photo storage fails |
 | EX-04 | int-http | api | US-002 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | responds with a validation error when the listing has no photo |
 | EX-02 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a second listing for a box that already has an active one |
@@ -83,6 +85,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 <!-- jp-way:cas {"ex":"EX-12","barreau":"unit","app":"api","story":"US-001","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"publishes a listing without identity document or IBAN","empreinte":"45746fb7"} -->
 <!-- jp-way:cas {"ex":"EX-34","barreau":"unit","app":"api","story":"US-001","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"publishes a listing despite an unfinished identity verification","empreinte":"fbe04369"} -->
 <!-- jp-way:cas {"ex":"EX-18","barreau":"unit","app":"api","story":"US-002","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a listing whose availability period is entirely in the past","empreinte":"6b6dff30"} -->
+<!-- jp-way:cas {"ex":"EX-19","barreau":"unit","app":"api","story":"US-002","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a listing when photo storage fails","empreinte":"fe908700"} -->
 <!-- jp-way:cas {"ex":"EX-19","barreau":"int-repo","app":"api","story":"US-002","chemin":"apps/api/src/listing/adapters/repositories/listing/KnexListingRepository.int.spec.ts","titre":"leaves no partial listing when photo storage fails","empreinte":"fe908700"} -->
 <!-- jp-way:cas {"ex":"EX-04","barreau":"int-http","app":"api","story":"US-002","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"responds with a validation error when the listing has no photo","empreinte":"463074f7"} -->
 <!-- jp-way:cas {"ex":"EX-02","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a second listing for a box that already has an active one","empreinte":"9422c560"} -->

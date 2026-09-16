@@ -42,3 +42,7 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 - (claude) Q-01 — existe-t-il un prix plancher ou plafond par durée ? Non décidé seul : conséquence directe sur le revenu de l'exploitant et sur la crédibilité des annonces. · tranché par JP
 - (claude) Q-02 — l'app de publication appartient à quelle app du dépôt ? `apps/front` est déclaré `role: frontend` (web) et le sujet parle de React Native. · tranché par JP
 - (claude) Q-03 — `quality.compliance` est éteint alors que la plateforme encaissera et vérifiera des identités. · tranché par JP
+
+### Étape 2 — validation de la liste
+- (jp) RG-05 refusée et inversée : **l'adresse exacte est visible sur l'annonce**, avant toute réservation. Les sept autres règles sont validées telles quelles.
+- (claude) risque à porter en `## 11` : une annonce publique portant l'adresse exacte et des dates de disponibilité indique qu'un box précis est vide à des dates précises. · signal : signalements de loueurs, ou places dégradées/squattées entre deux locations · parade : aucune, par décision de JP · gravité : moyenne

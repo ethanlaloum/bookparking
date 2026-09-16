@@ -89,14 +89,14 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 
 | Règle | Limites | Vide | Temps | Concurrence | Autorisation | État | Argent | Volume | Panne | Données |
 |---|---|---|---|---|---|---|---|---|---|---|
-| RG-01 | EX-01 EX-02 | écarté¹ | EX-13 | filet² | EX-15 | EX-16 | écarté³ | écarté⁴ | écarté⁵ | EX-17 |
-| RG-02 | EX-18 | EX-04 filet⁶ | EX-19 | écarté⁷ | filet⁸ | écarté⁹ | écarté¹⁰ | filet¹¹ | EX-21 | filet¹² |
-| RG-03 | EX-22 | EX-23 | EX-24 | écarté¹³ | écarté¹⁴ | écarté¹⁵ | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
-| RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-26 | EX-27 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
-| RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-28 | EX-29 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
-| RG-06 | EX-30 | EX-09 | EX-31 | EX-32 | filet⁸ | EX-33 | écarté³ | filet²¹ | écarté⁵ | écarté¹⁷ |
-| RG-07 | écarté¹⁹ | EX-11 | écarté²² | EX-34 | filet²³ | EX-35 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
-| RG-08 | écarté¹⁹ | EX-12 | écarté¹⁸ | écarté¹³ | écarté²⁴ | EX-36 | écarté²⁵ | écarté⁴ | écarté⁵ | écarté¹⁷ |
+| RG-01 | EX-01 EX-02 | écarté¹ | EX-13 | filet² | EX-14 | EX-15 | écarté³ | écarté⁴ | écarté⁵ | EX-16 |
+| RG-02 | EX-17 | EX-04 filet⁶ | EX-18 | écarté⁷ | filet⁸ | écarté⁹ | écarté¹⁰ | filet¹¹ | EX-19 | filet¹² |
+| RG-03 | EX-20 | EX-21 | EX-22 | écarté¹³ | écarté¹⁴ | écarté¹⁵ | EX-23 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
+| RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-24 | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
+| RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-26 | EX-27 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
+| RG-06 | EX-28 | EX-09 | EX-29 | EX-30 | filet⁸ | EX-31 | écarté³ | filet²¹ | écarté⁵ | écarté¹⁷ |
+| RG-07 | écarté¹⁹ | EX-11 | écarté²² | EX-32 | filet²³ | EX-33 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
+| RG-08 | écarté¹⁹ | EX-12 | écarté¹⁸ | écarté¹³ | écarté²⁴ | EX-34 | écarté²⁵ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 
 ¹ l'absence d'annonce pour une place est le cas nominal, déjà porté par EX-01.
 ² contrainte d'unicité en base sur l'identifiant de place restreinte aux annonces actives — à créer dans la migration de cette spec.
@@ -126,28 +126,28 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 
 #### Exemples nés de la sonde (origine: sonde)
 - EX-13 · RG-01 · Marc dépublie son annonce le 10/10/2026 puis en publie une nouvelle pour la même place le 12/10/2026 → la nouvelle annonce devient active.
-- EX-15 · RG-01 · un autre loueur publie une annonce pour le 12 rue Barla alors que celle de Marc est active → la publication est refusée.
-- EX-16 · RG-01 · Marc publie une annonce pour sa place alors qu'une location du 01/10 au 31/10/2026 est en cours → la publication est refusée, l'annonce existante reste la seule active.
-- EX-17 · RG-01 · Marc publie « 12 Rue Barla » alors qu'une annonce active porte « 12 rue barla » → la publication est refusée, les deux adresses désignent la même place.
-- EX-18 · RG-02 · annonce portant exactement une photo → publiée.
-- EX-19 · RG-02 · annonce dont la disponibilité va du 01/10/2025 au 31/10/2025, entièrement dans le passé → la publication est refusée.
-- EX-21 · RG-02 · le stockage des photos répond une erreur pendant la publication → la publication est refusée et aucune annonce partielle n'est créée.
-- EX-22 · RG-03 · Léa demande du 01/10 au 10/10/2026, soit 10 jours, la grille porte 12,00 € le jour, 60,00 € la semaine et 180,00 € le mois → [À CLARIFIER: Q-05].
-- EX-23 · RG-03 · Léa demande 7 jours alors que la grille ne porte que le mois à 180,00 € → la demande est refusée, aucune durée proposée ne couvre la période.
-- EX-24 · RG-03 · Marc change sa grille de 180,00 € à 200,00 € le 02/10/2026 après une demande faite le 01/10/2026 à 180,00 € → la demande reste à 180,00 €.
-- EX-25 · RG-03 · le prix d'une durée composite tombe sur un montant non entier → le montant est arrondi au centime.
-- EX-26 · RG-04 · Marc retire la dernière durée de la grille d'une annonce active → la modification est refusée.
-- EX-27 · RG-04 · Marc publie une grille à 0,00 € le mois → [À CLARIFIER: Q-01].
-- EX-28 · RG-05 · un visiteur non connecté consulte l'annonce → il voit « 12 rue Barla, 06300 Nice ».
-- EX-29 · RG-05 · Léa ouvre le lien d'une annonce dépubliée → l'annonce n'est plus consultable et l'adresse n'est plus visible.
-- EX-30 · RG-06 · une location court jusqu'au 31/10/2026, Léa demande du 31/10 au 05/11/2026 → la demande est refusée, le 31/10 est déjà loué.
-- EX-31 · RG-06 · Léa demande une journée le 15/10/2026 depuis un fuseau différent → la journée est bornée sur Europe/Paris.
-- EX-32 · RG-06 · Léa et un autre conducteur demandent tous deux du 05/11 au 12/11/2026 au même instant → une seule demande est enregistrée, l'autre est refusée pour dates indisponibles.
-- EX-33 · RG-06 · Léa demande des dates sur une annonce dépubliée → la demande est refusée.
-- EX-34 · RG-07 · Marc dépublie son annonce à l'instant où une demande arrive → la demande est refusée, la dépublication est effective.
-- EX-35 · RG-07 · Marc dépublie une annonce déjà dépubliée → l'annonce reste dépubliée, aucune erreur visible.
-- EX-36 · RG-08 · Marc a commencé une vérification d'identité sans la terminer → il publie quand même son annonce.
+- EX-14 · RG-01 · un autre loueur publie une annonce pour le 12 rue Barla alors que celle de Marc est active → la publication est refusée.
+- EX-15 · RG-01 · Marc publie une annonce pour sa place alors qu'une location du 01/10 au 31/10/2026 est en cours → la publication est refusée, l'annonce existante reste la seule active.
+- EX-16 · RG-01 · Marc publie « 12 Rue Barla » alors qu'une annonce active porte « 12 rue barla » → la publication est refusée, les deux adresses désignent la même place.
+- EX-17 · RG-02 · annonce portant exactement une photo → publiée.
+- EX-18 · RG-02 · annonce dont la disponibilité va du 01/10/2025 au 31/10/2025, entièrement dans le passé → la publication est refusée.
+- EX-19 · RG-02 · le stockage des photos répond une erreur pendant la publication → la publication est refusée et aucune annonce partielle n'est créée.
+- EX-20 · RG-03 · Léa demande du 01/10 au 10/10/2026, soit 10 jours, la grille porte 12,00 € le jour, 60,00 € la semaine et 180,00 € le mois → [À CLARIFIER: Q-05].
+- EX-21 · RG-03 · Léa demande 7 jours alors que la grille ne porte que le mois à 180,00 € → la demande est refusée, aucune durée proposée ne couvre la période.
+- EX-22 · RG-03 · Marc change sa grille de 180,00 € à 200,00 € le 02/10/2026 après une demande faite le 01/10/2026 à 180,00 € → la demande reste à 180,00 €.
+- EX-23 · RG-03 · le prix d'une durée composite tombe sur un montant non entier → le montant est arrondi au centime.
+- EX-24 · RG-04 · Marc retire la dernière durée de la grille d'une annonce active → la modification est refusée.
+- EX-25 · RG-04 · Marc publie une grille à 0,00 € le mois → [À CLARIFIER: Q-01].
+- EX-26 · RG-05 · un visiteur non connecté consulte l'annonce → il voit « 12 rue Barla, 06300 Nice ».
+- EX-27 · RG-05 · Léa ouvre le lien d'une annonce dépubliée → l'annonce n'est plus consultable et l'adresse n'est plus visible.
+- EX-28 · RG-06 · une location court jusqu'au 31/10/2026, Léa demande du 31/10 au 05/11/2026 → la demande est refusée, le 31/10 est déjà loué.
+- EX-29 · RG-06 · Léa demande une journée le 15/10/2026 depuis un fuseau différent → la journée est bornée sur Europe/Paris.
+- EX-30 · RG-06 · Léa et un autre conducteur demandent tous deux du 05/11 au 12/11/2026 au même instant → une seule demande est enregistrée, l'autre est refusée pour dates indisponibles.
+- EX-31 · RG-06 · Léa demande des dates sur une annonce dépubliée → la demande est refusée.
+- EX-32 · RG-07 · Marc dépublie son annonce à l'instant où une demande arrive → la demande est refusée, la dépublication est effective.
+- EX-33 · RG-07 · Marc dépublie une annonce déjà dépubliée → l'annonce reste dépubliée, aucune erreur visible.
+- EX-34 · RG-08 · Marc a commencé une vérification d'identité sans la terminer → il publie quand même son annonce.
 
 #### Questions nées de la sonde
-- (claude) Q-04 — qu'est-ce qui identifie « une place » pour RG-01 : l'adresse seule, ou l'adresse plus un identifiant de box ? Deux voisins d'un même immeuble ont deux places à la même adresse. · tranché par JP · bloque RG-01, EX-15 et EX-17.
-- (claude) Q-05 — comment est facturée une durée qui ne tombe sur aucun palier, par exemple 10 jours ? · tranché par JP · bloque RG-03 et EX-22.
+- (claude) Q-04 — qu'est-ce qui identifie « une place » pour RG-01 : l'adresse seule, ou l'adresse plus un identifiant de box ? Deux voisins d'un même immeuble ont deux places à la même adresse. · tranché par JP · bloque RG-01, EX-14 et EX-16.
+- (claude) Q-05 — comment est facturée une durée qui ne tombe sur aucun palier, par exemple 10 jours ? · tranché par JP · bloque RG-03 et EX-20.

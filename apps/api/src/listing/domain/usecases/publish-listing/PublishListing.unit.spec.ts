@@ -4,7 +4,8 @@ const MARC = 'Marc D.';
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };
 const COMPLETE_LISTING = {
   ...PLACE,
-  accessDescription: 'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
+  accessDescription:
+    'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
   photos: ['photo-1'],
   pricing: { day: 1200, week: 6000, month: 18000 },
   availability: { from: '2026-10-01', to: '2026-10-31' },
@@ -15,7 +16,11 @@ describe('PublishListing @SPEC-001', () => {
     const sut = createPublishListingSUT();
     sut.givenNoActiveListingFor(PLACE);
 
-    const result = await sut.whenPublishing({ owner: MARC, ...COMPLETE_LISTING, publishedAt: '2026-09-10' });
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-10',
+    });
 
     sut.thenListingIsActive(result);
     sut.thenListingCarries(result, COMPLETE_LISTING);
@@ -25,7 +30,11 @@ describe('PublishListing @SPEC-001', () => {
     const sut = createPublishListingSUT();
     sut.givenNoActiveListingFor(PLACE);
 
-    const result = await sut.whenPublishing({ owner: MARC, ...COMPLETE_LISTING, publishedAt: '2026-09-10' });
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-10',
+    });
 
     sut.thenListingIsActive(result);
     sut.thenIsOnlyActiveListingFor(PLACE);
@@ -48,9 +57,18 @@ describe('PublishListing @SPEC-001', () => {
 
   it('publishes a listing without identity document or IBAN @EX-001-12', async () => {
     const sut = createPublishListingSUT();
-    sut.givenOwner({ name: MARC, createdAt: '2026-09-09', identityDocument: null, iban: null });
+    sut.givenOwner({
+      name: MARC,
+      createdAt: '2026-09-09',
+      identityDocument: null,
+      iban: null,
+    });
 
-    const result = await sut.whenPublishing({ owner: MARC, ...COMPLETE_LISTING, publishedAt: '2026-09-10' });
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-10',
+    });
 
     sut.thenListingIsActive(result);
     sut.thenNoIdentityDocumentOrIbanWasRequired();
@@ -58,9 +76,17 @@ describe('PublishListing @SPEC-001', () => {
 
   it('publishes a listing despite an unfinished identity verification @EX-001-34', async () => {
     const sut = createPublishListingSUT();
-    sut.givenOwner({ name: MARC, identityVerificationStartedAt: '2026-09-09', identityVerificationCompleted: false });
+    sut.givenOwner({
+      name: MARC,
+      identityVerificationStartedAt: '2026-09-09',
+      identityVerificationCompleted: false,
+    });
 
-    const result = await sut.whenPublishing({ owner: MARC, ...COMPLETE_LISTING, publishedAt: '2026-09-10' });
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-10',
+    });
 
     sut.thenListingIsActive(result);
   });

@@ -46,3 +46,10 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 ### Étape 2 — validation de la liste
 - (jp) RG-05 refusée et inversée : **l'adresse exacte est visible sur l'annonce**, avant toute réservation. Les sept autres règles sont validées telles quelles.
 - (claude) risque à porter en `## 11` : une annonce publique portant l'adresse exacte et des dates de disponibilité indique qu'un box précis est vide à des dates précises. · signal : signalements de loueurs, ou places dégradées/squattées entre deux locations · parade : aucune, par décision de JP · gravité : moyenne
+
+### Étape 2 — seconde passe
+- (jp) « je ne sais pas, on verra plus tard » — seconde passe non réalisée. La récolte s'arrête à huit règles, dont sept proposées par Claude et une de JP.
+- (claude) conséquence : les règles que la seconde passe fait habituellement sortir (celles qu'on découvre en imaginant un utilisateur mécontent) manqueront. La sonde de couverture est désormais le seul filet de la séance.
+
+### Étape 3 — exemples
+- (claude) aucune valeur réelle disponible : ni prix, ni adresse, ni durée observée. Une valeur inventée ici deviendrait un test, puis une vérité. Valeurs demandées à JP avant d'écrire le premier exemple.

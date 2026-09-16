@@ -7,8 +7,8 @@ revision: 1
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
-apps: [api, front, e2e]
-code_sha: { api: d3bf33b, front: d3bf33b, e2e: d3bf33b }
+apps: [api, mobile, e2e]
+code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 0
 exemples: 0
 questions_ouvertes: 0
@@ -161,3 +161,12 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
   - EX-14 est révisé : un autre loueur publiant le **même box** à la même adresse est refusé ; publier un **autre box** à la même adresse est autorisé.
   - EX-16 est révisé : la normalisation porte sur le couple adresse + numéro de box, pas sur l'adresse seule.
 - (claude) EX-35 · RG-01 · le voisin de Marc publie le box 14 au 12 rue Barla alors que l'annonce de Marc porte le box 12 → la publication est acceptée, les deux annonces coexistent.
+
+### Étape 6 — fermeture des questions
+- (jp) Q-05 **résolue** — le prix d'une durée est la **meilleure combinaison des paliers** de la grille, au plus avantageux pour le conducteur. 10 jours avec 12,00 €/jour, 60,00 €/semaine et 180,00 €/mois valent donc **96,00 €** (une semaine + trois jours).
+- (claude) conséquences : RG-03 se précise — le prix est la combinaison la moins chère des paliers proposés par la grille. EX-20 n'est plus `[À CLARIFIER]` et vaut 96,00 €. EX-21 (aucun palier ne couvre la période) tient toujours : une grille ne portant que le mois ne peut pas composer 7 jours.
+- (jp) Q-01 **résolue** — aucune borne : ni prix plancher, ni prix plafond. Le loueur met ce qu'il veut.
+- (claude) conséquences : EX-25 n'est plus `[À CLARIFIER]` — une grille à 0,00 € le mois est publiée. Conséquence assumée à porter en risque : une location à 0,00 € ne produit aucune commission pour l'exploitant.
+- (jp) Q-02 **résolue** — deux apps ajoutées à `jp-way.config.json` : `mobile` (React Native, loueur et conducteur) et `bo` (back-office web). `front` est supprimée, rien n'existait sur le disque. `apps[]` vaut désormais api · mobile · bo · e2e.
+- (jp) Q-03 **résolue** — `quality.compliance` rallumé : frameworks [RGPD], dataClasses [pii, financial], avec un paragraphe de notes recopié dans le brief du relecteur.
+- (claude) la frontmatter de cette spec passe donc à `apps: [api, mobile, e2e]` — `bo` n'est pas concernée par SPEC-001, qui ne touche aucun écran d'administration.

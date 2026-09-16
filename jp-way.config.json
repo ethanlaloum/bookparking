@@ -16,7 +16,12 @@
       "name": "api",
       "path": "apps/api",
       "role": "backend",
-      "rungs": ["unit", "int-repo", "int-http", "journey"],
+      "rungs": [
+        "unit",
+        "int-repo",
+        "int-http",
+        "journey"
+      ],
       "commands": {},
       "testGlobs": {
         "unit": "src/**/*.unit.spec.ts",
@@ -26,10 +31,24 @@
       }
     },
     {
-      "name": "front",
-      "path": "apps/front",
+      "name": "mobile",
+      "path": "apps/mobile",
       "role": "frontend",
-      "rungs": ["unit"],
+      "rungs": [
+        "unit"
+      ],
+      "commands": {},
+      "testGlobs": {
+        "unit": "src/**/*.unit.spec.ts"
+      }
+    },
+    {
+      "name": "bo",
+      "path": "apps/bo",
+      "role": "frontend",
+      "rungs": [
+        "unit"
+      ],
       "commands": {},
       "testGlobs": {
         "unit": "src/**/*.unit.spec.ts"
@@ -39,7 +58,9 @@
       "name": "e2e",
       "path": "apps/e2e",
       "role": "e2e",
-      "rungs": ["e2e"],
+      "rungs": [
+        "e2e"
+      ],
       "commands": {},
       "testGlobs": {
         "e2e": "tests/real/**/*.spec.ts"
@@ -60,7 +81,15 @@
     "conventions": true,
     "security": true,
     "compliance": {
-      "enabled": false
+      "enabled": true,
+      "frameworks": [
+        "RGPD"
+      ],
+      "dataClasses": [
+        "pii",
+        "financial"
+      ],
+      "notes": "Bookparking est une place de marché de stationnement entre particuliers à Nice. L'exploitant encaisse le conducteur, prélève une commission et reverse le loueur : il traite donc l'identité vérifiée des loueurs (pièce d'identité, IBAN) et les données de paiement des conducteurs. La vérification d'identité n'est déclenchée qu'avant le premier versement, jamais pour publier une annonce. L'adresse exacte d'une place est publique sur l'annonce avant toute réservation, par décision produit assumée : ce point est à réexaminer à chaque story qui expose une annonce."
     },
     "documentation": {
       "developer": true,
@@ -89,8 +118,13 @@
     "enabled": false
   },
   "ux": {
-    "outputs": ["markdown"],
-    "viewports": ["mobile", "desktop"]
+    "outputs": [
+      "markdown"
+    ],
+    "viewports": [
+      "mobile",
+      "desktop"
+    ]
   },
   "guard": {
     "enabled": true

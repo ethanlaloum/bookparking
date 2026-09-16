@@ -1,7 +1,7 @@
 import { Either } from 'effect/index';
 
 import { Listing, ListingStatus } from '../../entities/Listing';
-import { InMemoryListingRepository } from '../../ports/InMemoryListingRepository';
+import { InMemoryListingRepository } from '../../../adapters/repositories/listing/InMemoryListingRepository';
 import { PublishListing } from './PublishListing';
 
 interface Place {

@@ -1,5 +1,5 @@
-import { Listing } from '../entities/Listing';
-import { ListingRepository } from './ListingRepository';
+import { Listing } from '../../../domain/entities/Listing';
+import { ListingRepository } from '../../../domain/ports/ListingRepository';
 
 export class InMemoryListingRepository implements ListingRepository {
   public listingList: Listing[] = [];

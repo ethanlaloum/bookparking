@@ -9,8 +9,8 @@ amont: present
 langue: fr
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
-regles: 0
-exemples: 0
+regles: 8
+exemples: 35
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -18,74 +18,403 @@ epic: null
 
 # SPEC-001 · Publier une place de parking en location
 
-## Récolte (session)
+## 1. Sujet
 
-_Bloc append-only. Remplacé par les douze sections à la rédaction._
+Pour un loueur niçois qui a une place de parking inutilisée, publier cette place en location à dates fixes — journée, semaine ou mois — avec sa propre grille tarifaire, afin qu'un conducteur puisse la trouver et la demander.
 
-### Étape 0 — ancrage
-- aucun `code-scout` dépêché : aucune ligne de code, aucune carte. Toutes les règles de cette séance sont écrites contre le vide.
+Le sujet a été lu et validé tel quel en séance. Les trois autres blocs du brainstorm — demander et confirmer, circuit de l'argent, annulation et réclamation — sont découpés en SPEC-002, SPEC-003 et SPEC-004.
 
-### Étape 1 — carte sujet
-- validée par JP : « Pour un loueur niçois qui a une place de parking inutilisée, publier cette place en location à dates fixes — journée, semaine ou mois — avec sa propre grille tarifaire, afin qu'un conducteur puisse la trouver et la demander. »
-- découpage annoncé : les trois autres blocs du brainstorm (demander et confirmer · circuit de l'argent · annulation et réclamation) deviendront SPEC-002, 003, 004.
+## 2. Périmètre
 
-### Étape 2 — récolte des règles, en largeur
-- (jp) une place ne peut avoir qu'une seule annonce active.
-- (jp) « le reste c'est toi qui vois ce qui te semble logique et juste » — délégation explicite. Les règles ci-dessous sont proposées par Claude et attendent validation ; elles ne sont pas des réponses de JP.
-- (claude, proposé) une annonce n'est publiable que si elle porte une adresse, une description de l'accès, au moins une photo, une grille tarifaire et une période de disponibilité.
-- (claude, proposé) le prix d'une location est calculé à partir de la grille du loueur ; la plateforme n'impose aucun tarif.
-- (claude, proposé) une grille tarifaire propose au moins une durée ; le loueur choisit lesquelles parmi jour, semaine et mois.
-- (claude, proposé) l'adresse exacte d'une place n'est visible qu'après confirmation d'une location ; avant, seul un secteur approximatif est public.
-- (claude, proposé) une annonce reste publiée pendant une location ; les dates déjà louées ne sont plus demandables.
-- (claude, proposé) un loueur peut dépublier son annonce à tout moment, sans effet sur les locations déjà confirmées.
-- (claude, proposé) publier une annonce n'exige ni identité vérifiée ni IBAN ; ils ne sont exigés qu'avant le premier versement.
-- (claude) Q-01 — existe-t-il un prix plancher ou plafond par durée ? Non décidé seul : conséquence directe sur le revenu de l'exploitant et sur la crédibilité des annonces. · tranché par JP
-- (claude) Q-02 — l'app de publication appartient à quelle app du dépôt ? `apps/front` est déclaré `role: frontend` (web) et le sujet parle de React Native. · tranché par JP
-- (claude) Q-03 — `quality.compliance` est éteint alors que la plateforme encaissera et vérifiera des identités. · tranché par JP
+**Dedans.** La mise en ligne d'une annonce par un loueur : l'adresse, le numéro de box, la description de l'accès, les photos, la grille tarifaire et la période de disponibilité. L'unicité de l'annonce active pour une même place. Le calcul du prix d'une durée à partir de la grille du loueur. La visibilité publique de l'adresse exacte. L'effet d'une location déjà confirmée sur les dates encore demandables. La dépublication d'une annonce par son loueur. Le fait que publier n'exige ni identité vérifiée ni coordonnées bancaires.
 
-### Étape 2 — validation de la liste
-- (jp) RG-05 refusée et inversée : **l'adresse exacte est visible sur l'annonce**, avant toute réservation. Les sept autres règles sont validées telles quelles.
-- (claude) risque à porter en `## 11` : une annonce publique portant l'adresse exacte et des dates de disponibilité indique qu'un box précis est vide à des dates précises. · signal : signalements de loueurs, ou places dégradées/squattées entre deux locations · parade : aucune, par décision de JP · gravité : moyenne
+**Dehors.** L'acceptation ou le refus d'une demande par le loueur, le paiement du conducteur, la commission de l'exploitant, le versement au loueur, l'annulation, le remboursement et la réclamation : ces comportements appartiennent aux specs suivantes. Une demande n'apparaît ici que comme signal d'entrée — pour dire quel prix elle porte et si les dates sont encore disponibles — jamais comme objet géré de bout en bout.
 
-### Étape 2 — seconde passe
-- (jp) « je ne sais pas, on verra plus tard » — seconde passe non réalisée. La récolte s'arrête à huit règles, dont sept proposées par Claude et une de JP.
-- (claude) conséquence : les règles que la seconde passe fait habituellement sortir (celles qu'on découvre en imaginant un utilisateur mécontent) manqueront. La sonde de couverture est désormais le seul filet de la séance.
+## 3. Glossaire
 
-### Étape 3 — exemples
-- (claude) aucune valeur réelle disponible : ni prix, ni adresse, ni durée observée. Une valeur inventée ici deviendrait un test, puis une vérité. Valeurs demandées à JP avant d'écrire le premier exemple.
-- (jp) valeurs de référence : place au **12 rue Barla, Nice**, louée **du 01/10/2026 au 31/10/2026** pour **180,00 €**.
-- (claude, dérivé de JP, à confirmer) grille du loueur : **12,00 € la journée · 60,00 € la semaine · 180,00 € le mois**. Seul le mois vient de JP ; le jour et la semaine sont déduits et attendent confirmation.
-- (claude) loueur de référence : Marc D. · conducteur de référence : Léa T.
+| Terme | Sens retenu, et à n'écrire que comme ça |
+|---|---|
+| Loueur | le particulier qui met sa place en location et fixe sa grille tarifaire. Jamais « locataire », jamais « propriétaire ». |
+| Conducteur | celui qui cherche une place, la demande et s'y gare. Jamais « client ». |
+| Exploitant | celui qui opère la plateforme, encaisse la commission et tranche les réclamations. Hors périmètre de cette spec. |
+| Place | l'emplacement physique loué, identifié par le couple adresse + numéro de box. |
+| Box | le numéro d'emplacement au sein d'une adresse ; deux voisins d'un même immeuble ont deux places à la même adresse. |
+| Annonce | la publication d'une place par son loueur : adresse, box, description de l'accès, photos, grille tarifaire, période de disponibilité. |
+| Annonce active | une annonce publiée et consultable ; une place n'en porte qu'une à la fois. |
+| Grille tarifaire | le barème fixé par le loueur, par durée — jour, semaine, mois. |
+| Palier | une durée de la grille et son prix : la journée, la semaine, le mois. |
+| Période de disponibilité | l'intervalle de dates, début et fin, sur lequel l'annonce est ouverte aux demandes. |
+| Demande | l'intention de location d'un conducteur, non encore acceptée. Jamais « réservation » ici. |
+| Dépublication | le retrait d'une annonce par son loueur ; l'annonce cesse d'être consultable. |
 
-#### RG-01 — une place ne peut avoir qu'une seule annonce active
-- EX-01 nominal · Marc publie sa place du 12 rue Barla, aucune annonce active n'existe pour cette place → l'annonce devient active.
-- EX-02 refus · Marc publie une seconde annonce pour cette même place alors que la première est active → la publication est refusée, la première annonce reste la seule active.
+## 4. Règles et exemples
 
-#### RG-02 — champs obligatoires
-- EX-03 nominal · annonce portant adresse, description d'accès, une photo, grille et disponibilité du 01/10 au 31/10/2026 → publiée.
-- EX-04 refus · même annonce sans aucune photo → la publication est refusée et l'annonce reste non publiée.
+### RG-01 · une place, identifiée par son adresse et son numéro de box, ne peut avoir qu'une seule annonce active
 
-#### RG-03 — le prix vient de la grille du loueur
-- EX-05 nominal · Léa demande la place du 01/10/2026 au 31/10/2026, la grille porte 180,00 € le mois → le prix de la demande est 180,00 €.
+#### EX-01 · une première annonce pour une place qui n'en a aucune
 
-#### RG-04 — une grille propose au moins une durée
-- EX-06 nominal · grille ne portant que le mois à 180,00 €, ni jour ni semaine → l'annonce est publiable.
-- EX-07 refus · grille ne portant aucune durée → la publication est refusée.
+Étant donné le loueur `Marc D.` et sa place au `12 rue Barla, 06300 Nice`, `box 12`,
+  pour laquelle aucune annonce active n'existe
+Quand `Marc D.` publie une annonce pour cette place le `10/09/2026`
+Alors l'annonce est active
+Et elle est la seule annonce active du `box 12` du `12 rue Barla, 06300 Nice`
 
-#### RG-05 — l'adresse exacte est visible sur l'annonce
-- EX-08 nominal · Léa consulte l'annonce sans avoir réservé → elle voit « 12 rue Barla, 06300 Nice ».
+<!-- jp-way:ex {"id":"EX-01","regle":"RG-01","origine":"mapping","barreau":"unit","empreinte":"c4326941"} -->
 
-#### RG-06 — l'annonce reste publiée pendant une location, les dates louées ne sont plus demandables
-- EX-09 nominal · la place est louée du 01/10 au 31/10/2026, Léa demande du 05/11 au 12/11/2026 → la demande est recevable.
-- EX-10 refus · Léa demande du 15/10 au 20/10/2026 → la demande est refusée, ces dates sont déjà louées.
+#### EX-02 · une seconde annonce pour la place déjà annoncée
 
-#### RG-07 — dépublication sans effet sur les locations confirmées
-- EX-11 nominal · Marc dépublie son annonce le 10/10/2026 alors que la location du 01/10 au 31/10 est confirmée → l'annonce n'est plus visible et la location d'octobre reste confirmée.
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand `Marc D.` publie une seconde annonce pour ce même box le `11/09/2026`
+Alors la publication est refusée avec « Cette place a déjà une annonce active »
+Et aucune seconde annonce n'existe pour le `box 12` du `12 rue Barla, 06300 Nice`
+Et la première annonce reste active
 
-#### RG-08 — publier n'exige ni identité vérifiée ni IBAN
-- EX-12 nominal · Marc n'a fourni ni pièce d'identité ni IBAN → il publie son annonce et elle devient active.
+<!-- jp-way:ex {"id":"EX-02","regle":"RG-01","origine":"mapping","barreau":"unit","empreinte":"9422c560"} -->
 
-### Étape 4 — sonde de couverture (80 intersections)
+
+#### EX-13 · republier la même place après l'avoir dépubliée
+
+Étant donné l'annonce de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  dépubliée le `10/10/2026`
+Quand `Marc D.` publie une nouvelle annonce pour ce même box le `12/10/2026`
+Alors la nouvelle annonce est active
+Et elle est la seule annonce active du `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-13","regle":"RG-01","origine":"sonde","barreau":"unit","empreinte":"4067f33a"} -->
+
+#### EX-14 · un autre loueur publie le box déjà annoncé
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand le loueur `Pierre L.` publie une annonce pour le `box 12` du `12 rue Barla, 06300 Nice`
+Alors la publication est refusée avec « Cette place a déjà une annonce active »
+Et l'annonce de `Marc D.` reste la seule active pour ce box
+Et aucune annonce de `Pierre L.` n'existe pour ce box
+
+<!-- jp-way:ex {"id":"EX-14","regle":"RG-01","origine":"sonde","barreau":"unit","empreinte":"575cdec5"} -->
+
+#### EX-35 · un autre box à la même adresse
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand son voisin `Pierre L.` publie une annonce pour le `box 14` du `12 rue Barla, 06300 Nice`
+Alors la publication est acceptée
+Et les deux annonces sont actives, celle du `box 12` et celle du `box 14`
+
+<!-- jp-way:ex {"id":"EX-35","regle":"RG-01","origine":"sonde","barreau":"unit","empreinte":"72eebb9c"} -->
+
+#### EX-15 · publier pendant une location en cours sur la place
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  louée du `01/10/2026` au `31/10/2026`
+Quand `Marc D.` publie une nouvelle annonce pour ce box le `15/10/2026`
+Alors la publication est refusée avec « Cette place a déjà une annonce active »
+Et l'annonce existante reste la seule active
+Et la location du `01/10/2026` au `31/10/2026` n'est pas touchée
+
+<!-- jp-way:ex {"id":"EX-15","regle":"RG-01","origine":"sonde","barreau":"unit","empreinte":"83a12eee"} -->
+
+#### EX-16 · la même adresse écrite autrement, le même box
+
+Étant donné l'annonce active de `Marc D.` portant `12 rue barla, 06300 nice` et le `box 12`
+Quand `Pierre L.` publie une annonce portant `12 Rue Barla, 06300 NICE` et le `box 12`
+Alors la publication est refusée avec « Cette place a déjà une annonce active »
+Et aucune seconde annonce n'existe pour ce couple adresse + box
+Et les deux écritures désignent la même place
+
+<!-- jp-way:ex {"id":"EX-16","regle":"RG-01","origine":"sonde","barreau":"int-repo","empreinte":"0c2e49e5"} -->
+
+### RG-02 · une annonce n'est publiable que si elle porte une adresse, un numéro de box, une description de l'accès, au moins une photo, une grille tarifaire et une période de disponibilité
+
+#### EX-03 · une annonce complète est publiée
+
+Étant donné l'annonce de `Marc D.` portant `12 rue Barla, 06300 Nice`, le `box 12`,
+  la description d'accès « portail bleu à gauche du 12, le box est au fond du premier sous-sol »,
+  une photo, une grille à `12,00 €` la journée, `60,00 €` la semaine, `180,00 €` le mois,
+  et une disponibilité du `01/10/2026` au `31/10/2026`
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors l'annonce est active
+Et elle affiche son adresse, son box, sa description d'accès, sa photo, sa grille et sa période
+
+<!-- jp-way:ex {"id":"EX-03","regle":"RG-02","origine":"mapping","barreau":"e2e","empreinte":"ecb18b1a"} -->
+
+#### EX-04 · une annonce sans aucune photo
+
+Étant donné l'annonce de `Marc D.` portant `12 rue Barla, 06300 Nice`, le `box 12`,
+  sa description d'accès, sa grille `12,00 € / 60,00 € / 180,00 €`
+  et sa disponibilité du `01/10/2026` au `31/10/2026`, mais aucune photo
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors la publication est refusée et l'absence de photo est signalée
+Et aucune annonce n'est active pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-04","regle":"RG-02","origine":"mapping","barreau":"int-http","empreinte":"463074f7"} -->
+
+#### EX-17 · une annonce portant exactement une photo
+
+Étant donné l'annonce complète de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  portant exactement une photo
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors l'annonce est active
+Et la photo est affichée sur l'annonce
+
+<!-- jp-way:ex {"id":"EX-17","regle":"RG-02","origine":"sonde","barreau":"unit","empreinte":"c4811539"} -->
+
+#### EX-18 · une période de disponibilité entièrement passée
+
+Étant donné l'annonce complète de `Marc D.` dont la disponibilité va du `01/10/2025` au `31/10/2025`
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors la publication est refusée avec « La période de disponibilité est déjà passée »
+Et aucune annonce n'est active pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-18","regle":"RG-02","origine":"sonde","barreau":"unit","empreinte":"6b6dff30"} -->
+
+#### EX-19 · le stockage des photos répond une erreur
+
+Étant donné l'annonce complète de `Marc D.` portant une photo,
+  et le stockage des photos qui répond une erreur à tout envoi
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors la publication est refusée avec « Impossible d'enregistrer les photos »
+Et aucune annonce, même incomplète, n'existe pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-19","regle":"RG-02","origine":"sonde","barreau":"int-repo","empreinte":"fe908700"} -->
+
+### RG-03 · le prix d'une durée est la combinaison la moins chère des paliers proposés par la grille du loueur ; la plateforme n'impose aucun tarif
+
+#### EX-05 · un mois entier au tarif du mois
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  grille à `12,00 €` la journée, `60,00 €` la semaine, `180,00 €` le mois
+Quand la conductrice `Léa T.` demande la place du `01/10/2026` au `31/10/2026`
+Alors le prix de la demande est `180,00 €`
+Et aucun tarif fixé par la plateforme ne s'applique
+
+<!-- jp-way:ex {"id":"EX-05","regle":"RG-03","origine":"mapping","barreau":"unit","empreinte":"a38aba96"} -->
+
+#### EX-20 · dix jours facturés à la meilleure combinaison de paliers
+
+Étant donné l'annonce active de `Marc D.`,
+  grille à `12,00 €` la journée, `60,00 €` la semaine, `180,00 €` le mois
+Quand `Léa T.` demande la place du `01/10/2026` au `10/10/2026`, soit dix jours
+Alors le prix de la demande est `96,00 €`, soit une semaine à `60,00 €` et trois jours à `12,00 €`
+Et ni `120,00 €` (dix journées) ni `180,00 €` (un mois) ne sont retenus
+
+<!-- jp-way:ex {"id":"EX-20","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"b2e920b1"} -->
+
+#### EX-21 · aucun palier ne couvre la période demandée
+
+Étant donné l'annonce active de `Marc D.` dont la grille ne porte que le mois à `180,00 €`
+Quand `Léa T.` demande la place du `01/10/2026` au `07/10/2026`, soit sept jours
+Alors la demande est refusée, aucune durée proposée ne couvre la période
+Et aucun prix n'est affiché pour ces sept jours
+
+<!-- jp-way:ex {"id":"EX-21","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"f0a413ea"} -->
+
+#### EX-22 · la grille change après une demande
+
+Étant donné l'annonce active de `Marc D.`, grille au mois à `180,00 €`,
+  et la demande de `Léa T.` du `01/10/2026` au `31/10/2026` faite le `01/10/2026` à `180,00 €`
+Quand `Marc D.` porte le mois à `200,00 €` le `02/10/2026`
+Alors la demande de `Léa T.` reste à `180,00 €`
+Et `200,00 €` ne s'applique qu'aux demandes faites après le `02/10/2026`
+
+<!-- jp-way:ex {"id":"EX-22","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"36c71a77"} -->
+
+#### EX-23 · une combinaison de paliers au centime près
+
+Étant donné l'annonce active de `Marc D.`, grille à `12,50 €` la journée et `58,33 €` la semaine
+Quand `Léa T.` demande la place du `01/10/2026` au `10/10/2026`, soit dix jours
+Alors le prix de la demande est `95,83 €`, soit une semaine à `58,33 €` et trois jours à `12,50 €`
+Et le montant est exprimé au centime, sans arrondi supplémentaire
+
+<!-- jp-way:ex {"id":"EX-23","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"c4c346a1"} -->
+
+### RG-04 · une grille tarifaire propose au moins une durée ; le loueur choisit lesquelles parmi jour, semaine et mois
+
+#### EX-06 · une grille qui ne porte que le mois
+
+Étant donné l'annonce complète de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  dont la grille porte `180,00 €` le mois, et ni tarif à la journée ni tarif à la semaine
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors l'annonce est active
+Et sa grille ne propose que le mois à `180,00 €`
+
+<!-- jp-way:ex {"id":"EX-06","regle":"RG-04","origine":"mapping","barreau":"unit","empreinte":"e0cbbcb5"} -->
+
+#### EX-07 · une grille sans aucune durée
+
+Étant donné l'annonce complète de `Marc D.` dont la grille ne porte ni journée, ni semaine, ni mois
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors la publication est refusée et la grille tarifaire est signalée comme incomplète
+Et aucune annonce n'est active pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-07","regle":"RG-04","origine":"mapping","barreau":"unit","empreinte":"c8c2f730"} -->
+
+#### EX-24 · retirer la dernière durée d'une grille déjà publiée
+
+Étant donné l'annonce active de `Marc D.` dont la grille ne porte que le mois à `180,00 €`
+Quand `Marc D.` retire le tarif au mois de cette grille le `12/09/2026`
+Alors la modification est refusée et la grille tarifaire est signalée comme incomplète
+Et la grille de l'annonce porte toujours `180,00 €` le mois
+
+<!-- jp-way:ex {"id":"EX-24","regle":"RG-04","origine":"sonde","barreau":"unit","empreinte":"1c2a81f2"} -->
+
+#### EX-25 · une grille à 0,00 €
+
+Étant donné l'annonce complète de `Marc D.` dont la grille porte `0,00 €` le mois
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors l'annonce est publiée et devient active
+Et aucune borne de prix, ni plancher ni plafond, ne lui est opposée
+
+<!-- jp-way:ex {"id":"EX-25","regle":"RG-04","origine":"sonde","barreau":"unit","empreinte":"e5220fa6"} -->
+
+### RG-05 · l'adresse exacte est visible sur l'annonce, avant toute réservation
+
+#### EX-08 · une conductrice consulte l'annonce sans avoir rien demandé
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  et `Léa T.` connectée, qui n'a fait aucune demande sur cette annonce
+Quand `Léa T.` ouvre l'annonce le `12/09/2026`
+Alors elle voit `12 rue Barla, 06300 Nice` et le `box 12`
+Et aucune réservation ni confirmation ne lui est demandée pour voir l'adresse
+
+<!-- jp-way:ex {"id":"EX-08","regle":"RG-05","origine":"mapping","barreau":"int-http","empreinte":"6742a31f"} -->
+
+#### EX-26 · un visiteur non connecté consulte l'annonce
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand un visiteur non connecté ouvre l'annonce le `12/09/2026`
+Alors il voit `12 rue Barla, 06300 Nice` et le `box 12`
+Et aucune authentification ne lui est demandée pour lire l'adresse
+
+<!-- jp-way:ex {"id":"EX-26","regle":"RG-05","origine":"sonde","barreau":"int-http","empreinte":"62bb715f"} -->
+
+#### EX-27 · l'annonce dépubliée ne montre plus rien
+
+Étant donné l'annonce de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  dépubliée le `10/10/2026`
+Quand `Léa T.` ouvre le lien de cette annonce le `11/10/2026`
+Alors elle voit « Annonce introuvable »
+Et ni `12 rue Barla, 06300 Nice` ni le `box 12` ne sont affichés
+
+<!-- jp-way:ex {"id":"EX-27","regle":"RG-05","origine":"sonde","barreau":"int-http","empreinte":"4a3d546a"} -->
+
+### RG-06 · une annonce reste publiée pendant une location, et les dates déjà louées ne sont plus demandables
+
+#### EX-09 · des dates libres après la location en cours
+
+Étant donné l'annonce active de `Marc D.`, louée du `01/10/2026` au `31/10/2026`
+Quand `Léa T.` demande la place du `05/11/2026` au `12/11/2026`
+Alors la demande est recevable
+Et l'annonce reste publiée pendant toute la location d'octobre
+
+<!-- jp-way:ex {"id":"EX-09","regle":"RG-06","origine":"mapping","barreau":"unit","empreinte":"1c7986c8"} -->
+
+#### EX-10 · des dates déjà louées
+
+Étant donné l'annonce active de `Marc D.`, louée du `01/10/2026` au `31/10/2026`
+Quand `Léa T.` demande la place du `15/10/2026` au `20/10/2026`
+Alors la demande est refusée, ces dates sont déjà louées
+Et aucune demande n'est enregistrée pour ces dates
+
+<!-- jp-way:ex {"id":"EX-10","regle":"RG-06","origine":"mapping","barreau":"unit","empreinte":"2d7b4d3c"} -->
+
+#### EX-28 · le dernier jour loué reste indisponible
+
+Étant donné l'annonce active de `Marc D.`, louée du `01/10/2026` au `31/10/2026`
+Quand `Léa T.` demande la place du `31/10/2026` au `05/11/2026`
+Alors la demande est refusée, le `31/10/2026` est déjà loué
+Et aucune demande n'est enregistrée pour cette période
+
+<!-- jp-way:ex {"id":"EX-28","regle":"RG-06","origine":"sonde","barreau":"unit","empreinte":"d0e3da6c"} -->
+
+#### EX-29 · une journée demandée depuis un autre fuseau
+
+Étant donné l'annonce active de `Marc D.`, aucune location confirmée,
+  et `Léa T.` dont l'appareil est réglé sur `America/New_York`
+Quand `Léa T.` demande la journée du `15/10/2026` le `14/10/2026` à `20:00` heure locale
+Alors la demande porte sur le `15/10/2026`, de `00:00` à `23:59` en `Europe/Paris`
+Et aucune partie du `14/10/2026` ni du `16/10/2026` n'est retenue
+
+<!-- jp-way:ex {"id":"EX-29","regle":"RG-06","origine":"sonde","barreau":"unit","empreinte":"f741bf4e"} -->
+
+#### EX-30 · deux conducteurs demandent les mêmes dates au même instant
+
+Étant donné l'annonce active de `Marc D.`, les dates du `05/11/2026` au `12/11/2026` libres
+Quand `Léa T.` et le conducteur `Karim B.` demandent ces dates au même instant,
+  le `20/10/2026` à `18:30:00 Europe/Paris`
+Alors une seule des deux demandes est enregistrée
+Et l'autre est refusée pour dates indisponibles
+
+<!-- jp-way:ex {"id":"EX-30","regle":"RG-06","origine":"sonde","barreau":"int-repo","empreinte":"e98ef649"} -->
+
+#### EX-31 · une demande sur une annonce dépubliée
+
+Étant donné l'annonce de `Marc D.`, dépubliée le `10/10/2026`
+Quand `Léa T.` demande la place du `05/11/2026` au `12/11/2026` le `11/10/2026`
+Alors la demande est refusée
+Et aucune demande n'est enregistrée sur cette annonce
+
+<!-- jp-way:ex {"id":"EX-31","regle":"RG-06","origine":"sonde","barreau":"unit","empreinte":"bd5b02a4"} -->
+
+### RG-07 · un loueur peut dépublier son annonce à tout moment, sans effet sur les locations déjà confirmées
+
+#### EX-11 · dépublier alors qu'une location est confirmée
+
+Étant donné l'annonce active de `Marc D.`, dont la location du `01/10/2026` au `31/10/2026`
+  est confirmée
+Quand `Marc D.` dépublie son annonce le `10/10/2026`
+Alors l'annonce n'est plus consultable publiquement
+Et la location du `01/10/2026` au `31/10/2026` reste confirmée
+Et aucune date déjà louée n'est libérée
+
+<!-- jp-way:ex {"id":"EX-11","regle":"RG-07","origine":"mapping","barreau":"unit","empreinte":"9e24fb4c"} -->
+
+#### EX-32 · une demande arrive à l'instant de la dépublication
+
+Étant donné l'annonce active de `Marc D.`,
+  et la demande de `Léa T.` du `05/11/2026` au `12/11/2026` émise le `10/10/2026` à `14:00:00 Europe/Paris`
+Quand `Marc D.` dépublie son annonce le `10/10/2026` à `14:00:00 Europe/Paris`
+Alors la demande de `Léa T.` est refusée
+Et l'annonce est dépubliée
+Et aucune demande n'est enregistrée sur cette annonce
+
+<!-- jp-way:ex {"id":"EX-32","regle":"RG-07","origine":"sonde","barreau":"int-repo","empreinte":"feba9bc9"} -->
+
+#### EX-33 · dépublier une annonce déjà dépubliée
+
+Étant donné l'annonce de `Marc D.`, dépubliée le `10/10/2026`,
+  dont la location du `01/10/2026` au `31/10/2026` est confirmée
+Quand `Marc D.` demande la dépublication de cette annonce le `11/10/2026`
+Alors l'annonce reste dépubliée
+Et aucune erreur n'est affichée à `Marc D.`
+Et la location du `01/10/2026` au `31/10/2026` reste confirmée
+
+<!-- jp-way:ex {"id":"EX-33","regle":"RG-07","origine":"sonde","barreau":"unit","empreinte":"e1ed63cf"} -->
+
+### RG-08 · publier une annonce n'exige ni identité vérifiée ni IBAN
+
+#### EX-12 · publier sans pièce d'identité ni IBAN
+
+Étant donné `Marc D.`, compte créé le `09/09/2026`, qui n'a fourni ni pièce d'identité ni IBAN
+Quand `Marc D.` publie son annonce complète pour le `box 12` du `12 rue Barla, 06300 Nice`
+  le `10/09/2026`
+Alors l'annonce est active
+Et ni pièce d'identité ni IBAN ne lui sont demandés pour publier
+
+<!-- jp-way:ex {"id":"EX-12","regle":"RG-08","origine":"mapping","barreau":"unit","empreinte":"45746fb7"} -->
+
+#### EX-34 · une vérification d'identité commencée et non terminée
+
+Étant donné `Marc D.`, qui a commencé une vérification d'identité le `09/09/2026`
+  sans jamais la terminer
+Quand `Marc D.` publie son annonce complète pour le `box 12` du `12 rue Barla, 06300 Nice`
+  le `10/09/2026`
+Alors l'annonce est active
+Et la vérification inachevée ne bloque pas la publication
+
+<!-- jp-way:ex {"id":"EX-34","regle":"RG-08","origine":"sonde","barreau":"unit","empreinte":"fbe04369"} -->
+
+## 5. Sonde de couverture
+
+Huit règles croisées avec les dix dimensions : 80 intersections, toutes résolues. La seconde passe de récolte n'ayant pas eu lieu en séance, cette grille est le seul filet de la spec.
 
 | Règle | Limites | Vide | Temps | Concurrence | Autorisation | État | Argent | Volume | Panne | Données |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -124,86 +453,123 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
 
-#### Exemples nés de la sonde (origine: sonde)
-- EX-13 · RG-01 · Marc dépublie son annonce le 10/10/2026 puis en publie une nouvelle pour la même place le 12/10/2026 → la nouvelle annonce devient active.
-- EX-14 · RG-01 · un autre loueur publie une annonce pour le 12 rue Barla alors que celle de Marc est active → la publication est refusée.
-- EX-15 · RG-01 · Marc publie une annonce pour sa place alors qu'une location du 01/10 au 31/10/2026 est en cours → la publication est refusée, l'annonce existante reste la seule active.
-- EX-16 · RG-01 · Marc publie « 12 Rue Barla » alors qu'une annonce active porte « 12 rue barla » → la publication est refusée, les deux adresses désignent la même place.
-- EX-17 · RG-02 · annonce portant exactement une photo → publiée.
-- EX-18 · RG-02 · annonce dont la disponibilité va du 01/10/2025 au 31/10/2025, entièrement dans le passé → la publication est refusée.
-- EX-19 · RG-02 · le stockage des photos répond une erreur pendant la publication → la publication est refusée et aucune annonce partielle n'est créée.
-- EX-20 · RG-03 · Léa demande du 01/10 au 10/10/2026, soit 10 jours, la grille porte 12,00 € le jour, 60,00 € la semaine et 180,00 € le mois → [À CLARIFIER: Q-05].
-- EX-21 · RG-03 · Léa demande 7 jours alors que la grille ne porte que le mois à 180,00 € → la demande est refusée, aucune durée proposée ne couvre la période.
-- EX-22 · RG-03 · Marc change sa grille de 180,00 € à 200,00 € le 02/10/2026 après une demande faite le 01/10/2026 à 180,00 € → la demande reste à 180,00 €.
-- EX-23 · RG-03 · le prix d'une durée composite tombe sur un montant non entier → le montant est arrondi au centime.
-- EX-24 · RG-04 · Marc retire la dernière durée de la grille d'une annonce active → la modification est refusée.
-- EX-25 · RG-04 · Marc publie une grille à 0,00 € le mois → [À CLARIFIER: Q-01].
-- EX-26 · RG-05 · un visiteur non connecté consulte l'annonce → il voit « 12 rue Barla, 06300 Nice ».
-- EX-27 · RG-05 · Léa ouvre le lien d'une annonce dépubliée → l'annonce n'est plus consultable et l'adresse n'est plus visible.
-- EX-28 · RG-06 · une location court jusqu'au 31/10/2026, Léa demande du 31/10 au 05/11/2026 → la demande est refusée, le 31/10 est déjà loué.
-- EX-29 · RG-06 · Léa demande une journée le 15/10/2026 depuis un fuseau différent → la journée est bornée sur Europe/Paris.
-- EX-30 · RG-06 · Léa et un autre conducteur demandent tous deux du 05/11 au 12/11/2026 au même instant → une seule demande est enregistrée, l'autre est refusée pour dates indisponibles.
-- EX-31 · RG-06 · Léa demande des dates sur une annonce dépubliée → la demande est refusée.
-- EX-32 · RG-07 · Marc dépublie son annonce à l'instant où une demande arrive → la demande est refusée, la dépublication est effective.
-- EX-33 · RG-07 · Marc dépublie une annonce déjà dépubliée → l'annonce reste dépubliée, aucune erreur visible.
-- EX-34 · RG-08 · Marc a commencé une vérification d'identité sans la terminer → il publie quand même son annonce.
+EX-35 est né de la résolution de Q-04, après la validation de la grille : il n'occupe aucune intersection et complète EX-14 sur le couple adresse + box.
 
-#### Questions nées de la sonde
-- (claude) Q-04 — qu'est-ce qui identifie « une place » pour RG-01 : l'adresse seule, ou l'adresse plus un identifiant de box ? Deux voisins d'un même immeuble ont deux places à la même adresse. · tranché par JP · bloque RG-01, EX-14 et EX-16.
-- (claude) Q-05 — comment est facturée une durée qui ne tombe sur aucun palier, par exemple 10 jours ? · tranché par JP · bloque RG-03 et EX-20.
+## 6. Écrans
 
-### Étape 4 — validation de la sonde, et Q-04 tranchée
-- (jp) la grille est validée telle quelle : aucun « écarté » ne devient exemple.
-- (jp) Q-04 **résolue** — une place est identifiée par **son adresse et son numéro de box**.
-- (claude) conséquences de la résolution de Q-04, à appliquer à la rédaction :
-  - RG-01 se lit désormais : une place, identifiée par son adresse et son numéro de box, ne peut avoir qu'une seule annonce active.
-  - RG-02 gagne un champ obligatoire : le numéro de box.
-  - EX-14 est révisé : un autre loueur publiant le **même box** à la même adresse est refusé ; publier un **autre box** à la même adresse est autorisé.
-  - EX-16 est révisé : la normalisation porte sur le couple adresse + numéro de box, pas sur l'adresse seule.
-- (claude) EX-35 · RG-01 · le voisin de Marc publie le box 14 au 12 rue Barla alors que l'annonce de Marc porte le box 12 → la publication est acceptée, les deux annonces coexistent.
+### UX-01 · Publier une place — formulaire en trois étapes
 
-### Étape 6 — fermeture des questions
-- (jp) Q-05 **résolue** — le prix d'une durée est la **meilleure combinaison des paliers** de la grille, au plus avantageux pour le conducteur. 10 jours avec 12,00 €/jour, 60,00 €/semaine et 180,00 €/mois valent donc **96,00 €** (une semaine + trois jours).
-- (claude) conséquences : RG-03 se précise — le prix est la combinaison la moins chère des paliers proposés par la grille. EX-20 n'est plus `[À CLARIFIER]` et vaut 96,00 €. EX-21 (aucun palier ne couvre la période) tient toujours : une grille ne portant que le mois ne peut pas composer 7 jours.
-- (jp) Q-01 **résolue** — aucune borne : ni prix plancher, ni prix plafond. Le loueur met ce qu'il veut.
-- (claude) conséquences : EX-25 n'est plus `[À CLARIFIER]` — une grille à 0,00 € le mois est publiée. Conséquence assumée à porter en risque : une location à 0,00 € ne produit aucune commission pour l'exploitant.
-- (jp) Q-02 **résolue** — deux apps ajoutées à `jp-way.config.json` : `mobile` (React Native, loueur et conducteur) et `bo` (back-office web). `front` est supprimée, rien n'existait sur le disque. `apps[]` vaut désormais api · mobile · bo · e2e.
-- (jp) Q-03 **résolue** — `quality.compliance` rallumé : frameworks [RGPD], dataClasses [pii, financial], avec un paragraphe de notes recopié dans le brief du relecteur.
-- (claude) la frontmatter de cette spec passe donc à `apps: [api, mobile, e2e]` — `bo` n'est pas concernée par SPEC-001, qui ne touche aucun écran d'administration.
-
-### Étape 5 — écrans (validés par JP tels quels)
-
-#### UX-01 · Publier une place — formulaire en trois étapes, app mobile
-Rôle : un loueur met sa place en location. Atteint depuis l'accueil, bouton « Publier ma place ».
+Rôle : un loueur met sa place en location.
+Atteint depuis : l'accueil, bouton `Publier ma place`.
 
 | État | Déclencheur | Ce qu'on voit | Exemple |
 |---|---|---|---|
-| étape 1 | ouverture | adresse, numéro de box | — |
+| étape 1 | ouverture | adresse, numéro de box | EX-03 |
 | étape 2 | étape 1 valide | description de l'accès, photos | EX-17 |
 | étape 3 | étape 2 valide | grille tarifaire, période de disponibilité | EX-06 EX-07 |
-| refus | champ obligatoire manquant | le champ fautif est signalé, rien n'est publié | EX-04 |
+| refus | un champ obligatoire manque | le champ fautif est signalé, rien n'est publié | EX-04 |
 | refus | une annonce active existe déjà pour ce box | « Cette place a déjà une annonce active » | EX-02 EX-14 EX-16 |
 | refus | dates entièrement passées | « La période de disponibilité est déjà passée » | EX-18 |
-| panne | le stockage des photos échoue | « Impossible d'enregistrer les photos » + Réessayer | EX-19 |
+| panne | le stockage des photos échoue | « Impossible d'enregistrer les photos » et le bouton `Réessayer` | EX-19 |
 | succès | publication acceptée | l'annonce apparaît en « active » | EX-01 EX-03 |
 
-#### UX-02 · Mon annonce — vue du loueur
+### UX-02 · Mon annonce — vue du loueur
+
+Rôle : un loueur consulte l'annonce qu'il a publiée, voit ce qui est loué, et la dépublie.
+Atteint depuis : non tranché en séance.
+
 | État | Déclencheur | Ce qu'on voit | Exemple |
 |---|---|---|---|
-| active | annonce publiée, aucune location | l'annonce, son adresse, sa grille, bouton Dépublier mon annonce | EX-01 |
+| active | annonce publiée, aucune location | l'annonce, son adresse, sa grille, le bouton `Dépublier mon annonce` | EX-01 |
 | louée | une location est confirmée | les dates louées sont marquées indisponibles | EX-09 |
 | dépubliée | le loueur a dépublié | l'annonce n'est plus visible publiquement, la location confirmée reste affichée | EX-11 EX-33 |
 
-#### UX-03 · Annonce publique — vue du conducteur
+### UX-03 · Annonce publique — vue du conducteur
+
+Rôle : un conducteur lit l'annonce, son adresse exacte, sa grille et ses disponibilités avant de demander.
+Atteint depuis : non tranché en séance.
+
 | État | Déclencheur | Ce qu'on voit | Exemple |
 |---|---|---|---|
-| nominal | annonce active | « 12 rue Barla, 06300 Nice », box, photos, grille, disponibilités | EX-08 EX-26 |
+| nominal | annonce active | `12 rue Barla, 06300 Nice`, le box, les photos, la grille, les disponibilités | EX-08 EX-26 |
 | indisponible | dates déjà louées | les dates louées ne sont pas sélectionnables | EX-10 EX-28 |
-| introuvable | annonce dépubliée | titre « Annonce introuvable », aucune adresse visible | EX-27 EX-31 |
+| introuvable | annonce dépubliée | « Annonce introuvable », aucune adresse visible | EX-27 EX-31 |
 
-#### Noms accessibles — contrat des tests de parcours
-`bouton Publier ma place` · `champ Adresse` · `champ Numéro de box` · `champ Description de l'accès` · `bouton Ajouter une photo` · `champ Prix à la journée` · `champ Prix à la semaine` · `champ Prix au mois` · `champ Début de disponibilité` · `champ Fin de disponibilité` · `bouton Continuer` · `bouton Publier` · `bouton Réessayer` · `bouton Dépublier mon annonce` · `titre Annonce introuvable`
+**Noms accessibles** — le contrat avec les tests de parcours, pas une suggestion :
+`bouton Publier ma place` · `champ Adresse` · `champ Numéro de box` · `champ Description de l'accès` ·
+`bouton Ajouter une photo` · `champ Prix à la journée` · `champ Prix à la semaine` · `champ Prix au mois` ·
+`champ Début de disponibilité` · `champ Fin de disponibilité` · `bouton Continuer` · `bouton Publier` ·
+`bouton Réessayer` · `bouton Dépublier mon annonce` · `titre Annonce introuvable`
 
-### Fin de séance
-- (jp) « ça me va, continue » — récolte close. 8 règles · 35 exemples · 3 écrans · 5 questions toutes résolues.
-- (claude) barreaux suggérés, restreints à ceux que chaque app déclare : les refus et calculs de RG-01 à RG-08 vont à `unit` (api) ; l'unicité de place et la normalisation adresse+box vont à `int-repo` ; la validation de la requête de publication et les gardes vont à `int-http` ; le parcours de publication complet va à `e2e` ; le formulaire, ses états et ses erreurs mappées vont à `unit` (mobile).
+## 7. Questions
+
+#### Q-01 · existe-t-il un prix plancher ou un prix plafond par durée ?
+
+Statut : résolue — JP : « aucune borne : ni prix plancher, ni prix plafond. Le loueur met ce qu'il veut. »
+Conséquence appliquée : EX-25, une grille à `0,00 €` le mois est publiée. Le manque à gagner que cela ouvre pour l'exploitant est porté en `## 11`.
+
+#### Q-02 · quelle app du dépôt porte la publication d'une place ?
+
+Statut : résolue — JP : deux apps, `mobile` pour le loueur et le conducteur, `bo` pour le back-office ; `front` est supprimée, rien n'existait sur le disque.
+Conséquence appliquée : cette spec ne concerne que `api`, `mobile` et `e2e` ; `bo` n'est pas concernée, SPEC-001 ne touche aucun écran d'administration.
+
+#### Q-03 · le volet conformité est-il tenable éteint, pour une plateforme qui encaisse et vérifie des identités ?
+
+Statut : résolue — JP : le volet conformité est rallumé, cadre RGPD, données personnelles et données financières.
+Conséquence appliquée : les obligations correspondantes sont portées en `## 8`.
+
+#### Q-04 · qu'est-ce qui identifie « une place » pour RG-01 : l'adresse seule, ou l'adresse et un identifiant de box ?
+
+Statut : résolue — JP : « une place est identifiée par son adresse et son numéro de box. »
+Conséquence appliquée : RG-01 porte le couple adresse + box, RG-02 gagne le numéro de box parmi ses champs obligatoires, EX-14 et EX-16 portent sur le même box, et EX-35 dit qu'un autre box à la même adresse est publiable.
+
+#### Q-05 · comment est facturée une durée qui ne tombe sur aucun palier, par exemple dix jours ?
+
+Statut : résolue — JP : « la meilleure combinaison des paliers de la grille, au plus avantageux pour le conducteur ». Dix jours avec `12,00 €` la journée, `60,00 €` la semaine et `180,00 €` le mois valent donc `96,00 €`, une semaine plus trois jours.
+Conséquence appliquée : RG-03 est écrite en ces termes, EX-20 vaut `96,00 €`, et EX-21 tient toujours — une grille qui ne porte que le mois ne compose pas sept jours.
+
+## 8. Contraintes non fonctionnelles
+
+- **Volumétrie visée.** L'objectif du brainstorm est de passer de zéro à plusieurs centaines de places publiées à Nice. Une annonce est lue bien plus souvent qu'écrite ; rien ici ne porte sur des lots.
+- **Conformité.** Le cadre RGPD s'applique, sur données personnelles et données financières. Une annonce publique porte l'adresse exacte d'un particulier, et le loueur fournira plus tard une pièce d'identité et un IBAN : ces données sortent du périmètre de cette spec mais appartiennent au même compte.
+- **Données personnelles exposées volontairement.** Par décision de JP (RG-05), l'adresse exacte et le numéro de box sont publics, sans authentification. C'est un choix assumé, pas un défaut à corriger plus tard sans le dire.
+- **Fichiers.** Une annonce porte au moins une photo, envoyée depuis un appareil mobile ; le chemin de publication dépend donc d'un stockage de fichiers, dont la panne est un comportement spécifié (EX-19).
+- **Temps.** Toutes les dates de location, et la journée comme unité, sont bornées sur `Europe/Paris`, quel que soit le fuseau de l'appareil (EX-29).
+- **Langue.** Tout ce qu'un loueur ou un conducteur lit est en français.
+- **Rétention.** Aucune durée de conservation d'une annonce dépubliée n'a été fixée en séance.
+
+## 9. Impacts par app
+
+Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune carte de code n'a jamais été dressée. Aucun `code-scout` n'a donc été dépêché, et rien de ce qui suit ne s'appuie sur du code observé.
+
+| App | Ce qui bouge | Ce qui ne bouge pas |
+|---|---|---|
+| api | tout est à créer : les huit règles, l'unicité de l'annonce active sur le couple adresse + box, la complétude d'une annonce, le calcul du prix par combinaison de paliers, les dates encore demandables, la dépublication. | rien — il n'y a rien à préserver. |
+| mobile | tout est à créer : les trois écrans de `## 6`, leurs états et leurs refus affichés. | rien — il n'y a rien à préserver. |
+| e2e | tout est à créer : le parcours de publication d'une place, de l'accueil à l'annonce active. | rien — il n'y a rien à préserver. |
+| bo | rien : SPEC-001 ne touche aucun écran d'administration. | l'ensemble du back-office. |
+
+## 10. Hors sujet
+
+- **Demander et confirmer une location** — l'acceptation ou le refus par le loueur, l'expiration d'une demande. Objet de SPEC-002 ; ici, une demande n'est qu'un signal d'entrée servant à dire quel prix elle porte et si les dates sont libres.
+- **Le circuit de l'argent** — encaissement, commission, blocage des fonds, versement au loueur. Objet de SPEC-003.
+- **Annulation, remboursement et réclamation** — objet de SPEC-004.
+- **La reconduction automatique** — reportée en séance de brainstorm ; seules les dates fixes sont livrées d'abord.
+- **La location à l'heure** — abandonnée en brainstorm, « trop galère à l'heure ».
+- **Le boîtier d'accès connecté, le code de portail imposé** — écartés : l'accès est expliqué librement par le loueur, en texte.
+- **Le back-office** — réservations, clients, statistiques, revenus, réglages : aucun écran d'administration n'est concerné par la publication d'une place.
+- **La vérification d'identité et l'IBAN** — exigés avant le premier versement, jamais pour publier (RG-08).
+
+## 11. Risques
+
+- **L'adresse exacte et les dates de disponibilité sont publiques ensemble.** Une annonce indique alors qu'un box précis, à une adresse précise, est vide à des dates précises. · Signal précoce : des signalements de loueurs, ou des places dégradées ou occupées sans accord entre deux locations. · Parade : aucune, par décision explicite de JP à l'inversion de RG-05. · Gravité : moyenne.
+- **Une grille à `0,00 €` est publiable.** Q-01 n'ayant posé ni plancher ni plafond, une location peut se conclure sans produire la moindre commission pour l'exploitant. · Signal précoce : la part des annonces actives dont un palier vaut `0,00 €`, et le revenu moyen par location. · Parade : aucune, conséquence assumée de Q-01. · Gravité : moyenne.
+- **La seconde passe de récolte n'a pas eu lieu.** Les règles qu'on découvre en imaginant un utilisateur mécontent manquent ; la sonde de couverture est le seul filet. · Signal précoce : un défaut de publication qui ne se rattache à aucun exemple existant. · Parade : chaque défaut revient dans cette spec comme exemple manquant. · Gravité : moyenne.
+- **L'accès est décrit en texte libre.** Ni vérifiable, ni opposable en cas de litige entre loueur et conducteur. · Signal précoce : des litiges « je n'ai pas pu entrer » dès les premières locations. · Parade : inconnue à ce stade. · Gravité : moyenne.
+- **L'offre est le point dur d'une place de marché, pas la demande.** Publier doit rester si simple que l'absence d'identité vérifiée est déjà une parade (RG-08). · Signal précoce : le nombre de places publiées rapporté aux recherches sans résultat, et la part des annonces commencées jamais publiées. · Parade : publication sans aucune vérification préalable. · Gravité : forte.
+
+## 12. Journal des révisions
+
+| Révision | Date | Ce qui a changé |
+|---|---|---|
+| 1 | 16/09/2026 | Création. Issue de la séance d'example mapping ouverte le 10/09/2026 sur BR-20260910-reserver-et-louer-une-place : huit règles, trente-cinq exemples, trois écrans, cinq questions toutes résolues. |

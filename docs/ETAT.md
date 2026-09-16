@@ -1,5 +1,5 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-10 00:43 — ne pas éditer à la main._
+_Généré le 2026-09-16 10:40 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|

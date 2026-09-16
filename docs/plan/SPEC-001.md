@@ -118,16 +118,16 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 
 | Ordre | Story | Titre | App | Barreaux | Exemples | Issue |
 |---|---|---|---|---|---|---|
-| 1 | US-001 | Publier une annonce | api | unit | EX-03 EX-01 EX-17 EX-12 EX-34 | |
-| 2 | US-002 | Refuser une annonce incomplète | api | unit int-repo int-http | EX-18 EX-19 EX-04 | |
-| 3 | US-003 | N'accepter qu'une annonce active par box | api | unit | EX-02 EX-14 EX-15 EX-16 EX-35 | |
-| 4 | US-004 | Exiger au moins une durée dans la grille | api | unit | EX-07 EX-24 EX-06 EX-25 | |
-| 5 | US-005 | Calculer le prix d'une période | api | unit | EX-05 EX-20 EX-21 EX-23 | |
-| 6 | US-006 | Demander une place sur des dates libres | api | unit | EX-22 EX-09 EX-10 EX-28 EX-29 | |
-| 7 | US-007 | Dépublier une annonce | api | unit | EX-11 EX-33 EX-31 EX-13 | |
-| 8 | US-008 | Enregistrer une seule demande malgré la concurrence | api | int-repo | EX-30 EX-32 | |
-| 9 | US-009 | Exposer l'adresse exacte d'une annonce | api | int-http | EX-08 EX-26 EX-27 | |
-| 10 | US-010 | Parcours de publication d'une place | e2e | e2e | EX-03 | |
+| 1 | US-001 | Publier une annonce | api | unit | EX-03 EX-01 EX-17 EX-12 EX-34 | #2 |
+| 2 | US-002 | Refuser une annonce incomplète | api | unit int-repo int-http | EX-18 EX-19 EX-04 | #3 |
+| 3 | US-003 | N'accepter qu'une annonce active par box | api | unit | EX-02 EX-14 EX-15 EX-16 EX-35 | #4 |
+| 4 | US-004 | Exiger au moins une durée dans la grille | api | unit | EX-07 EX-24 EX-06 EX-25 | #5 |
+| 5 | US-005 | Calculer le prix d'une période | api | unit | EX-05 EX-20 EX-21 EX-23 | #6 |
+| 6 | US-006 | Demander une place sur des dates libres | api | unit | EX-22 EX-09 EX-10 EX-28 EX-29 | #7 |
+| 7 | US-007 | Dépublier une annonce | api | unit | EX-11 EX-33 EX-31 EX-13 | #8 |
+| 8 | US-008 | Enregistrer une seule demande malgré la concurrence | api | int-repo | EX-30 EX-32 | #9 |
+| 9 | US-009 | Exposer l'adresse exacte d'une annonce | api | int-http | EX-08 EX-26 EX-27 | #10 |
+| 10 | US-010 | Parcours de publication d'une place | e2e | e2e | EX-03 | #11 |
 
 ## Dépendances
 

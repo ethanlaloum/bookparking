@@ -1,0 +1,171 @@
+import { Either } from 'effect/index';
+
+import { Listing, ListingStatus } from '../../entities/Listing';
+import { InMemoryListingRepository } from '../../ports/InMemoryListingRepository';
+import { PublishListing } from './PublishListing';
+
+interface Place {
+  address: string;
+  box: string;
+}
+
+interface OwnerForTest {
+  name: string;
+  createdAt?: string;
+  identityDocument?: string | null;
+  iban?: string | null;
+  identityVerificationStartedAt?: string;
+  identityVerificationCompleted?: boolean;
+}
+
+interface PublishingInput {
+  owner: string;
+  address: string;
+  box: string;
+  accessDescription: string;
+  photos: string[];
+  pricing: { day: number; week: number; month: number };
+  availability: { from: string; to: string };
+  publishedAt: string;
+}
+
+const toUtcDate = (day: string): Date => new Date(`${day}T00:00:00.000Z`);
+
+const toUtcDay = (date: Date): string => date.toISOString().slice(0, 10);
+
+const toDisplayedListing = (listing: Listing) => {
+  const state = listing.toState();
+  return {
+    address: state.address,
+    box: state.box,
+    accessDescription: state.accessDescription,
+    photos: state.photos,
+    pricing: {
+      day: state.pricing.dayInCents,
+      week: state.pricing.weekInCents,
+      month: state.pricing.monthInCents,
+    },
+    availability: {
+      from: toUtcDay(state.availability.from),
+      to: toUtcDay(state.availability.to),
+    },
+  };
+};
+
+export const createPublishListingSUT = () => {
+  const listingRepository = new InMemoryListingRepository();
+
+  const testConstants = {
+    ownerNameForTest: 'Marc D.',
+    addressForTest: '12 rue Barla, 06300 Nice',
+    boxForTest: '12',
+  };
+
+  const publishListing = new PublishListing(listingRepository);
+
+  const context = {
+    listingRepository,
+    publishListing,
+    testConstants,
+    owner: null as OwnerForTest | null,
+  };
+
+  const thenResultIsRight = (result: Either.Either<unknown, unknown>) => {
+    expect(Either.isRight(result)).toEqual(true);
+  };
+
+  return {
+    context,
+
+    givenNoActiveListingFor(place: Place) {
+      context.listingRepository.listingList =
+        context.listingRepository.listingList.filter(
+          (listing) => !listing.isActiveFor(place),
+        );
+    },
+
+    givenOwner(owner: OwnerForTest) {
+      context.owner = owner;
+      return { owner };
+    },
+
+    async whenPublishing(overrides?: Partial<PublishingInput>) {
+      const defaults: PublishingInput = {
+        owner: context.testConstants.ownerNameForTest,
+        address: context.testConstants.addressForTest,
+        box: context.testConstants.boxForTest,
+        accessDescription:
+          'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
+        photos: ['photo-1'],
+        pricing: { day: 1200, week: 6000, month: 18000 },
+        availability: { from: '2026-10-01', to: '2026-10-31' },
+        publishedAt: '2026-09-10',
+      };
+      const input = { ...defaults, ...overrides };
+
+      return context.publishListing.execute({
+        ownerName: input.owner,
+        address: input.address,
+        box: input.box,
+        accessDescription: input.accessDescription,
+        photos: input.photos,
+        pricing: {
+          dayInCents: input.pricing.day,
+          weekInCents: input.pricing.week,
+          monthInCents: input.pricing.month,
+        },
+        availability: {
+          from: toUtcDate(input.availability.from),
+          to: toUtcDate(input.availability.to),
+        },
+        publishedAt: toUtcDate(input.publishedAt),
+      });
+    },
+
+    thenResultIsRight,
+
+    thenListingIsActive(result: Either.Either<Listing, unknown>) {
+      thenResultIsRight(result);
+      const listings = context.listingRepository.listingList;
+      expect(listings).toHaveLength(1);
+      expect(listings[0].toState().status).toEqual(ListingStatus.ACTIVE);
+      if (Either.isRight(result)) {
+        expect(result.right.toState()).toEqual(listings[0].toState());
+      }
+    },
+
+    thenListingCarries(
+      result: Either.Either<Listing, unknown>,
+      expected: Partial<ReturnType<typeof toDisplayedListing>>,
+    ) {
+      thenResultIsRight(result);
+      const listings = context.listingRepository.listingList;
+      expect(listings).toHaveLength(1);
+      const displayed = toDisplayedListing(listings[0]);
+      const carried = Object.fromEntries(
+        Object.keys(expected).map((key) => [
+          key,
+          displayed[key as keyof typeof displayed],
+        ]),
+      );
+      expect(carried).toEqual(expected);
+    },
+
+    thenIsOnlyActiveListingFor(place: Place) {
+      const activeListings = context.listingRepository.listingList.filter(
+        (listing) => listing.isActiveFor(place),
+      );
+      expect(activeListings).toHaveLength(1);
+    },
+
+    thenNoIdentityDocumentOrIbanWasRequired() {
+      expect(context.owner).not.toEqual(null);
+      expect(context.owner?.identityDocument ?? null).toEqual(null);
+      expect(context.owner?.iban ?? null).toEqual(null);
+      const listings = context.listingRepository.listingList;
+      expect(listings).toHaveLength(1);
+      expect(listings[0].toState().ownerName).toEqual(context.owner?.name);
+      expect(listings[0].toState().status).toEqual(ListingStatus.ACTIVE);
+    },
+  };
+};

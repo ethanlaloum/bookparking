@@ -31,8 +31,8 @@
       }
     },
     {
-      "name": "mobile",
-      "path": "apps/mobile",
+      "name": "front",
+      "path": "apps/front",
       "role": "frontend",
       "rungs": [
         "unit"

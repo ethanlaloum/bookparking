@@ -151,3 +151,13 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 #### Questions nées de la sonde
 - (claude) Q-04 — qu'est-ce qui identifie « une place » pour RG-01 : l'adresse seule, ou l'adresse plus un identifiant de box ? Deux voisins d'un même immeuble ont deux places à la même adresse. · tranché par JP · bloque RG-01, EX-14 et EX-16.
 - (claude) Q-05 — comment est facturée une durée qui ne tombe sur aucun palier, par exemple 10 jours ? · tranché par JP · bloque RG-03 et EX-20.
+
+### Étape 4 — validation de la sonde, et Q-04 tranchée
+- (jp) la grille est validée telle quelle : aucun « écarté » ne devient exemple.
+- (jp) Q-04 **résolue** — une place est identifiée par **son adresse et son numéro de box**.
+- (claude) conséquences de la résolution de Q-04, à appliquer à la rédaction :
+  - RG-01 se lit désormais : une place, identifiée par son adresse et son numéro de box, ne peut avoir qu'une seule annonce active.
+  - RG-02 gagne un champ obligatoire : le numéro de box.
+  - EX-14 est révisé : un autre loueur publiant le **même box** à la même adresse est refusé ; publier un **autre box** à la même adresse est autorisé.
+  - EX-16 est révisé : la normalisation porte sur le couple adresse + numéro de box, pas sur l'adresse seule.
+- (claude) EX-35 · RG-01 · le voisin de Marc publie le box 14 au 12 rue Barla alors que l'annonce de Marc porte le box 12 → la publication est acceptée, les deux annonces coexistent.

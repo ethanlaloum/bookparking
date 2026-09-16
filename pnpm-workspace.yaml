@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+
+allowBuilds:
+  unrs-resolver: true      # jest-resolve@30 : le résolveur natif choisit ici le binaire de la plateforme
+  '@parcel/watcher': false # jest-haste-map, mode watch uniquement — interdit ici, repli pur JS suffisant

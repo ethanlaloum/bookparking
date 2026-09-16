@@ -5,3 +5,4 @@ node_modules/
 # Skills Claude Code installés localement (tiers, hors produit)
 .claude/skills/
 skills-lock.json
+dist/

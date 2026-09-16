@@ -170,3 +170,40 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 - (jp) Q-02 **résolue** — deux apps ajoutées à `jp-way.config.json` : `mobile` (React Native, loueur et conducteur) et `bo` (back-office web). `front` est supprimée, rien n'existait sur le disque. `apps[]` vaut désormais api · mobile · bo · e2e.
 - (jp) Q-03 **résolue** — `quality.compliance` rallumé : frameworks [RGPD], dataClasses [pii, financial], avec un paragraphe de notes recopié dans le brief du relecteur.
 - (claude) la frontmatter de cette spec passe donc à `apps: [api, mobile, e2e]` — `bo` n'est pas concernée par SPEC-001, qui ne touche aucun écran d'administration.
+
+### Étape 5 — écrans (validés par JP tels quels)
+
+#### UX-01 · Publier une place — formulaire en trois étapes, app mobile
+Rôle : un loueur met sa place en location. Atteint depuis l'accueil, bouton « Publier ma place ».
+
+| État | Déclencheur | Ce qu'on voit | Exemple |
+|---|---|---|---|
+| étape 1 | ouverture | adresse, numéro de box | — |
+| étape 2 | étape 1 valide | description de l'accès, photos | EX-17 |
+| étape 3 | étape 2 valide | grille tarifaire, période de disponibilité | EX-06 EX-07 |
+| refus | champ obligatoire manquant | le champ fautif est signalé, rien n'est publié | EX-04 |
+| refus | une annonce active existe déjà pour ce box | « Cette place a déjà une annonce active » | EX-02 EX-14 EX-16 |
+| refus | dates entièrement passées | « La période de disponibilité est déjà passée » | EX-18 |
+| panne | le stockage des photos échoue | « Impossible d'enregistrer les photos » + Réessayer | EX-19 |
+| succès | publication acceptée | l'annonce apparaît en « active » | EX-01 EX-03 |
+
+#### UX-02 · Mon annonce — vue du loueur
+| État | Déclencheur | Ce qu'on voit | Exemple |
+|---|---|---|---|
+| active | annonce publiée, aucune location | l'annonce, son adresse, sa grille, bouton Dépublier mon annonce | EX-01 |
+| louée | une location est confirmée | les dates louées sont marquées indisponibles | EX-09 |
+| dépubliée | le loueur a dépublié | l'annonce n'est plus visible publiquement, la location confirmée reste affichée | EX-11 EX-33 |
+
+#### UX-03 · Annonce publique — vue du conducteur
+| État | Déclencheur | Ce qu'on voit | Exemple |
+|---|---|---|---|
+| nominal | annonce active | « 12 rue Barla, 06300 Nice », box, photos, grille, disponibilités | EX-08 EX-26 |
+| indisponible | dates déjà louées | les dates louées ne sont pas sélectionnables | EX-10 EX-28 |
+| introuvable | annonce dépubliée | titre « Annonce introuvable », aucune adresse visible | EX-27 EX-31 |
+
+#### Noms accessibles — contrat des tests de parcours
+`bouton Publier ma place` · `champ Adresse` · `champ Numéro de box` · `champ Description de l'accès` · `bouton Ajouter une photo` · `champ Prix à la journée` · `champ Prix à la semaine` · `champ Prix au mois` · `champ Début de disponibilité` · `champ Fin de disponibilité` · `bouton Continuer` · `bouton Publier` · `bouton Réessayer` · `bouton Dépublier mon annonce` · `titre Annonce introuvable`
+
+### Fin de séance
+- (jp) « ça me va, continue » — récolte close. 8 règles · 35 exemples · 3 écrans · 5 questions toutes résolues.
+- (claude) barreaux suggérés, restreints à ceux que chaque app déclare : les refus et calculs de RG-01 à RG-08 vont à `unit` (api) ; l'unicité de place et la normalisation adresse+box vont à `int-repo` ; la validation de la requête de publication et les gardes vont à `int-http` ; le parcours de publication complet va à `e2e` ; le formulaire, ses états et ses erreurs mappées vont à `unit` (mobile).

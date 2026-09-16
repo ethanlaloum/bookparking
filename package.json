@@ -1,0 +1,13 @@
+{
+  "name": "bookparking",
+  "private": true,
+  "packageManager": "pnpm@11.5.3",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build:all": "pnpm -r build",
+    "lint:all": "pnpm -r lint:check",
+    "api": "pnpm --filter bookparking-api"
+  }
+}

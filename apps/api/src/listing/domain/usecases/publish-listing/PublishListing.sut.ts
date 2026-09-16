@@ -151,6 +151,23 @@ export const createPublishListingSUT = () => {
       expect(carried).toEqual(expected);
     },
 
+    thenPublicationIsRefusedWith(
+      result: Either.Either<unknown, unknown>,
+      ErrorClass: new (...args: never[]) => Error,
+    ) {
+      expect(Either.isLeft(result)).toEqual(true);
+      if (Either.isLeft(result)) {
+        expect(result.left).toBeInstanceOf(ErrorClass);
+      }
+    },
+
+    thenNoActiveListingFor(place: Place) {
+      const activeListings = context.listingRepository.listingList.filter(
+        (listing) => listing.isActiveFor(place),
+      );
+      expect(activeListings).toHaveLength(0);
+    },
+
     thenIsOnlyActiveListingFor(place: Place) {
       const activeListings = context.listingRepository.listingList.filter(
         (listing) => listing.isActiveFor(place),

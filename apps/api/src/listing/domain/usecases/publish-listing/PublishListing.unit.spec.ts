@@ -1,4 +1,5 @@
 import { createPublishListingSUT } from './PublishListing.sut';
+import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
 
 const MARC = 'Marc D.';
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };
@@ -89,5 +90,20 @@ describe('PublishListing @SPEC-001', () => {
     });
 
     sut.thenListingIsActive(result);
+  });
+
+  it('refuses a listing whose availability period is entirely in the past @EX-001-18', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenNoActiveListingFor(PLACE);
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      availability: { from: '2025-10-01', to: '2025-10-31' },
+      publishedAt: '2026-09-10',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, AvailabilityPeriodExpiredError);
+    sut.thenNoActiveListingFor(PLACE);
   });
 });

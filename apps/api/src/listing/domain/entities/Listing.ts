@@ -40,6 +40,13 @@ export class Listing {
     return new Listing({ ...params, status: ListingStatus.ACTIVE });
   }
 
+  public static isAvailabilityEntirelyPast(
+    availability: ListingAvailability,
+    at: Date,
+  ): boolean {
+    return availability.to.getTime() < at.getTime();
+  }
+
   public isActiveFor(place: { address: string; box: string }): boolean {
     return (
       this.props.status === ListingStatus.ACTIVE &&

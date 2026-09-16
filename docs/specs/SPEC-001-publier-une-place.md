@@ -53,3 +53,34 @@ _Bloc append-only. Remplacé par les douze sections à la rédaction._
 
 ### Étape 3 — exemples
 - (claude) aucune valeur réelle disponible : ni prix, ni adresse, ni durée observée. Une valeur inventée ici deviendrait un test, puis une vérité. Valeurs demandées à JP avant d'écrire le premier exemple.
+- (jp) valeurs de référence : place au **12 rue Barla, Nice**, louée **du 01/10/2026 au 31/10/2026** pour **180,00 €**.
+- (claude, dérivé de JP, à confirmer) grille du loueur : **12,00 € la journée · 60,00 € la semaine · 180,00 € le mois**. Seul le mois vient de JP ; le jour et la semaine sont déduits et attendent confirmation.
+- (claude) loueur de référence : Marc D. · conducteur de référence : Léa T.
+
+#### RG-01 — une place ne peut avoir qu'une seule annonce active
+- EX-01 nominal · Marc publie sa place du 12 rue Barla, aucune annonce active n'existe pour cette place → l'annonce devient active.
+- EX-02 refus · Marc publie une seconde annonce pour cette même place alors que la première est active → la publication est refusée, la première annonce reste la seule active.
+
+#### RG-02 — champs obligatoires
+- EX-03 nominal · annonce portant adresse, description d'accès, une photo, grille et disponibilité du 01/10 au 31/10/2026 → publiée.
+- EX-04 refus · même annonce sans aucune photo → la publication est refusée et l'annonce reste non publiée.
+
+#### RG-03 — le prix vient de la grille du loueur
+- EX-05 nominal · Léa demande la place du 01/10/2026 au 31/10/2026, la grille porte 180,00 € le mois → le prix de la demande est 180,00 €.
+
+#### RG-04 — une grille propose au moins une durée
+- EX-06 nominal · grille ne portant que le mois à 180,00 €, ni jour ni semaine → l'annonce est publiable.
+- EX-07 refus · grille ne portant aucune durée → la publication est refusée.
+
+#### RG-05 — l'adresse exacte est visible sur l'annonce
+- EX-08 nominal · Léa consulte l'annonce sans avoir réservé → elle voit « 12 rue Barla, 06300 Nice ».
+
+#### RG-06 — l'annonce reste publiée pendant une location, les dates louées ne sont plus demandables
+- EX-09 nominal · la place est louée du 01/10 au 31/10/2026, Léa demande du 05/11 au 12/11/2026 → la demande est recevable.
+- EX-10 refus · Léa demande du 15/10 au 20/10/2026 → la demande est refusée, ces dates sont déjà louées.
+
+#### RG-07 — dépublication sans effet sur les locations confirmées
+- EX-11 nominal · Marc dépublie son annonce le 10/10/2026 alors que la location du 01/10 au 31/10 est confirmée → l'annonce n'est plus visible et la location d'octobre reste confirmée.
+
+#### RG-08 — publier n'exige ni identité vérifiée ni IBAN
+- EX-12 nominal · Marc n'a fourni ni pièce d'identité ni IBAN → il publie son annonce et elle devient active.

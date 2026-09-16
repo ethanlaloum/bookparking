@@ -2,11 +2,13 @@
 id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
-statut: brouillon
+statut: valide
 revision: 1
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
+valide_le: 2026-09-16
+valide_par: JP
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 8

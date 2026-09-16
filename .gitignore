@@ -1,3 +1,7 @@
 .jp-way/project.json
 node_modules/
 .DS_Store
+
+# Skills Claude Code installés localement (tiers, hors produit)
+.claude/skills/
+skills-lock.json

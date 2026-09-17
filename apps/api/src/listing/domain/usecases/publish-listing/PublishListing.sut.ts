@@ -2,6 +2,7 @@ import { Either } from 'effect/index';
 
 import { Listing, ListingStatus } from '../../entities/Listing';
 import { InMemoryListingRepository } from '../../../adapters/repositories/listing/InMemoryListingRepository';
+import { InMemoryPhotoStorage } from '../../../adapters/services/photo-storage/InMemoryPhotoStorage';
 import { PublishListing } from './PublishListing';
 
 interface Place {
@@ -54,17 +55,27 @@ const toDisplayedListing = (listing: Listing) => {
 
 export const createPublishListingSUT = () => {
   const listingRepository = new InMemoryListingRepository();
+  const photoStorage = new InMemoryPhotoStorage();
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
+    ownerIdForTest: 'account-marc',
     addressForTest: '12 rue Barla, 06300 Nice',
     boxForTest: '12',
   };
 
-  const publishListing = new PublishListing(listingRepository);
+  const publishListing = new PublishListing(listingRepository, photoStorage);
+
+  const accountIdsByOwnerName: Record<string, string> = {
+    [testConstants.ownerNameForTest]: testConstants.ownerIdForTest,
+  };
+
+  const toAccountId = (ownerName: string): string =>
+    accountIdsByOwnerName[ownerName] ?? `account-${ownerName}`;
 
   const context = {
     listingRepository,
+    photoStorage,
     publishListing,
     testConstants,
     owner: null as OwnerForTest | null,
@@ -82,6 +93,10 @@ export const createPublishListingSUT = () => {
         context.listingRepository.listingList.filter(
           (listing) => !listing.isActiveFor(place),
         );
+    },
+
+    givenPhotoStorageFailingOnEveryUpload() {
+      context.photoStorage.enableFailureOnEveryUpload();
     },
 
     givenOwner(owner: OwnerForTest) {
@@ -104,7 +119,7 @@ export const createPublishListingSUT = () => {
       const input = { ...defaults, ...overrides };
 
       return context.publishListing.execute({
-        ownerName: input.owner,
+        ownerId: toAccountId(input.owner),
         address: input.address,
         box: input.box,
         accessDescription: input.accessDescription,
@@ -151,6 +166,23 @@ export const createPublishListingSUT = () => {
       expect(carried).toEqual(expected);
     },
 
+    thenPublicationIsRefusedWith(
+      result: Either.Either<unknown, unknown>,
+      ErrorClass: new (...args: never[]) => Error,
+    ) {
+      expect(Either.isLeft(result)).toEqual(true);
+      if (Either.isLeft(result)) {
+        expect(result.left).toBeInstanceOf(ErrorClass);
+      }
+    },
+
+    thenNoActiveListingFor(place: Place) {
+      const activeListings = context.listingRepository.listingList.filter(
+        (listing) => listing.isActiveFor(place),
+      );
+      expect(activeListings).toHaveLength(0);
+    },
+
     thenIsOnlyActiveListingFor(place: Place) {
       const activeListings = context.listingRepository.listingList.filter(
         (listing) => listing.isActiveFor(place),
@@ -164,7 +196,9 @@ export const createPublishListingSUT = () => {
       expect(context.owner?.iban ?? null).toEqual(null);
       const listings = context.listingRepository.listingList;
       expect(listings).toHaveLength(1);
-      expect(listings[0].toState().ownerName).toEqual(context.owner?.name);
+      expect(listings[0].toState().ownerId).toEqual(
+        toAccountId(context.owner?.name ?? ''),
+      );
       expect(listings[0].toState().status).toEqual(ListingStatus.ACTIVE);
     },
   };

@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   Listing,
@@ -7,9 +8,12 @@ import {
   ListingPricing,
 } from '../../entities/Listing';
 import { ListingRepository } from '../../ports/ListingRepository';
+import { PhotoStorage } from '../../ports/PhotoStorage';
+import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
 interface Props {
-  ownerName: string;
+  ownerId: string;
   address: string;
   box: string;
   accessDescription: string;
@@ -21,13 +25,47 @@ interface Props {
 
 export class PublishListing implements UseCase<
   Props,
-  Promise<Either.Either<Listing, never>>
+  Promise<
+    Either.Either<
+      Listing,
+      AvailabilityPeriodExpiredError | PhotoStorageFailedError | UnknownError
+    >
+  >
 > {
-  constructor(private readonly listingRepository: ListingRepository) {}
+  constructor(
+    private readonly listingRepository: ListingRepository,
+    private readonly photoStorage: PhotoStorage,
+  ) {}
 
-  public async execute(props: Props): Promise<Either.Either<Listing, never>> {
-    const listing = Listing.publish(props);
-    await this.listingRepository.create(listing);
-    return Either.right(listing);
+  public async execute(
+    props: Props,
+  ): Promise<
+    Either.Either<
+      Listing,
+      AvailabilityPeriodExpiredError | PhotoStorageFailedError | UnknownError
+    >
+  > {
+    try {
+      if (
+        Listing.isAvailabilityEntirelyPast(
+          props.availability,
+          props.publishedAt,
+        )
+      )
+        return Either.left(new AvailabilityPeriodExpiredError());
+
+      const storage = await this.photoStorage.storeAll(props.photos);
+      if (Either.isLeft(storage)) return Either.left(storage.left);
+
+      const listing = Listing.publish(props);
+      await this.listingRepository.create(listing);
+      return Either.right(listing);
+    } catch (error: unknown) {
+      return Either.left(
+        new UnknownError(
+          error instanceof Error ? error.message : String(error),
+        ),
+      );
+    }
   }
 }

@@ -1,0 +1,81 @@
+import {
+  Body,
+  Controller,
+  HttpException,
+  HttpStatus,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Either, Schema } from 'effect/index';
+
+import { controllerErrorHandler } from '../../../../../shared/error/controllerErrorHandler';
+import { UnknownError } from '../../../../../shared/error/errors/UnknownError';
+import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
+import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
+import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
+import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
+import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-listing/errors/PhotoStorageFailedError';
+import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
+import { PublishListingSchema } from '../../dtos/PublishListingSchema';
+
+@Controller('listing')
+export class ListingController {
+  constructor(private readonly publishListingUseCase: PublishListing) {}
+
+  @UseGuards(AuthGuard)
+  @Post()
+  async publishListing(
+    @Req() req: TokenRequest,
+    @Body() body: unknown,
+  ): Promise<void> {
+    try {
+      const decode = Schema.decodeUnknownEither(PublishListingSchema)(body);
+
+      if (Either.isLeft(decode))
+        throw new HttpException(
+          parseSchemaError(decode.left),
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const parsedBody = decode.right;
+
+      const result = await this.publishListingUseCase.execute({
+        ownerId: req.user.id,
+        address: parsedBody.address,
+        box: parsedBody.box,
+        accessDescription: parsedBody.accessDescription,
+        photos: [...parsedBody.photos],
+        pricing: { ...parsedBody.pricing },
+        availability: { ...parsedBody.availability },
+        publishedAt: new Date(),
+      });
+
+      if (Either.isLeft(result)) {
+        const error = result.left;
+        if (error instanceof AvailabilityPeriodExpiredError) {
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        if (error instanceof PhotoStorageFailedError) {
+          throw new HttpException(error.message, HttpStatus.BAD_GATEWAY);
+        }
+        if (error instanceof UnknownError) {
+          throw new HttpException(
+            "La publication de l'annonce a échoué",
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+        throw new HttpException(
+          "La publication de l'annonce a échoué",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } catch (error) {
+      controllerErrorHandler(error, {
+        name: 'ListingController',
+        method: 'publishListing',
+        userId: req.user.id,
+      });
+    }
+  }
+}

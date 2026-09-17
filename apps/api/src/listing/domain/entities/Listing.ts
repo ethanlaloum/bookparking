@@ -14,7 +14,7 @@ export interface ListingAvailability {
 }
 
 interface Props {
-  ownerName: string;
+  ownerId: string;
   address: string;
   box: string;
   accessDescription: string;
@@ -38,6 +38,13 @@ export class Listing {
 
   public static publish(params: Omit<Props, 'status'>): Listing {
     return new Listing({ ...params, status: ListingStatus.ACTIVE });
+  }
+
+  public static isAvailabilityEntirelyPast(
+    availability: ListingAvailability,
+    at: Date,
+  ): boolean {
+    return availability.to.getTime() < at.getTime();
   }
 
   public isActiveFor(place: { address: string; box: string }): boolean {

@@ -113,7 +113,11 @@ describe('PublishListing @SPEC-001', () => {
     sut.givenNoActiveListingFor(PLACE);
     sut.givenPhotoStorageFailingOnEveryUpload();
 
-    const result = await sut.whenPublishing({ owner: MARC, ...COMPLETE_LISTING, publishedAt: '2026-09-10' });
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-10',
+    });
 
     sut.thenPublicationIsRefusedWith(result, PhotoStorageFailedError);
     sut.thenNoActiveListingFor(PLACE);

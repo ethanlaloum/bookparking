@@ -61,11 +61,9 @@ export class PublishListing implements UseCase<
       )
         return Either.left(new AvailabilityPeriodExpiredError());
 
-      const activeListing =
-        await this.listingRepository.findActiveByAddressAndBox(
-          props.address,
-          props.box,
-        );
+      const activeListing = await this.listingRepository.findActiveByPlaceKey(
+        Listing.placeKeyOf({ address: props.address, box: props.box }),
+      );
       if (activeListing) return Either.left(new ListingAlreadyActiveError());
 
       const storage = await this.photoStorage.storeAll(props.photos);
@@ -75,6 +73,7 @@ export class PublishListing implements UseCase<
       await this.listingRepository.create(listing);
       return Either.right(listing);
     } catch (error: unknown) {
+      if (error instanceof ListingAlreadyActiveError) return Either.left(error);
       return Either.left(
         new UnknownError(
           error instanceof Error ? error.message : String(error),

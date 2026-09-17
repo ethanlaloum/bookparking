@@ -11,13 +11,6 @@ interface Place {
   box: string;
 }
 
-interface RentalForTest {
-  address: string;
-  box: string;
-  from: string;
-  to: string;
-}
-
 interface OwnerForTest {
   name: string;
   createdAt?: string;
@@ -90,7 +83,6 @@ export const createPublishListingSUT = () => {
     publishListing,
     testConstants,
     owner: null as OwnerForTest | null,
-    rentalList: [] as RentalForTest[],
   };
 
   const thenResultIsRight = (result: Either.Either<unknown, unknown>) => {
@@ -116,11 +108,6 @@ export const createPublishListingSUT = () => {
         .build();
       context.listingRepository.listingList.push(listing);
       return { listing };
-    },
-
-    givenRental(rental: RentalForTest) {
-      context.rentalList.push({ ...rental });
-      return { rental };
     },
 
     givenPhotoStorageFailingOnEveryUpload() {
@@ -230,11 +217,6 @@ export const createPublishListingSUT = () => {
           listing.toState().ownerId === toAccountId(ownerName),
       );
       expect(ownerListings).toHaveLength(0);
-    },
-
-    thenRentalIsUnchanged(rental: RentalForTest) {
-      expect(context.rentalList).toHaveLength(1);
-      expect(context.rentalList[0]).toEqual(rental);
     },
 
     thenNoActiveListingFor(place: Place) {

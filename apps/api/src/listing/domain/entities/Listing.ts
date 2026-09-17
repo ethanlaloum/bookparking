@@ -18,8 +18,8 @@ export interface ListingPlace {
   box: string;
 }
 
-export const normalizeAddress = (address: string): string =>
-  address.trim().replace(/\s+/g, ' ').toLowerCase();
+const normalizePlacePart = (part: string): string =>
+  part.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
 
 interface Props {
   ownerId: string;
@@ -55,11 +55,22 @@ export class Listing {
     return availability.to.getTime() < at.getTime();
   }
 
+  public static placeKeyOf(place: ListingPlace): string {
+    return JSON.stringify([
+      normalizePlacePart(place.address),
+      normalizePlacePart(place.box),
+    ]);
+  }
+
+  public placeKey(): string {
+    return Listing.placeKeyOf({
+      address: this.props.address,
+      box: this.props.box,
+    });
+  }
+
   public designates(place: ListingPlace): boolean {
-    return (
-      normalizeAddress(this.props.address) ===
-        normalizeAddress(place.address) && this.props.box === place.box
-    );
+    return this.placeKey() === Listing.placeKeyOf(place);
   }
 
   public isActiveFor(place: ListingPlace): boolean {

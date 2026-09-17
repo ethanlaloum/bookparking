@@ -1,11 +1,7 @@
 import type { Knex } from 'knex';
 
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
-import {
-  Listing,
-  ListingStatus,
-  normalizeAddress,
-} from '../../../domain/entities/Listing';
+import { Listing, ListingStatus } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
 import { SchemaListingRepository } from './SchemaListingRepository';
 
@@ -41,17 +37,12 @@ export class KnexListingRepository implements ListingRepository {
     await query;
   }
 
-  public async findActiveByAddressAndBox(
-    address: string,
-    box: string,
+  public async findActiveByPlaceKey(
+    placeKey: string,
     trx?: GenericTransaction,
   ): Promise<Listing | null> {
     const query = this.connection<SchemaListingRepository>(this.tableName)
-      .where({ status: ListingStatus.ACTIVE, box })
-      .andWhereRaw(
-        `lower(regexp_replace(btrim(address), '\\s+', ' ', 'g')) = ?`,
-        [normalizeAddress(address)],
-      )
+      .where({ place_key: placeKey, status: ListingStatus.ACTIVE })
       .first();
     if (trx) query.transacting(trx);
     const row = await query;

@@ -1,4 +1,4 @@
-import { Listing } from '../../../domain/entities/Listing';
+import { Listing, ListingStatus } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
 
 export class InMemoryListingRepository implements ListingRepository {
@@ -8,13 +8,12 @@ export class InMemoryListingRepository implements ListingRepository {
     this.listingList.push(listing);
   }
 
-  public async findActiveByAddressAndBox(
-    address: string,
-    box: string,
-  ): Promise<Listing | null> {
+  public async findActiveByPlaceKey(placeKey: string): Promise<Listing | null> {
     return (
-      this.listingList.find((listing) =>
-        listing.isActiveFor({ address, box }),
+      this.listingList.find(
+        (listing) =>
+          listing.toState().status === ListingStatus.ACTIVE &&
+          listing.placeKey() === placeKey,
       ) ?? null
     );
   }

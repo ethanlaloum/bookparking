@@ -3,9 +3,8 @@ import { Listing } from '../entities/Listing';
 
 export interface ListingRepository {
   create(listing: Listing, trx?: GenericTransaction): Promise<void>;
-  findActiveByAddressAndBox(
-    address: string,
-    box: string,
+  findActiveByPlaceKey(
+    placeKey: string,
     trx?: GenericTransaction,
   ): Promise<Listing | null>;
 }

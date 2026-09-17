@@ -1,7 +1,21 @@
+import { Either } from 'effect/index';
 import * as request from 'supertest';
 
 import { createControllerTestApp } from '../../../../../shared/test/http/createControllerTestApp';
-import { createListingControllerSUT } from './listing.controller.sut';
+import {
+  createListingControllerSUT,
+  MARC_ACCOUNT_ID,
+} from './listing.controller.sut';
+
+const COMPLETE_LISTING_BODY = {
+  address: '12 rue Barla, 06300 Nice',
+  box: '12',
+  accessDescription:
+    'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
+  photos: ['photo-1.jpg'],
+  pricing: { dayInCents: 1200, weekInCents: 6000, monthInCents: 18000 },
+  availability: { from: '2026-10-01', to: '2026-10-31' },
+};
 
 describe('ListingController @SPEC-001', () => {
   let sut: ReturnType<typeof createListingControllerSUT>;
@@ -11,7 +25,7 @@ describe('ListingController @SPEC-001', () => {
 
   beforeEach(async () => {
     sut = createListingControllerSUT();
-    testApp = await createControllerTestApp(sut.metadata);
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
   });
 
   afterEach(async () => {
@@ -22,20 +36,40 @@ describe('ListingController @SPEC-001', () => {
     it('responds with a validation error when the listing has no photo @EX-001-04', async () => {
       const response = await http()
         .post('/listing')
-        .send({
-          ownerName: 'Marc D.',
-          address: '12 rue Barla, 06300 Nice',
-          box: '12',
-          accessDescription:
-            'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
-          photos: [],
-          pricing: { dayInCents: 1200, weekInCents: 6000, monthInCents: 18000 },
-          availability: { from: '2026-10-01', to: '2026-10-31' },
-        });
+        .set('Authorization', 'Bearer token-of-marc')
+        .send({ ...COMPLETE_LISTING_BODY, photos: [] });
 
       expect(response.status).toEqual(400);
       expect(response.body.message).toEqual(expect.stringContaining('photos'));
       expect(sut.publishListing.calls).toEqual([]);
+    });
+
+    it('refuses to publish a listing for an unauthenticated visitor @EX-001-36', async () => {
+      sut.authState.user = null;
+
+      const response = await http()
+        .post('/listing')
+        .send(COMPLETE_LISTING_BODY);
+
+      expect(response.status).toEqual(401);
+      expect(sut.publishListing.calls).toEqual([]);
+    });
+
+    it('publishes the listing for the authenticated landlord whatever owner the body names @EX-001-37', async () => {
+      sut.publishListing.willResolve(Either.right(undefined));
+
+      const response = await http()
+        .post('/listing')
+        .set('Authorization', 'Bearer token-of-marc')
+        .send({ ...COMPLETE_LISTING_BODY, ownerName: 'Pierre L.' });
+
+      expect(response.status).toEqual(201);
+      expect(sut.publishListing.calls).toEqual([
+        expect.objectContaining({ ownerId: MARC_ACCOUNT_ID }),
+      ]);
+      expect(JSON.stringify(sut.publishListing.calls)).not.toContain(
+        'Pierre L.',
+      );
     });
   });
 });

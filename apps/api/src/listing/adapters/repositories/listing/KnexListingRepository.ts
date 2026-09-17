@@ -16,6 +16,11 @@ const isActivePlaceKeyViolation = (error: unknown): boolean =>
   (error as { constraint?: unknown }).constraint ===
     ACTIVE_PLACE_KEY_UNIQUE_INDEX;
 
+type ListingRow = Omit<
+  SchemaListingRepository,
+  'id' | 'created_at' | 'updated_at'
+>;
+
 export class KnexListingRepository implements ListingRepository {
   private readonly tableName = 'listings';
 
@@ -25,11 +30,55 @@ export class KnexListingRepository implements ListingRepository {
     listing: Listing,
     trx?: GenericTransaction,
   ): Promise<void> {
+    const query = this.connection(this.tableName).insert(
+      KnexListingRepository.toRow(listing),
+    );
+    if (trx) query.transacting(trx);
+    try {
+      await query;
+    } catch (error: unknown) {
+      if (isActivePlaceKeyViolation(error)) {
+        throw new ListingAlreadyActiveError();
+      }
+      throw error;
+    }
+  }
+
+  public async save(listing: Listing, trx?: GenericTransaction): Promise<void> {
+    const row = KnexListingRepository.toRow(listing);
+    const findQuery = this.connection<SchemaListingRepository>(this.tableName)
+      .select('id')
+      .where({ place_key: row.place_key, status: row.status })
+      .first();
+    if (trx) findQuery.transacting(trx);
+    const matched = await findQuery;
+    if (!matched) {
+      await this.create(listing, trx);
+      return;
+    }
+    const updateQuery = this.connection<SchemaListingRepository>(this.tableName)
+      .where({ id: matched.id })
+      .update({ ...row, updated_at: this.connection.fn.now() });
+    if (trx) updateQuery.transacting(trx);
+    await updateQuery;
+  }
+
+  public async findActiveByPlaceKey(
+    placeKey: string,
+    trx?: GenericTransaction,
+  ): Promise<Listing | null> {
+    const query = this.connection<SchemaListingRepository>(this.tableName)
+      .where({ place_key: placeKey, status: ListingStatus.ACTIVE })
+      .first();
+    if (trx) query.transacting(trx);
+    const row = await query;
+    if (!row) return null;
+    return KnexListingRepository.toEntity(row);
+  }
+
+  private static toRow(listing: Listing): ListingRow {
     const state = listing.toState();
-    const row: Omit<
-      SchemaListingRepository,
-      'id' | 'created_at' | 'updated_at'
-    > = {
+    return {
       owner_id: state.ownerId,
       address: state.address,
       box: state.box,
@@ -44,41 +93,9 @@ export class KnexListingRepository implements ListingRepository {
       status: state.status,
       published_at: state.publishedAt,
     };
-    const query = this.connection(this.tableName).insert(row);
-    if (trx) query.transacting(trx);
-    try {
-      await query;
-    } catch (error: unknown) {
-      if (isActivePlaceKeyViolation(error)) {
-        throw new ListingAlreadyActiveError();
-      }
-      throw error;
-    }
   }
 
-  public async save(listing: Listing, trx?: GenericTransaction): Promise<void> {
-    const state = listing.toState();
-    const query = this.connection<SchemaListingRepository>(this.tableName)
-      .where({ place_key: listing.placeKey(), status: state.status })
-      .update({
-        day_price_in_cents: state.pricing.dayInCents,
-        week_price_in_cents: state.pricing.weekInCents,
-        month_price_in_cents: state.pricing.monthInCents,
-      });
-    if (trx) query.transacting(trx);
-    await query;
-  }
-
-  public async findActiveByPlaceKey(
-    placeKey: string,
-    trx?: GenericTransaction,
-  ): Promise<Listing | null> {
-    const query = this.connection<SchemaListingRepository>(this.tableName)
-      .where({ place_key: placeKey, status: ListingStatus.ACTIVE })
-      .first();
-    if (trx) query.transacting(trx);
-    const row = await query;
-    if (!row) return null;
+  private static toEntity(row: SchemaListingRepository): Listing {
     return Listing.fromState({
       ownerId: row.owner_id,
       address: row.address,

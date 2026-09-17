@@ -4,8 +4,8 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 6
-ecarts_majeurs: 0
+decisions: 7
+ecarts_majeurs: 3
 ---
 
 # Registre autonome — SPEC-001
@@ -100,7 +100,24 @@ ecarts_majeurs: 0
 - Confiance : haute
 - Question humaine au retour : quelles bornes (longueurs, nombre et taille des photos) et un prix négatif doit-il être refusé ?
 
+### AUTO-07 · Le vrai garde d'authentification reste sans test propre
+- Déclencheur : revue sécurité US-002 tour 2, constat mineur 1 (`apps/api/src/shared/test/http/createControllerTestApp.ts:12` remplace `AuthGuard` par `TestAuthGuard` ; une régression dans `auth.guard.ts:34` laisserait EX-36 vert).
+- Choix : livrer en écart mineur. Tester le garde réel demande un exemple nouveau (EX-38 proposé : « un jeton que le vérificateur ne reconnaît pas est refusé ») et un vérificateur en mémoire, alors qu'aucun vérificateur réel n'existe : la story qui implémente `AccessTokenVerifier` portera ce test contre l'implémentation réelle.
+- Alternatives : ajouter EX-38 maintenant — écarté, non mécanique et prouverait le garde contre une doublure seulement.
+- Preuve : revue sécurité tour 2, « Correctif majeur 1 (garde) tient » ; `find apps/api/src -name '*.module.ts'` → aucun résultat.
+- Impact : garde correct mais non prouvé par un test.
+- Coût : nul maintenant.
+- Risque : faible tant que la route n'est pas montée (AUTO-03).
+- Rollback : sans objet.
+- Traçabilité : RG-02 · EX-001-36 · US-002
+- Confiance : moyenne
+- Question humaine au retour : faut-il ajouter EX-38 dès maintenant, ou dans la story qui branche l'authentification ?
+
 ## Écarts majeurs livrés
+
+- AUTO-03 · conventions `ECARTS MAJEURS` · `ListingController` et le jeton `AccessTokenVerifier` ne sont liés à aucun module ; `POST /listing` n'est atteignable par aucune application. Preuve : `find apps/api/src -iname '*.module.ts' -o -iname main.ts` → vide. Rollback : sans objet. PR US-002.
+- AUTO-04 · conventions `ECARTS MAJEURS` · le test int-repo `@EX-001-19` passe par `PublishListing`, pas par un appel isolé au dépôt. Preuve : `KnexListingRepository.sut.ts:29,59`. Rollback : reclasser en `journey`. PR US-002.
+- AUTO-05 · conformité RGPD `ECARTS MAJEURS` · aucune durée de conservation ni purge pour `listings`. Preuve : `docs/adr/` vide, spec §8. Rollback : sans objet. PR US-002.
 
 ## Résultat livré
 
@@ -108,3 +125,9 @@ ecarts_majeurs: 0
 - Restent : US-002 à US-010.
 
 ## À relire au retour
+
+- AUTO-01 : quel mécanisme d'authentification alimente `AccessTokenVerifier` ?
+- AUTO-03 : stockage de photos et base de production au premier démarrage de l'api.
+- AUTO-05 : durée de conservation d'une annonce dépubliée (écart RGPD livré).
+- AUTO-06 : bornes de saisie et refus des prix négatifs.
+- AUTO-07 : ajouter EX-38 (jeton inconnu refusé).

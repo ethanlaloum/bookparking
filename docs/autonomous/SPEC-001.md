@@ -261,7 +261,8 @@ ecarts_majeurs: 3
 - US-003 (#4) fusionnée : PR #14, `ba1f945`. Unit 13 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité ECARTS MINEURS (AUTO-12) · conformité CONFORME.
 - US-004 (#5) fusionnée : PR #15. Unit 17 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME · conformité CONFORME.
 - US-005 (#6) fusionnée : PR #16. Unit 21 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité SANS OBJET · conformité SANS OBJET.
-- Restent : US-006 à US-010.
+- US-006 (#7) fusionnée : PR #17. Unit 28 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME (3 tours) · conformité SANS OBJET.
+- Restent : US-007 à US-010.
 
 ## À relire au retour
 

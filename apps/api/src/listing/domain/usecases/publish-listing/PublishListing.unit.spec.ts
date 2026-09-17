@@ -284,4 +284,18 @@ describe('PublishListing @SPEC-001', () => {
       pricing: { day: null, week: null, month: 0 },
     });
   });
+
+  it('activates a new listing for a box whose previous listing was unpublished @EX-001-13', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenUnpublishedListingFor({ ...PLACE, unpublishedOn: '2026-10-10' });
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-10-12',
+    });
+
+    sut.thenListingIsActive(result);
+    sut.thenIsOnlyActiveListingFor(PLACE);
+  });
 });

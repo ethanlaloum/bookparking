@@ -1,5 +1,6 @@
 import { InvalidRequestedPeriodError } from '../../errors/InvalidRequestedPeriodError';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
+import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { createRequestRentalSUT } from './RequestRental.sut';
 
@@ -149,5 +150,24 @@ describe('RequestRental @SPEC-001', () => {
 
     sut.thenRequestIsRefusedWith(result, InvalidRequestedPeriodError);
     sut.thenNoRequestRecordedFor({ from: '2026-10-01', to: '2026-13-45' });
+  });
+
+  it('refuses a request on an unpublished listing @EX-001-31', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenUnpublishedListing({
+      ...PLACE,
+      pricing: { day: 1200, week: 6000, month: 18000 },
+      unpublishedOn: '2026-10-10',
+    });
+
+    const result = await sut.whenRequestedBy(LEA, {
+      ...PLACE,
+      from: '2026-11-05',
+      to: '2026-11-12',
+      requestedAt: '2026-10-11',
+    });
+
+    sut.thenRequestIsRefusedWith(result, ListingNotPublishedError);
+    sut.thenNoRequestRecordedFor({ from: '2026-11-05', to: '2026-11-12' });
   });
 });

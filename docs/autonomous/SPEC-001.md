@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 10
+decisions: 12
 ecarts_majeurs: 3
 ---
 
@@ -149,6 +149,28 @@ ecarts_majeurs: 3
 - Confiance : haute
 - Question humaine au retour : aucune
 
+### AUTO-11 · Le remplissage de `place_key` est calculé en JavaScript, pas en SQL
+- Déclencheur : revue conventions US-003 tour 2, constat majeur 1 (`apps/api/src/infra/migrations/20260917130000_enforce_unique_active_listing_place_key.ts:8-14`, normalisation SQL divergente de `Listing.placeKeyOf`).
+- Choix : la migration lit les lignes et calcule la clé avec une copie figée, en JavaScript, de la normalisation du domaine ; elle n'importe pas le domaine, pour qu'une évolution future du code ne réécrive pas une migration déjà jouée. Seconde approche sur ce constat de fond (la première était l'index sur expression, écarté en AUTO-08).
+- Alternatives : (a) garder le SQL et restreindre la garantie aux nouvelles écritures — écarté, la migration livrerait la divergence ; (b) importer `Listing.placeKeyOf` dans la migration — écarté, couplage d'une migration à du code vivant.
+- Preuve : revue conventions US-003 tour 2 ; vérification ponctuelle de l'égalité octet par octet rapportée par backend-data.
+- Impact : aucun sur les écritures ; le remplissage des lignes antérieures suit la même règle qu'aujourd'hui.
+- Coût : faible. Risque : faible. Rollback : revert de la migration avant qu'elle ne tourne sur une base réelle.
+- Traçabilité : RG-01 · EX-001-39 · US-003
+- Confiance : haute
+- Question humaine au retour : aucune
+
+### AUTO-12 · Les caractères invisibles ne sont pas retirés de la clé de place
+- Déclencheur : revue sécurité US-003 tour 2, constat mineur 1 (`apps/api/src/listing/domain/entities/Listing.ts:22`, U+200B, U+00AD, U+2060 laissés dans la clé : deux annonces actives visuellement identiques restent possibles).
+- Choix : livrer en écart mineur. Retirer les points de code ignorables demande un exemple nouveau (EX-40 proposé par la revue) et un nouveau tour de spec ; la route n'est montée nulle part (AUTO-03).
+- Alternatives : corriger maintenant — reporté, non mécanique (nouvel exemple).
+- Preuve : revue sécurité US-003 tour 2 (ZWSP, SHY, WJ donnent une clé différente).
+- Impact : contournement invisible de RG-01 possible dès que la route sera montée.
+- Coût : nul maintenant. Risque : moyen à la mise en ligne. Rollback : sans objet.
+- Traçabilité : RG-01 · US-003
+- Confiance : moyenne
+- Question humaine au retour : faut-il ajouter l'exemple « un box écrit avec un caractère invisible est le même box » avant de monter la route ?
+
 ## Écarts majeurs livrés
 
 - AUTO-03 · conventions `ECARTS MAJEURS` · `ListingController` et le jeton `AccessTokenVerifier` ne sont liés à aucun module ; `POST /listing` n'est atteignable par aucune application. Preuve : `find apps/api/src -iname '*.module.ts' -o -iname main.ts` → vide. Rollback : sans objet. PR US-002.
@@ -171,4 +193,6 @@ ecarts_majeurs: 3
 - AUTO-03 : stockage de photos et base de production au premier démarrage de l'api.
 - AUTO-05 : durée de conservation d'une annonce dépubliée (écart RGPD livré).
 - AUTO-06 : bornes de saisie et refus des prix négatifs.
-- AUTO-07 : ajouter EX-38 (jeton inconnu refusé).
+- AUTO-07 : ajouter un exemple « jeton inconnu refusé » (numéro à attribuer, EX-38 ayant servi en AUTO-08).
+- AUTO-08 : « Box 12 », « n°12 » et « 12 » désignent-ils le même box ?
+- AUTO-12 : exemple « caractère invisible dans le box ou l'adresse » avant de monter la route.

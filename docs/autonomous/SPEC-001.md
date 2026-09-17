@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 20
+decisions: 22
 ecarts_majeurs: 3
 ---
 
@@ -258,6 +258,28 @@ ecarts_majeurs: 3
 - Traçabilité : RG-07 · US-007
 - Confiance : moyenne — 12 mois est un choix de la construction autonome, pas une durée validée par un juriste.
 - Question humaine au retour : 12 mois est-il la bonne durée, et l'anonymisation suffit-elle par rapport à une suppression ?
+
+### AUTO-21 · La base doit accepter le statut dépublié, et la propriété doit être prouvée
+- Déclencheur : revue sécurité US-007, constats majeurs 1 (`20260917120000_create_listings.ts:25-26`, `CHECK (status IN ('ACTIVE'))` : contre la vraie base, `save` d'une annonce dépubliée viole la contrainte, l'erreur devient `UnknownError` et l'annonce reste consultable et louable — RG-07 entier inerte) et 2 (`Listing.ts:85-93`, le refus de dépublier l'annonce d'autrui n'est porté par aucun exemple ni aucun test).
+- Choix : la spec gagne EX-42 (RG-07, barreau `int-repo`) — la dépublication est observée sur une vraie ligne — et EX-43 (RG-07, barreau `unit`) — la dépublication par un autre loueur est refusée, ce qui remplace le filet ²³ de RG-07 × Autorisation. Une nouvelle migration remplace la contrainte par `CHECK (status IN ('ACTIVE','UNPUBLISHED'))`. US-007 passe à 6 exemples et gagne le barreau `int-repo`.
+- Alternatives : (a) livrer et corriger plus tard — écarté, la règle entière ne tient pas contre la seule base réelle ; (b) supprimer la contrainte — écarté, elle protège d'un statut inventé.
+- Preuve : revue sécurité US-007, constats 1 et 2.
+- Impact : spec révision 7, plan révision 7.
+- Coût : une migration, deux exemples. Risque : faible. Rollback : revert.
+- Traçabilité : RG-07 · EX-001-42 · EX-001-43 · US-007
+- Confiance : haute
+- Question humaine au retour : aucune
+
+### AUTO-22 · Après dépublication, n'importe quel loueur peut publier la place
+- Déclencheur : revue sécurité US-007, constat mineur 3 : la dépublication libère la clé de place ; un autre loueur peut alors publier la même place, y compris pendant une location confirmée du loueur précédent.
+- Choix : laisser le comportement tel quel et le documenter, sans nouvel exemple. RG-01 ne connaît que l'annonce active, RG-08 pose qu'aucune vérification n'est exigée pour publier, et EX-14 tranche déjà le premier arrivé entre deux loueurs. Rien dans la spec ne rattache une place à un loueur : l'y rattacher serait une règle nouvelle, pas une correction.
+- Alternatives : (a) réserver la place à son dernier loueur pendant la location confirmée — écarté, règle absente de la spec, qui demanderait une séance produit ; (b) refuser la republication pendant une location confirmée — même raison.
+- Preuve : RG-01, RG-08, EX-14 ; revue sécurité US-007 constat 3.
+- Impact : un loueur peut publier une place dont un autre porte encore une location confirmée.
+- Coût : nul. Risque : moyen, sans exploitation possible tant qu'aucune route n'existe (AUTO-03). Rollback : sans objet.
+- Traçabilité : RG-01 · RG-08 · US-007
+- Confiance : moyenne
+- Question humaine au retour : une place doit-elle rester réservée à son dernier loueur tant qu'une location confirmée court ?
 
 ## Écarts majeurs livrés
 

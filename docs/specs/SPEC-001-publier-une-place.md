@@ -3,16 +3,16 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 1
+revision: 2
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
-valide_le: 2026-09-16
-valide_par: JP
+valide_le: 2026-09-17
+valide_par: jp-way:auto
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 8
-exemples: 35
+exemples: 37
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -177,6 +177,26 @@ Alors la publication est refusée avec « Impossible d'enregistrer les photos »
 Et aucune annonce, même incomplète, n'existe pour le `box 12` du `12 rue Barla, 06300 Nice`
 
 <!-- jp-way:ex {"id":"EX-19","regle":"RG-02","origine":"sonde","barreau":"int-repo","empreinte":"fe908700"} -->
+
+#### EX-36 · un visiteur non connecté publie une annonce
+
+Étant donné un visiteur non connecté,
+  et l'annonce complète pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand ce visiteur publie cette annonce le `10/09/2026`
+Alors la publication est refusée et une connexion est demandée
+Et aucune annonce n'est active pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-36","regle":"RG-02","origine":"bug","barreau":"int-http","empreinte":"c0b202fc"} -->
+
+#### EX-37 · un loueur connecté désigne un autre loueur dans son annonce
+
+Étant donné `Marc D.` connecté,
+  et l'annonce complète pour le `box 12` du `12 rue Barla, 06300 Nice` qui désigne `Pierre L.` comme loueur
+Quand `Marc D.` publie cette annonce le `10/09/2026`
+Alors l'annonce est publiée au nom de `Marc D.`
+Et aucune annonce de `Pierre L.` n'existe pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-37","regle":"RG-02","origine":"bug","barreau":"int-http","empreinte":"a589a181"} -->
 
 ### RG-03 · le prix d'une durée est la combinaison la moins chère des paliers proposés par la grille du loueur ; la plateforme n'impose aucun tarif
 
@@ -421,7 +441,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 | Règle | Limites | Vide | Temps | Concurrence | Autorisation | État | Argent | Volume | Panne | Données |
 |---|---|---|---|---|---|---|---|---|---|---|
 | RG-01 | EX-01 EX-02 | écarté¹ | EX-13 | filet² | EX-14 | EX-15 | écarté³ | écarté⁴ | écarté⁵ | EX-16 |
-| RG-02 | EX-17 | EX-04 filet⁶ | EX-18 | écarté⁷ | filet⁸ | écarté⁹ | écarté¹⁰ | filet¹¹ | EX-19 | filet¹² |
+| RG-02 | EX-17 | EX-04 filet⁶ | EX-18 | écarté⁷ | EX-36 EX-37 | écarté⁹ | écarté¹⁰ | filet¹¹ | EX-19 | filet¹² |
 | RG-03 | EX-20 | EX-21 | EX-22 | écarté¹³ | écarté¹⁴ | écarté¹⁵ | EX-23 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-24 | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-26 | EX-27 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
@@ -454,6 +474,8 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 ²³ vérification que le loueur est propriétaire de l'annonce qu'il dépublie.
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
+
+EX-36 et EX-37 sont nés de la revue de sécurité de US-002 (registre autonome, AUTO-01) : ils remplacent le filet ⁸ de RG-02 × Autorisation par deux exemples. La vérification que le loueur agit sur sa propre annonce reste le filet ⁸ de RG-04, RG-06 et le filet ²³ de RG-07.
 
 EX-35 est né de la résolution de Q-04, après la validation de la grille : il n'occupe aucune intersection et complète EX-14 sur le couple adresse + box.
 
@@ -575,3 +597,4 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 | Révision | Date | Ce qui a changé |
 |---|---|---|
 | 1 | 16/09/2026 | Création. Issue de la séance d'example mapping ouverte le 10/09/2026 sur BR-20260910-reserver-et-louer-une-place : huit règles, trente-cinq exemples, trois écrans, cinq questions toutes résolues. |
+| 2 | 17/09/2026 | Construction autonome de US-002 (AUTO-01) : RG-02 gagne EX-36 (un visiteur non connecté ne publie pas) et EX-37 (le loueur est le compte connecté, jamais un nom saisi) ; la cellule RG-02 × Autorisation passe de filet à exemples. |

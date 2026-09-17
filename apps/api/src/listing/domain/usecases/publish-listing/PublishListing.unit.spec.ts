@@ -1,8 +1,10 @@
 import { createPublishListingSUT } from './PublishListing.sut';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
 const MARC = 'Marc D.';
+const PIERRE = 'Pierre L.';
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };
 const COMPLETE_LISTING = {
   ...PLACE,
@@ -121,5 +123,103 @@ describe('PublishListing @SPEC-001', () => {
 
     sut.thenPublicationIsRefusedWith(result, PhotoStorageFailedError);
     sut.thenNoActiveListingFor(PLACE);
+  });
+
+  it('refuses a second listing for a box that already has an active one @EX-001-02', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenActiveListing({ owner: MARC, ...PLACE });
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-11',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, ListingAlreadyActiveError);
+    sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
+    sut.thenIsOnlyActiveListingFor(PLACE);
+    sut.thenActiveListingOf(MARC, PLACE);
+  });
+
+  it("refuses another owner's listing for a box that already has an active one @EX-001-14", async () => {
+    const sut = createPublishListingSUT();
+    sut.givenActiveListing({ owner: MARC, ...PLACE });
+
+    const result = await sut.whenPublishing({
+      owner: PIERRE,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-09-11',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, ListingAlreadyActiveError);
+    sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
+    sut.thenIsOnlyActiveListingFor(PLACE);
+    sut.thenActiveListingOf(MARC, PLACE);
+    sut.thenNoListingOf(PIERRE, PLACE);
+  });
+
+  it('refuses a new listing for a box whose active listing is under rental @EX-001-15', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenActiveListing({ owner: MARC, ...PLACE });
+    sut.givenRental({ ...PLACE, from: '2026-10-01', to: '2026-10-31' });
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      publishedAt: '2026-10-15',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, ListingAlreadyActiveError);
+    sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
+    sut.thenIsOnlyActiveListingFor(PLACE);
+    sut.thenRentalIsUnchanged({
+      ...PLACE,
+      from: '2026-10-01',
+      to: '2026-10-31',
+    });
+  });
+
+  it('treats a differently spelled address with the same box as the same place @EX-001-16', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenActiveListing({
+      owner: MARC,
+      address: '12 rue barla, 06300 nice',
+      box: '12',
+    });
+
+    const result = await sut.whenPublishing({
+      owner: PIERRE,
+      ...COMPLETE_LISTING,
+      address: '12 Rue Barla, 06300 NICE',
+      box: '12',
+      publishedAt: '2026-09-11',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, ListingAlreadyActiveError);
+    sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
+    sut.thenIsOnlyActiveListingFor({
+      address: '12 Rue Barla, 06300 NICE',
+      box: '12',
+    });
+    sut.thenIsOnlyActiveListingFor({
+      address: '12 rue barla, 06300 nice',
+      box: '12',
+    });
+  });
+
+  it('accepts a listing for another box at the same address @EX-001-35', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenActiveListing({ owner: MARC, ...PLACE });
+
+    const result = await sut.whenPublishing({
+      owner: PIERRE,
+      ...COMPLETE_LISTING,
+      box: '14',
+      publishedAt: '2026-09-11',
+    });
+
+    sut.thenResultIsRight(result);
+    sut.thenActiveListingOf(MARC, PLACE);
+    sut.thenActiveListingOf(PIERRE, { address: PLACE.address, box: '14' });
   });
 });

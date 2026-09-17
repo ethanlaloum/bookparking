@@ -32,7 +32,7 @@ plafond de prix ne te soit opposé.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-001","story":"US-004","ex":["EX-07","EX-24","EX-06","EX-25"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-004","ex":["EX-07","EX-24","EX-06","EX-25"],"pr":15} -->
 
 ## Une même place ne peut plus recevoir deux annonces actives
 

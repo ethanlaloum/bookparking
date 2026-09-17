@@ -10,6 +10,7 @@
     "**/*spec.ts",
     "**/*sut.ts",
     "src/infra/testcontainers-setup.ts",
-    "src/infra/testKnexfile.ts"
+    "src/infra/testKnexfile.ts",
+    "src/shared/test/**"
   ]
 }

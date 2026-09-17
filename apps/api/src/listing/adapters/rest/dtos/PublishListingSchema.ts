@@ -1,0 +1,18 @@
+import { Schema } from 'effect/index';
+
+export const PublishListingSchema = Schema.Struct({
+  ownerName: Schema.NonEmptyString,
+  address: Schema.NonEmptyString,
+  box: Schema.NonEmptyString,
+  accessDescription: Schema.NonEmptyString,
+  photos: Schema.Array(Schema.NonEmptyString).pipe(Schema.minItems(1)),
+  pricing: Schema.Struct({
+    dayInCents: Schema.Int,
+    weekInCents: Schema.Int,
+    monthInCents: Schema.Int,
+  }),
+  availability: Schema.Struct({
+    from: Schema.Date,
+    to: Schema.Date,
+  }),
+});

@@ -6,7 +6,8 @@
 
 - `domain/entities` — les entités (`Listing`), constructibles seulement par `publish()` ou `fromState()`, jamais par un constructeur public.
 - `domain/ports` — des interfaces seulement (`ListingRepository`, `PhotoStorage`). Aucune implémentation, pas même une doublure de test, n'y vit : le domaine ne dépend d'aucune classe concrète.
-- `domain/usecases/<cas-d-usage>/` — un dossier par cas d'usage (`publish-listing/`), avec son sous-dossier `errors/` pour les erreurs métier qu'il renvoie (`AvailabilityPeriodExpiredError`, `PhotoStorageFailedError`). Chaque cas d'usage implémente le contrat partagé `UseCase<Props, T>` de `src/shared/use-case/UseCase.ts`.
+- `domain/usecases/<cas-d-usage>/` — un dossier par cas d'usage (`publish-listing/`), avec son sous-dossier `errors/` pour les erreurs propres à ce seul cas d'usage (`AvailabilityPeriodExpiredError`, `ActiveListingNotFoundError`). Chaque cas d'usage implémente le contrat partagé `UseCase<Props, T>` de `src/shared/use-case/UseCase.ts`.
+- `domain/errors/` — les erreurs que l'entité elle-même peut lever, partagées par plusieurs cas d'usage (`IncompletePricingError`, levée à la fois par `Listing.publish()` et par `Listing.changePricing()`) ; une erreur qu'un seul cas d'usage renvoie reste sous son propre `domain/usecases/<cas-d-usage>/errors/`.
 - `adapters/repositories/<agrégat>/` — les implémentations des ports, y compris les doublures en mémoire utilisées par les tests unitaires (`InMemoryListingRepository`), plus un `Schema<Nom>.ts` par table Knex (`SchemaListingRepository`) qui décrit les colonnes réelles.
 - `adapters/rest/controllers/<agrégat>/` et `adapters/rest/dtos/` — les contrôleurs Nest et leurs schémas `effect/Schema` de validation de requête.
 - `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur (`InMemoryPhotoStorage`).
@@ -27,7 +28,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**13 specs** — `grep -c '  it(' apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| unit (**17 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
 | int-repo + int-http (**2 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-17 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
@@ -53,6 +54,14 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 - **Modifier `normalizePlacePart` (`Listing.ts`) ne recalcule aucune `place_key` déjà stockée.**
   `infra/migrations/20260917130000_enforce_unique_active_listing_place_key.ts:3-9` en garde une copie figée en JavaScript brut, parce que Postgres ne normalise ni la casse ni les espaces Unicode (`U+00A0`, NFKC) comme le fait `String.prototype.normalize('NFKC')` — un backfill écrit en SQL produirait des clés que le runtime ne produit jamais, et l'index unique partiel laisserait passer un doublon.
   Toute évolution de la règle de normalisation exige une nouvelle migration qui recalcule `place_key` sur les lignes existantes, jamais une simple modification de `Listing.ts`.
+
+- **`ListingRepository.save()` ne crée jamais d'annonce, il ne fait que mettre à jour l'annonce active existante.**
+  `KnexListingRepository.save` filtre sur `place_key` + `status = 'ACTIVE'` et lève `ActiveListingNotFoundError` si aucune ligne ne correspond (`KnexListingRepository.ts`) ; `InMemoryListingRepository.save` fait de même en mémoire (`InMemoryListingRepository.ts`) — aucun des deux n'insère.
+  Publier une annonce passe toujours par `create()` ; `save()` sert uniquement à un cas d'usage qui modifie une annonce déjà active.
+
+- **Un palier absent de la grille tarifaire est `null`, jamais `0` — `0` est un prix valide.**
+  `Listing.offersAnyDuration` (`Listing.ts`) teste `!== null` sur chaque durée, pas sa valeur.
+  Voir `ADR-002` pour l'alternative écartée (représenter l'absence par `0`) et son coût.
 
 ## Frozen versions — do not bump without reading the reason
 

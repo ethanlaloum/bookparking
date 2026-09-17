@@ -204,7 +204,8 @@ ecarts_majeurs: 3
 - US-001 (#2) fusionnée (PR #12) avant ce run.
 - US-002 (#3) fusionnée : PR #13, `7b61cc6`. Unit 7 passed · int 4 passed · build 0. Revues : conventions ECARTS MAJEURS (AUTO-03, AUTO-04 livrés) · sécurité ECARTS MINEURS · conformité ECARTS MAJEURS (AUTO-05 livré).
 - US-003 (#4) fusionnée : PR #14, `ba1f945`. Unit 13 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité ECARTS MINEURS (AUTO-12) · conformité CONFORME.
-- Restent : US-004 à US-010.
+- US-004 (#5) fusionnée : PR #15. Unit 17 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME · conformité CONFORME.
+- Restent : US-005 à US-010.
 
 ## À relire au retour
 

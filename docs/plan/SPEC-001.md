@@ -1,10 +1,10 @@
 ---
 spec: SPEC-001
 statut: valide
-valide_le: 2026-09-16
-valide_par: JP
+valide_le: 2026-09-17
+valide_par: jp-way:auto
 revision: 3
-derive_de: SPEC-001@c3f04ea70b1f612ba674d0b2d07cc95ffe0bc2a7
+derive_de: SPEC-001@ec9a88eacbc0b97d728c371ad7599e031822efbc
 apps: [api, e2e]
 cas: 39
 stories: 10

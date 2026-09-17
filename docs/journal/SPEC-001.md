@@ -29,4 +29,4 @@ et que tes photos sont bien envoyées avant de publier. Connecte-toi avant de pu
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-001","story":"US-002","ex":["EX-18","EX-19","EX-04","EX-36","EX-37"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-002","ex":["EX-18","EX-19","EX-04","EX-36","EX-37"],"pr":13} -->

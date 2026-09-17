@@ -5,6 +5,8 @@ import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/
 import { ConfirmedRentalBuilder } from '../../builders/ConfirmedRentalBuilder';
 import {
   CalendarDay,
+  CalendarDayRange,
+  isReadableDayRange,
   parisDayOf,
   parisPeriodOfDays,
   zonedTimeToUtc,
@@ -30,6 +32,21 @@ interface DayRentalRequestInput extends RentalPlace {
   requestedAt: string;
   timezone: string;
 }
+
+// parisPeriodOfDays throws on a day Date.parse cannot read, so an unreadable
+// range is matched on the days the request carries rather than on a period.
+const coversRequestedDays = (
+  rentalRequest: RentalRequest,
+  days: CalendarDayRange,
+): boolean => {
+  const requestedDays = rentalRequest.toState().days;
+  if (requestedDays.from === days.from && requestedDays.to === days.to)
+    return true;
+
+  return (
+    isReadableDayRange(days) && rentalRequest.overlaps(parisPeriodOfDays(days))
+  );
+};
 
 const toRentalPricing = (pricing: PricingForTest) => ({
   dayInCents: pricing.day,
@@ -189,11 +206,10 @@ export const createRequestRentalSUT = () => {
       }
     },
 
-    thenNoRequestRecordedFor(days: { from: CalendarDay; to: CalendarDay }) {
-      const period = parisPeriodOfDays(days);
+    thenNoRequestRecordedFor(days: CalendarDayRange) {
       const recordedRequests =
         context.rentalRepository.rentalRequestList.filter((rentalRequest) =>
-          rentalRequest.overlaps(period),
+          coversRequestedDays(rentalRequest, days),
         );
       expect(recordedRequests).toHaveLength(0);
     },

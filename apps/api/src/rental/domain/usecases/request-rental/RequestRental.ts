@@ -2,8 +2,9 @@ import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UseCase } from '../../../../shared/use-case/UseCase';
-import { CalendarDay, parisPeriodOfDays } from '../../entities/CalendarDay';
+import { CalendarDay } from '../../entities/CalendarDay';
 import { RentalRequest } from '../../entities/RentalRequest';
+import { InvalidRequestedPeriodError } from '../../errors/InvalidRequestedPeriodError';
 import { NoPriceForRequestedPeriodError } from '../../errors/NoPriceForRequestedPeriodError';
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { PublishedListingReader } from '../../ports/PublishedListingReader';
@@ -26,6 +27,7 @@ export class RequestRental implements UseCase<
     Either.Either<
       RentalRequest,
       | DatesAlreadyRentedError
+      | InvalidRequestedPeriodError
       | ListingNotPublishedError
       | NoPriceForRequestedPeriodError
       | RequestedPeriodTooLongError
@@ -44,6 +46,7 @@ export class RequestRental implements UseCase<
     Either.Either<
       RentalRequest,
       | DatesAlreadyRentedError
+      | InvalidRequestedPeriodError
       | ListingNotPublishedError
       | NoPriceForRequestedPeriodError
       | RequestedPeriodTooLongError
@@ -57,25 +60,29 @@ export class RequestRental implements UseCase<
         await this.publishedListingReader.findPublishedByPlace(place);
       if (!publishedListing) return Either.left(new ListingNotPublishedError());
 
-      const days = { from: props.fromDay, to: props.toDay };
-      const confirmedRentals =
-        await this.rentalRepository.findConfirmedByPlace(place);
-      if (
-        confirmedRentals.some((rental) =>
-          rental.overlaps(parisPeriodOfDays(days)),
-        )
-      )
-        return Either.left(new DatesAlreadyRentedError());
-
+      // The request is built first because RentalRequest.request is the only
+      // place that refuses an unreadable pair of days. Checking availability
+      // before it means feeding a NaN period to overlaps(), where every
+      // comparison is false: the place reads as free whatever is booked, and
+      // the priceless request that follows is recorded.
       const rentalRequest = RentalRequest.request({
         renterId: props.renterId,
         address: publishedListing.address,
         box: publishedListing.box,
-        days,
+        days: { from: props.fromDay, to: props.toDay },
         pricing: publishedListing.pricing,
         requestedAt: props.requestedAt,
       });
       if (Either.isLeft(rentalRequest)) return Either.left(rentalRequest.left);
+
+      const confirmedRentals =
+        await this.rentalRepository.findConfirmedByPlace(place);
+      if (
+        confirmedRentals.some((rental) =>
+          rental.overlaps(rentalRequest.right.period),
+        )
+      )
+        return Either.left(new DatesAlreadyRentedError());
 
       await this.rentalRepository.createRequest(rentalRequest.right);
       return Either.right(rentalRequest.right);

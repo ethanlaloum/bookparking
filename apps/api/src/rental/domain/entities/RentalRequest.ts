@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { InvalidRequestedPeriodError } from '../errors/InvalidRequestedPeriodError';
 import { NoPriceForRequestedPeriodError } from '../errors/NoPriceForRequestedPeriodError';
 import { RequestedPeriodTooLongError } from '../errors/RequestedPeriodTooLongError';
 import {
@@ -11,6 +12,7 @@ import {
   CalendarDayRange,
   dayCountingPeriodOfDays,
   dayCountOfDays,
+  isReadableDayRange,
   parisPeriodOfDays,
 } from './CalendarDay';
 import { designatesSamePlace, RentalPlace } from './RentalPlace';
@@ -47,8 +49,13 @@ export class RentalRequest {
     requestedAt: Date;
   }): Either.Either<
     RentalRequest,
-    NoPriceForRequestedPeriodError | RequestedPeriodTooLongError
+    | InvalidRequestedPeriodError
+    | NoPriceForRequestedPeriodError
+    | RequestedPeriodTooLongError
   > {
+    if (!isReadableDayRange(params.days))
+      return Either.left(new InvalidRequestedPeriodError());
+
     if (dayCountOfDays(params.days) > MAX_REQUESTED_PERIOD_IN_DAYS)
       return Either.left(new RequestedPeriodTooLongError());
 
@@ -70,6 +77,10 @@ export class RentalRequest {
         requestedAt: params.requestedAt,
       }),
     );
+  }
+
+  public get period(): RentalPeriod {
+    return this.props.period;
   }
 
   public designates(place: RentalPlace): boolean {

@@ -60,6 +60,11 @@ export const dayCountOfDays = (days: CalendarDayRange): number =>
       MILLISECONDS_PER_DAY,
   ) + 1;
 
+export const isReadableDayRange = (days: CalendarDayRange): boolean => {
+  const dayCount = dayCountOfDays(days);
+  return Number.isInteger(dayCount) && dayCount > 0;
+};
+
 export const parisDayOf = (instant: Date): CalendarDay =>
   new Intl.DateTimeFormat('fr-CA', {
     timeZone: PARIS_TIME_ZONE,

@@ -4,7 +4,7 @@ statut: valide
 valide_le: 2026-09-17
 valide_par: jp-way:auto
 revision: 4
-derive_de: SPEC-001@ec9a88eacbc0b97d728c371ad7599e031822efbc
+derive_de: SPEC-001@6a4a2bd86012937c99afc033c416e16d44f62de6
 apps: [api, e2e]
 cas: 41
 stories: 10

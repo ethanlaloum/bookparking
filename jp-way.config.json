@@ -100,10 +100,10 @@
   },
   "workflow": {
     "build": {
-      "mode": "supervised"
+      "mode": "autonomous"
     },
     "gates": {
-      "perStory": true,
+      "perStory": false,
       "artifactPr": false
     },
     "sync": {

@@ -5,6 +5,7 @@ import { ListingNotOwnedError } from '../errors/ListingNotOwnedError';
 
 export enum ListingStatus {
   ACTIVE = 'ACTIVE',
+  UNPUBLISHED = 'UNPUBLISHED',
 }
 
 export interface ListingPricing {
@@ -79,6 +80,16 @@ export class Listing {
     if (!Listing.offersAnyDuration(pricing))
       return Either.left(new IncompletePricingError());
     return Either.right(new Listing({ ...this.props, pricing }));
+  }
+
+  public unpublish(params: {
+    ownerId: string;
+  }): Either.Either<Listing, ListingNotOwnedError> {
+    if (!this.isOwnedBy(params.ownerId))
+      return Either.left(new ListingNotOwnedError());
+    return Either.right(
+      new Listing({ ...this.props, status: ListingStatus.UNPUBLISHED }),
+    );
   }
 
   public static isAvailabilityEntirelyPast(

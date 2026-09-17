@@ -7,4 +7,15 @@ export class InMemoryListingRepository implements ListingRepository {
   public async create(listing: Listing): Promise<void> {
     this.listingList.push(listing);
   }
+
+  public async findActiveByAddressAndBox(
+    address: string,
+    box: string,
+  ): Promise<Listing | null> {
+    return (
+      this.listingList.find((listing) =>
+        listing.isActiveFor({ address, box }),
+      ) ?? null
+    );
+  }
 }

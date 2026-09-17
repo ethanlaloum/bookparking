@@ -10,6 +10,7 @@ import {
 import { ListingRepository } from '../../ports/ListingRepository';
 import { PhotoStorage } from '../../ports/PhotoStorage';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
 interface Props {
@@ -28,7 +29,10 @@ export class PublishListing implements UseCase<
   Promise<
     Either.Either<
       Listing,
-      AvailabilityPeriodExpiredError | PhotoStorageFailedError | UnknownError
+      | AvailabilityPeriodExpiredError
+      | ListingAlreadyActiveError
+      | PhotoStorageFailedError
+      | UnknownError
     >
   >
 > {
@@ -42,7 +46,10 @@ export class PublishListing implements UseCase<
   ): Promise<
     Either.Either<
       Listing,
-      AvailabilityPeriodExpiredError | PhotoStorageFailedError | UnknownError
+      | AvailabilityPeriodExpiredError
+      | ListingAlreadyActiveError
+      | PhotoStorageFailedError
+      | UnknownError
     >
   > {
     try {
@@ -53,6 +60,13 @@ export class PublishListing implements UseCase<
         )
       )
         return Either.left(new AvailabilityPeriodExpiredError());
+
+      const activeListing =
+        await this.listingRepository.findActiveByAddressAndBox(
+          props.address,
+          props.box,
+        );
+      if (activeListing) return Either.left(new ListingAlreadyActiveError());
 
       const storage = await this.photoStorage.storeAll(props.photos);
       if (Either.isLeft(storage)) return Either.left(storage.left);

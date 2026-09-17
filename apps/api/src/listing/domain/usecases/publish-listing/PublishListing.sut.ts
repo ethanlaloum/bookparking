@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { ListingBuilder } from '../../builders/ListingBuilder';
 import { Listing, ListingStatus } from '../../entities/Listing';
 import { InMemoryListingRepository } from '../../../adapters/repositories/listing/InMemoryListingRepository';
 import { InMemoryPhotoStorage } from '../../../adapters/services/photo-storage/InMemoryPhotoStorage';
@@ -8,6 +9,13 @@ import { PublishListing } from './PublishListing';
 interface Place {
   address: string;
   box: string;
+}
+
+interface RentalForTest {
+  address: string;
+  box: string;
+  from: string;
+  to: string;
 }
 
 interface OwnerForTest {
@@ -62,12 +70,15 @@ export const createPublishListingSUT = () => {
     ownerIdForTest: 'account-marc',
     addressForTest: '12 rue Barla, 06300 Nice',
     boxForTest: '12',
+    otherOwnerNameForTest: 'Pierre L.',
+    otherOwnerIdForTest: 'account-pierre',
   };
 
   const publishListing = new PublishListing(listingRepository, photoStorage);
 
   const accountIdsByOwnerName: Record<string, string> = {
     [testConstants.ownerNameForTest]: testConstants.ownerIdForTest,
+    [testConstants.otherOwnerNameForTest]: testConstants.otherOwnerIdForTest,
   };
 
   const toAccountId = (ownerName: string): string =>
@@ -79,6 +90,7 @@ export const createPublishListingSUT = () => {
     publishListing,
     testConstants,
     owner: null as OwnerForTest | null,
+    rentalList: [] as RentalForTest[],
   };
 
   const thenResultIsRight = (result: Either.Either<unknown, unknown>) => {
@@ -93,6 +105,22 @@ export const createPublishListingSUT = () => {
         context.listingRepository.listingList.filter(
           (listing) => !listing.isActiveFor(place),
         );
+    },
+
+    givenActiveListing(params: { owner: string } & Place) {
+      const listing = new ListingBuilder()
+        .withOwnerId(toAccountId(params.owner))
+        .withAddress(params.address)
+        .withBox(params.box)
+        .withStatus(ListingStatus.ACTIVE)
+        .build();
+      context.listingRepository.listingList.push(listing);
+      return { listing };
+    },
+
+    givenRental(rental: RentalForTest) {
+      context.rentalList.push({ ...rental });
+      return { rental };
     },
 
     givenPhotoStorageFailingOnEveryUpload() {
@@ -174,6 +202,39 @@ export const createPublishListingSUT = () => {
       if (Either.isLeft(result)) {
         expect(result.left).toBeInstanceOf(ErrorClass);
       }
+    },
+
+    thenRefusalMessageIs(
+      result: Either.Either<unknown, unknown>,
+      message: string,
+    ) {
+      expect(Either.isLeft(result)).toEqual(true);
+      if (Either.isLeft(result)) {
+        expect((result.left as Error).message).toEqual(message);
+      }
+    },
+
+    thenActiveListingOf(ownerName: string, place: Place) {
+      const ownerListings = context.listingRepository.listingList.filter(
+        (listing) =>
+          listing.isActiveFor(place) &&
+          listing.toState().ownerId === toAccountId(ownerName),
+      );
+      expect(ownerListings).toHaveLength(1);
+    },
+
+    thenNoListingOf(ownerName: string, place: Place) {
+      const ownerListings = context.listingRepository.listingList.filter(
+        (listing) =>
+          listing.designates(place) &&
+          listing.toState().ownerId === toAccountId(ownerName),
+      );
+      expect(ownerListings).toHaveLength(0);
+    },
+
+    thenRentalIsUnchanged(rental: RentalForTest) {
+      expect(context.rentalList).toHaveLength(1);
+      expect(context.rentalList[0]).toEqual(rental);
     },
 
     thenNoActiveListingFor(place: Place) {

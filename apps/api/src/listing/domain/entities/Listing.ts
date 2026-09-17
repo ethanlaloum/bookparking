@@ -13,6 +13,14 @@ export interface ListingAvailability {
   to: Date;
 }
 
+export interface ListingPlace {
+  address: string;
+  box: string;
+}
+
+export const normalizeAddress = (address: string): string =>
+  address.trim().replace(/\s+/g, ' ').toLowerCase();
+
 interface Props {
   ownerId: string;
   address: string;
@@ -47,11 +55,14 @@ export class Listing {
     return availability.to.getTime() < at.getTime();
   }
 
-  public isActiveFor(place: { address: string; box: string }): boolean {
+  public designates(place: ListingPlace): boolean {
     return (
-      this.props.status === ListingStatus.ACTIVE &&
-      this.props.address === place.address &&
-      this.props.box === place.box
+      normalizeAddress(this.props.address) ===
+        normalizeAddress(place.address) && this.props.box === place.box
     );
+  }
+
+  public isActiveFor(place: ListingPlace): boolean {
+    return this.props.status === ListingStatus.ACTIVE && this.designates(place);
   }
 }

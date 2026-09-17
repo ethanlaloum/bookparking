@@ -1,7 +1,11 @@
 import type { Knex } from 'knex';
 
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
-import { Listing } from '../../../domain/entities/Listing';
+import {
+  Listing,
+  ListingStatus,
+  normalizeAddress,
+} from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
 import { SchemaListingRepository } from './SchemaListingRepository';
 
@@ -35,5 +39,40 @@ export class KnexListingRepository implements ListingRepository {
     const query = this.connection(this.tableName).insert(row);
     if (trx) query.transacting(trx);
     await query;
+  }
+
+  public async findActiveByAddressAndBox(
+    address: string,
+    box: string,
+    trx?: GenericTransaction,
+  ): Promise<Listing | null> {
+    const query = this.connection<SchemaListingRepository>(this.tableName)
+      .where({ status: ListingStatus.ACTIVE, box })
+      .andWhereRaw(
+        `lower(regexp_replace(btrim(address), '\\s+', ' ', 'g')) = ?`,
+        [normalizeAddress(address)],
+      )
+      .first();
+    if (trx) query.transacting(trx);
+    const row = await query;
+    if (!row) return null;
+    return Listing.fromState({
+      ownerId: row.owner_id,
+      address: row.address,
+      box: row.box,
+      accessDescription: row.access_description,
+      photos: row.photos,
+      pricing: {
+        dayInCents: row.day_price_in_cents,
+        weekInCents: row.week_price_in_cents,
+        monthInCents: row.month_price_in_cents,
+      },
+      availability: {
+        from: new Date(row.available_from),
+        to: new Date(row.available_to),
+      },
+      status: row.status as ListingStatus,
+      publishedAt: new Date(row.published_at),
+    });
   }
 }

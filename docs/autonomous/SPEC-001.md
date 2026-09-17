@@ -180,14 +180,12 @@ ecarts_majeurs: 3
 ## Résultat livré
 
 - US-001 (#2) fusionnée (PR #12) avant ce run.
-- US-002 (#3) : DoD complet, PR #13 prête (`status:in-review`), **non fusionnée**. Barreaux : unit `Tests: 7 passed, 7 total` · int `Tests: 4 passed, 4 total` · build exit 0 · eslint exit 0, sur `3b561ad`. Exemples prouvés : EX-18, EX-19, EX-04, EX-36, EX-37. Revues tour 2 : conventions ECARTS MAJEURS · sécurité ECARTS MINEURS · conformité ECARTS MAJEURS.
-- Arrêt §9-1 (impossibilité externe) : `gh pr merge 13 --squash --delete-branch` refusé par le mode de permissions de la session (classifieur auto mode), le 17/09/2026. US-003 à US-010 construisent sur le code de US-002 et démarrent après sa fusion : aucune story sûre ne reste éligible.
-- Restent : US-003 à US-010, `status:todo`.
-- Dernier audit : non relancé après l'arrêt (27 exemples de stories futures non couverts, attendu).
+- US-002 (#3) fusionnée : PR #13, `7b61cc6`. Unit 7 passed · int 4 passed · build 0. Revues : conventions ECARTS MAJEURS (AUTO-03, AUTO-04 livrés) · sécurité ECARTS MINEURS · conformité ECARTS MAJEURS (AUTO-05 livré).
+- US-003 (#4) fusionnée : PR #14, `ba1f945`. Unit 13 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité ECARTS MINEURS (AUTO-12) · conformité CONFORME.
+- Restent : US-004 à US-010.
 
 ## À relire au retour
 
-- Reprise le 17/09/2026 : `/jp-way:build SPEC-001` relancé après ajout de la règle `Bash(gh pr merge:*)` ; l'arrêt sur la fusion de la PR #13 est levé.
 
 - AUTO-01 : quel mécanisme d'authentification alimente `AccessTokenVerifier` ?
 - AUTO-03 : stockage de photos et base de production au premier démarrage de l'api.

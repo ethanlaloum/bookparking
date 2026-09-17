@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 12
+decisions: 14
 ecarts_majeurs: 3
 ---
 
@@ -170,6 +170,28 @@ ecarts_majeurs: 3
 - Traçabilité : RG-01 · US-003
 - Confiance : moyenne
 - Question humaine au retour : faut-il ajouter l'exemple « un box écrit avec un caractère invisible est le même box » avant de monter la route ?
+
+### AUTO-13 · Une durée de la grille peut être absente, jusque dans la base et la requête
+- Déclencheur : US-004 (EX-06, EX-07, EX-24, EX-25). La grille actuelle impose un prix pour chaque durée (`ListingPricing` à trois nombres, colonnes `*_price_in_cents NOT NULL`, schéma HTTP `Schema.Int` requis) : « une grille qui ne porte que le mois » est inexprimable. Le corps de l'issue #4 interdit pourtant `adapters/**` et toute migration.
+- Choix : une durée absente vaut `null` du domaine à la base. US-004 franchit donc les couches interdites par son issue, au strict nécessaire : une nouvelle migration rend les trois colonnes nullables, le dépôt Knex lit et écrit `null`, le schéma HTTP accepte une durée absente, et le contrôleur répond 400 sur `IncompletePricingError`. Ces changements d'adaptateurs n'ont pas d'exemple propre : ils suivent le type du domaine. `UpdateListingPricing` identifie l'annonce par son loueur et sa place (clé de place, US-003), faute d'identifiant d'annonce (reporté à US-009), et le dépôt gagne `save(listing, trx?)`. Message de refus retenu : « La grille tarifaire est incomplète ».
+- Alternatives : (a) représenter une durée absente par `0` — écarté, EX-25 publie une grille à `0,00 €` qui doit rester distincte d'une absence ; (b) respecter les couches interdites et ne livrer que le domaine — écarté, le build et le dépôt Knex ne compileraient plus ; (c) introduire l'identifiant d'annonce maintenant — écarté, décision antérieure de le poser à US-009.
+- Preuve : `apps/api/src/infra/migrations/20260917120000_create_listings.ts:11-13` ; `apps/api/src/listing/adapters/rest/dtos/PublishListingSchema.ts:9-11`.
+- Impact : barreaux int-repo et int-http touchés sans nouvel exemple ; `save` et la lecture des durées nulles ne sont prouvés que par les suites existantes.
+- Coût : trois dispatchs d'agents. Risque : faible (route non montée, AUTO-03). Rollback : revert de la PR US-004 et de sa migration.
+- Traçabilité : RG-04 · EX-001-06 · EX-001-07 · EX-001-24 · EX-001-25 · US-004
+- Confiance : moyenne — le texte « la grille tarifaire est signalée comme incomplète » ne fixe pas le message exact.
+- Question humaine au retour : quel message exact afficher pour une grille sans durée ?
+
+### AUTO-14 · Erreurs partagées dans `domain/errors/` et écriture `save` en mise à jour seule
+- Déclencheur : revue conventions US-004, constats majeurs 1 (`Listing.ts:3`, `IncompletePricingError` rangée sous `publish-listing/errors/` alors que deux cas d'usage et l'entité l'utilisent ; même motif pour `ListingNotOwnedError`) et 2 (`KnexListingRepository.save` insère quand aucune ligne active ne correspond, `InMemoryListingRepository.save` ne fait rien).
+- Choix : (1) déplacer vers `apps/api/src/listing/domain/errors/` les erreurs levées par l'entité (`IncompletePricingError`, `ListingNotOwnedError`) ; (2) `save` ne crée jamais d'annonce : il met à jour la ligne active de la même clé de place et lève `ActiveListingNotFoundError` si aucune ne correspond, à l'identique dans les deux dépôts. La publication reste le seul chemin de création.
+- Alternatives : `insert … onConflict(place_key).merge()` comme proposé par la revue — écarté, l'index unique est partiel (`WHERE status = 'ACTIVE'`) et un upsert créerait des annonces hors de `PublishListing`.
+- Preuve : revue conventions US-004 ; `backend-conventions/domain.md` (erreurs réutilisées), `data-and-events.md` §13.5 (sémantique miroir).
+- Impact : chemins d'import modifiés dans les cadres unit (les chemins d'erreur ne sont pas des assertions) ; aucun comportement d'exemple changé.
+- Coût : deux dispatchs. Risque : faible. Rollback : revert des commits.
+- Traçabilité : RG-04 · EX-001-07 · EX-001-24 · US-004
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

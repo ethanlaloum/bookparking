@@ -1,5 +1,6 @@
 import { createPublishListingSUT } from './PublishListing.sut';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
@@ -232,5 +233,55 @@ describe('PublishListing @SPEC-001', () => {
     sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
     sut.thenNoListingOf(PIERRE, PLACE);
     sut.thenNoListingOf(PIERRE, { address: PLACE.address, box: '12 ' });
+  });
+
+  it('refuses a listing whose pricing offers no duration @EX-001-07', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenNoActiveListingFor(PLACE);
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      pricing: { day: null, week: null, month: null },
+      publishedAt: '2026-09-10',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, IncompletePricingError);
+    sut.thenRefusalMessageIs(result, 'La grille tarifaire est incomplète');
+    sut.thenNoActiveListingFor(PLACE);
+  });
+
+  it('publishes a listing whose pricing offers only the month @EX-001-06', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenNoActiveListingFor(PLACE);
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      pricing: { day: null, week: null, month: 18000 },
+      publishedAt: '2026-09-10',
+    });
+
+    sut.thenListingIsActive(result);
+    sut.thenListingCarries(result, {
+      pricing: { day: null, week: null, month: 18000 },
+    });
+  });
+
+  it('publishes a listing priced at zero with no price bound @EX-001-25', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenNoActiveListingFor(PLACE);
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      pricing: { day: null, week: null, month: 0 },
+      publishedAt: '2026-09-10',
+    });
+
+    sut.thenListingIsActive(result);
+    sut.thenListingCarries(result, {
+      pricing: { day: null, week: null, month: 0 },
+    });
   });
 });

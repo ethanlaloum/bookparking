@@ -2,11 +2,37 @@
 spec: SPEC-001
 langue: fr
 entrees:
+  - { us: US-004, date: null, titre: "Une grille tarifaire doit toujours proposer au moins un tarif" }
   - { us: US-003, date: null, titre: "Une même place ne peut plus recevoir deux annonces actives" }
   - { us: US-002, date: null, titre: "Une annonce incomplète ou usurpée n'est plus publiée" }
 ---
 
 # Publier une place — ce qui change pour toi
+
+## Une grille tarifaire doit toujours proposer au moins un tarif
+
+**Ce qui change** — Une grille tarifaire doit désormais proposer au moins un tarif, à la journée, à la
+semaine ou au mois. Tu peux n'en fixer qu'un seul — par exemple uniquement un tarif au mois — mais tu ne
+peux plus publier, ni modifier, une grille qui n'en propose aucun. Un tarif à `0,00 €` reste un tarif
+valide, distinct de l'absence de tarif.
+
+**Pour qui** — Les loueurs qui publient une place ou modifient la grille tarifaire d'une annonce déjà
+active.
+
+**Ce que tu vois maintenant** — Une grille qui ne porte que le tarif au mois, par exemple `180,00 €`, est
+publiée et ton annonce devient active. Si ta grille ne porte aucun tarif — ni journée, ni semaine, ni
+mois — la publication est refusée et la grille tarifaire t'est signalée comme incomplète. Si tu retires
+le dernier tarif restant d'une grille déjà publiée, la modification est refusée de la même façon et ta
+grille garde son tarif précédent. Un tarif à `0,00 €` est publié normalement, sans qu'aucun plancher ni
+plafond de prix ne te soit opposé.
+
+**Ce qu'il faut faire différemment** — Vérifie que ta grille tarifaire porte toujours au moins un tarif,
+à la publication comme à chaque modification.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-004","ex":["EX-07","EX-24","EX-06","EX-25"],"pr":15} -->
 
 ## Une même place ne peut plus recevoir deux annonces actives
 

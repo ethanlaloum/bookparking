@@ -1,4 +1,5 @@
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
+import { RequestedPeriodTooLongError } from './errors/RequestedPeriodTooLongError';
 import { createRequestRentalSUT } from './RequestRental.sut';
 
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };
@@ -109,5 +110,24 @@ describe('RequestRental @SPEC-001', () => {
       to: '2026-10-15T23:59:59.999+02:00',
     });
     sut.thenNoPartOfDayIsRetained(result, ['2026-10-14', '2026-10-16']);
+  });
+
+  it('refuses a request longer than the maximum rental period @EX-001-40', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...PLACE,
+      pricing: { day: null, week: null, month: 18000 },
+    });
+    sut.givenNoConfirmedRental();
+
+    const result = await sut.whenRequestedBy(LEA, {
+      ...PLACE,
+      from: '2026-01-01',
+      to: '9999-12-31',
+      requestedAt: '2025-12-31',
+    });
+
+    sut.thenRequestIsRefusedWith(result, RequestedPeriodTooLongError);
+    sut.thenNoRequestRecordedFor({ from: '2026-01-01', to: '9999-12-31' });
   });
 });

@@ -4,9 +4,9 @@ import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import { Listing, ListingPricing } from '../../entities/Listing';
 import { ListingRepository } from '../../ports/ListingRepository';
-import { IncompletePricingError } from '../publish-listing/errors/IncompletePricingError';
+import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { ActiveListingNotFoundError } from './errors/ActiveListingNotFoundError';
-import { ListingNotOwnedError } from './errors/ListingNotOwnedError';
+import { ListingNotOwnedError } from '../../errors/ListingNotOwnedError';
 
 interface Props {
   ownerId: string;

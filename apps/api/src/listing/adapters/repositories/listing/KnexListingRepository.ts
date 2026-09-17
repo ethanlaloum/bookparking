@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
 import { Listing, ListingStatus } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
+import { ActiveListingNotFoundError } from '../../../domain/usecases/update-listing-pricing/errors/ActiveListingNotFoundError';
 import { ListingAlreadyActiveError } from '../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { SchemaListingRepository } from './SchemaListingRepository';
 
@@ -46,21 +47,14 @@ export class KnexListingRepository implements ListingRepository {
 
   public async save(listing: Listing, trx?: GenericTransaction): Promise<void> {
     const row = KnexListingRepository.toRow(listing);
-    const findQuery = this.connection<SchemaListingRepository>(this.tableName)
-      .select('id')
-      .where({ place_key: row.place_key, status: row.status })
-      .first();
-    if (trx) findQuery.transacting(trx);
-    const matched = await findQuery;
-    if (!matched) {
-      await this.create(listing, trx);
-      return;
-    }
-    const updateQuery = this.connection<SchemaListingRepository>(this.tableName)
-      .where({ id: matched.id })
+    const query = this.connection<SchemaListingRepository>(this.tableName)
+      .where({ place_key: row.place_key, status: ListingStatus.ACTIVE })
       .update({ ...row, updated_at: this.connection.fn.now() });
-    if (trx) updateQuery.transacting(trx);
-    await updateQuery;
+    if (trx) query.transacting(trx);
+    const updatedCount = await query;
+    if (updatedCount === 0) {
+      throw new ActiveListingNotFoundError();
+    }
   }
 
   public async findActiveByPlaceKey(

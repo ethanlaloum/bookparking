@@ -1,4 +1,4 @@
-import { IncompletePricingError } from '../publish-listing/errors/IncompletePricingError';
+import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { createUpdateListingPricingSUT } from './UpdateListingPricing.sut';
 
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };

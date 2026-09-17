@@ -15,7 +15,7 @@ import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
 import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
-import { IncompletePricingError } from '../../../../domain/usecases/publish-listing/errors/IncompletePricingError';
+import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-listing/errors/PhotoStorageFailedError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';

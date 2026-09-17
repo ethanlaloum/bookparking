@@ -1,7 +1,7 @@
 import { Either } from 'effect/index';
 
-import { IncompletePricingError } from '../usecases/publish-listing/errors/IncompletePricingError';
-import { ListingNotOwnedError } from '../usecases/update-listing-pricing/errors/ListingNotOwnedError';
+import { IncompletePricingError } from '../errors/IncompletePricingError';
+import { ListingNotOwnedError } from '../errors/ListingNotOwnedError';
 
 export enum ListingStatus {
   ACTIVE = 'ACTIVE',

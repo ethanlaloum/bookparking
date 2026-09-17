@@ -10,7 +10,7 @@ import {
 import { ListingRepository } from '../../ports/ListingRepository';
 import { PhotoStorage } from '../../ports/PhotoStorage';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
-import { IncompletePricingError } from './errors/IncompletePricingError';
+import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 

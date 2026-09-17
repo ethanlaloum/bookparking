@@ -1,6 +1,6 @@
 import { createPublishListingSUT } from './PublishListing.sut';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
-import { IncompletePricingError } from './errors/IncompletePricingError';
+import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 

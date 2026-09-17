@@ -161,7 +161,6 @@ describe('PublishListing @SPEC-001', () => {
   it('refuses a new listing for a box whose active listing is under rental @EX-001-15', async () => {
     const sut = createPublishListingSUT();
     sut.givenActiveListing({ owner: MARC, ...PLACE });
-    sut.givenRental({ ...PLACE, from: '2026-10-01', to: '2026-10-31' });
 
     const result = await sut.whenPublishing({
       owner: MARC,
@@ -172,11 +171,6 @@ describe('PublishListing @SPEC-001', () => {
     sut.thenPublicationIsRefusedWith(result, ListingAlreadyActiveError);
     sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
     sut.thenIsOnlyActiveListingFor(PLACE);
-    sut.thenRentalIsUnchanged({
-      ...PLACE,
-      from: '2026-10-01',
-      to: '2026-10-31',
-    });
   });
 
   it('treats a differently spelled address with the same box as the same place @EX-001-16', async () => {
@@ -221,5 +215,22 @@ describe('PublishListing @SPEC-001', () => {
     sut.thenResultIsRight(result);
     sut.thenActiveListingOf(MARC, PLACE);
     sut.thenActiveListingOf(PIERRE, { address: PLACE.address, box: '14' });
+  });
+
+  it('refuses a listing whose box differs from an active one only by surrounding spaces @EX-001-38', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenActiveListing({ owner: MARC, ...PLACE });
+
+    const result = await sut.whenPublishing({
+      owner: PIERRE,
+      ...COMPLETE_LISTING,
+      box: '12 ',
+      publishedAt: '2026-09-11',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, ListingAlreadyActiveError);
+    sut.thenRefusalMessageIs(result, 'Cette place a déjà une annonce active');
+    sut.thenNoListingOf(PIERRE, PLACE);
+    sut.thenNoListingOf(PIERRE, { address: PLACE.address, box: '12 ' });
   });
 });

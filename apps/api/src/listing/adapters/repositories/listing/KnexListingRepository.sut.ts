@@ -1,4 +1,6 @@
 import { getTestDbConnection } from '../../../../infra/testcontainers-setup';
+import { ListingBuilder } from '../../../domain/builders/ListingBuilder';
+import { ListingStatus } from '../../../domain/entities/Listing';
 import { PublishListing } from '../../../domain/usecases/publish-listing/PublishListing';
 import { InMemoryPhotoStorage } from '../../services/photo-storage/InMemoryPhotoStorage';
 import { KnexListingRepository } from './KnexListingRepository';
@@ -73,6 +75,44 @@ export const createKnexListingRepositorySUT = () => {
         },
         publishedAt: toUtcDate(input.publishedAt),
       });
+    },
+
+    async whenCreatingActiveListing(input: {
+      owner: string;
+      address: string;
+      box: string;
+    }): Promise<unknown> {
+      const listing = new ListingBuilder()
+        .withOwnerId(toAccountId(input.owner))
+        .withAddress(input.address)
+        .withBox(input.box)
+        .build();
+      try {
+        await context.listingRepository.create(listing);
+        return null;
+      } catch (error: unknown) {
+        return error;
+      }
+    },
+
+    thenCreationSucceeded(outcome: unknown) {
+      expect(outcome).toEqual(null);
+    },
+
+    thenCreationIsRefusedWith(
+      outcome: unknown,
+      ErrorClass: new (...args: never[]) => Error,
+      message: string,
+    ) {
+      expect(outcome).toBeInstanceOf(ErrorClass);
+      expect((outcome as Error).message).toEqual(message);
+    },
+
+    async thenActiveRowCountIs(count: number) {
+      const rows = await context
+        .testDbConnection<SchemaListingRepository>('listings')
+        .where({ status: ListingStatus.ACTIVE });
+      expect(rows).toHaveLength(count);
     },
 
     async thenNoListingRow(place: Place) {

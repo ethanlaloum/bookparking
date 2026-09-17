@@ -4,5 +4,12 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "exclude": ["node_modules", "dist", "**/*spec.ts", "**/*sut.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*spec.ts",
+    "**/*sut.ts",
+    "src/infra/testcontainers-setup.ts",
+    "src/infra/testKnexfile.ts"
+  ]
 }

@@ -28,11 +28,24 @@ export const createKnexListingRepositorySUT = () => {
   const photoStorage = new InMemoryPhotoStorage();
   const publishListing = new PublishListing(listingRepository, photoStorage);
 
+  const testConstants = {
+    ownerNameForTest: 'Marc D.',
+    ownerIdForTest: 'account-marc',
+  };
+
+  const accountIdsByOwnerName: Record<string, string> = {
+    [testConstants.ownerNameForTest]: testConstants.ownerIdForTest,
+  };
+
+  const toAccountId = (ownerName: string): string =>
+    accountIdsByOwnerName[ownerName] ?? `account-${ownerName}`;
+
   const context = {
     testDbConnection,
     listingRepository,
     photoStorage,
     publishListing,
+    testConstants,
   };
 
   return {
@@ -44,7 +57,7 @@ export const createKnexListingRepositorySUT = () => {
 
     async whenPublishing(input: PublishingInput) {
       return context.publishListing.execute({
-        ownerName: input.owner,
+        ownerId: toAccountId(input.owner),
         address: input.address,
         box: input.box,
         accessDescription: input.accessDescription,

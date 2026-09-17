@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
 import { Listing } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
 import { SchemaListingRepository } from './SchemaListingRepository';
@@ -9,13 +10,16 @@ export class KnexListingRepository implements ListingRepository {
 
   constructor(private readonly connection: Knex<SchemaListingRepository>) {}
 
-  public async create(listing: Listing): Promise<void> {
+  public async create(
+    listing: Listing,
+    trx?: GenericTransaction,
+  ): Promise<void> {
     const state = listing.toState();
     const row: Omit<
       SchemaListingRepository,
       'id' | 'created_at' | 'updated_at'
     > = {
-      owner_name: state.ownerName,
+      owner_id: state.ownerId,
       address: state.address,
       box: state.box,
       access_description: state.accessDescription,
@@ -28,6 +32,8 @@ export class KnexListingRepository implements ListingRepository {
       status: state.status,
       published_at: state.publishedAt,
     };
-    await this.connection(this.tableName).insert(row);
+    const query = this.connection(this.tableName).insert(row);
+    if (trx) query.transacting(trx);
+    await query;
   }
 }

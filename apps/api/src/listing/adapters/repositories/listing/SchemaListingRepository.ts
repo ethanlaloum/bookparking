@@ -1,6 +1,6 @@
 export interface SchemaListingRepository {
   id: string;
-  owner_name: string;
+  owner_id: string;
   address: string;
   box: string;
   access_description: string;

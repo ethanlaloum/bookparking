@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   Listing,
@@ -12,7 +13,7 @@ import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpir
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
 interface Props {
-  ownerName: string;
+  ownerId: string;
   address: string;
   box: string;
   accessDescription: string;
@@ -27,7 +28,7 @@ export class PublishListing implements UseCase<
   Promise<
     Either.Either<
       Listing,
-      AvailabilityPeriodExpiredError | PhotoStorageFailedError
+      AvailabilityPeriodExpiredError | PhotoStorageFailedError | UnknownError
     >
   >
 > {
@@ -41,19 +42,30 @@ export class PublishListing implements UseCase<
   ): Promise<
     Either.Either<
       Listing,
-      AvailabilityPeriodExpiredError | PhotoStorageFailedError
+      AvailabilityPeriodExpiredError | PhotoStorageFailedError | UnknownError
     >
   > {
-    if (
-      Listing.isAvailabilityEntirelyPast(props.availability, props.publishedAt)
-    )
-      return Either.left(new AvailabilityPeriodExpiredError());
+    try {
+      if (
+        Listing.isAvailabilityEntirelyPast(
+          props.availability,
+          props.publishedAt,
+        )
+      )
+        return Either.left(new AvailabilityPeriodExpiredError());
 
-    const storage = await this.photoStorage.storeAll(props.photos);
-    if (Either.isLeft(storage)) return Either.left(storage.left);
+      const storage = await this.photoStorage.storeAll(props.photos);
+      if (Either.isLeft(storage)) return Either.left(storage.left);
 
-    const listing = Listing.publish(props);
-    await this.listingRepository.create(listing);
-    return Either.right(listing);
+      const listing = Listing.publish(props);
+      await this.listingRepository.create(listing);
+      return Either.right(listing);
+    } catch (error: unknown) {
+      return Either.left(
+        new UnknownError(
+          error instanceof Error ? error.message : String(error),
+        ),
+      );
+    }
   }
 }

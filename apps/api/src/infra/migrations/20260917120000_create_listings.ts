@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('listings', (table) => {
     table.uuid('id').primary().defaultTo(knex.fn.uuid());
-    table.text('owner_name').notNullable();
+    table.text('owner_id').notNullable();
     table.text('address').notNullable();
     table.text('box').notNullable();
     table.text('access_description').notNullable();

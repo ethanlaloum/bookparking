@@ -59,11 +59,19 @@ export const createPublishListingSUT = () => {
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
+    ownerIdForTest: 'account-marc',
     addressForTest: '12 rue Barla, 06300 Nice',
     boxForTest: '12',
   };
 
   const publishListing = new PublishListing(listingRepository, photoStorage);
+
+  const accountIdsByOwnerName: Record<string, string> = {
+    [testConstants.ownerNameForTest]: testConstants.ownerIdForTest,
+  };
+
+  const toAccountId = (ownerName: string): string =>
+    accountIdsByOwnerName[ownerName] ?? `account-${ownerName}`;
 
   const context = {
     listingRepository,
@@ -111,7 +119,7 @@ export const createPublishListingSUT = () => {
       const input = { ...defaults, ...overrides };
 
       return context.publishListing.execute({
-        ownerName: input.owner,
+        ownerId: toAccountId(input.owner),
         address: input.address,
         box: input.box,
         accessDescription: input.accessDescription,
@@ -188,7 +196,9 @@ export const createPublishListingSUT = () => {
       expect(context.owner?.iban ?? null).toEqual(null);
       const listings = context.listingRepository.listingList;
       expect(listings).toHaveLength(1);
-      expect(listings[0].toState().ownerName).toEqual(context.owner?.name);
+      expect(listings[0].toState().ownerId).toEqual(
+        toAccountId(context.owner?.name ?? ''),
+      );
       expect(listings[0].toState().status).toEqual(ListingStatus.ACTIVE);
     },
   };

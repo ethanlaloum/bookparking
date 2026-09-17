@@ -14,7 +14,7 @@ export interface ListingAvailability {
 }
 
 interface Props {
-  ownerName: string;
+  ownerId: string;
   address: string;
   box: string;
   accessDescription: string;

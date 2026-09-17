@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 16
+decisions: 18
 ecarts_majeurs: 3
 ---
 
@@ -214,6 +214,28 @@ ecarts_majeurs: 3
 - Traçabilité : RG-03 · RG-06 · EX-001-09 · EX-001-10 · EX-001-22 · EX-001-28 · EX-001-29 · US-006
 - Confiance : haute
 - Question humaine au retour : aucune
+
+### AUTO-17 · Une demande ne dépasse pas 366 jours, et porte l'adresse de l'annonce
+- Déclencheur : revue sécurité US-006, constat majeur 1 (`RentalRequest.ts:45-48`, aucune borne de durée : une demande de plusieurs millions de jours bloque la boucle d'événements) et constat mineur 2 (`RentalRequest.ts:55-56`, la demande garde l'orthographe du demandeur au lieu de celle de l'annonce).
+- Choix : (1) une période demandée porte au plus **366 jours**, bornes comprises ; au-delà, la demande est refusée avec `RequestedPeriodTooLongError` avant tout calcul de prix. La spec gagne EX-40 (RG-06, barreau `unit`), rattaché à US-006, qui passe à 6 exemples. (2) la demande est construite avec l'adresse et le box de l'annonce publiée, jamais avec ceux du demandeur.
+- Alternatives : (a) borner seulement à la frontière HTTP — écarté, le cas d'usage doit tenir seul et la route n'existe pas encore ; (b) une durée maximale plus courte (par exemple 90 jours) — écarté faute de règle produit ; 366 jours couvre une location à l'année sans laisser passer d'abus.
+- Preuve : revue sécurité US-006 (exploit `2026-01-01` → `+275760-09-13`).
+- Impact : spec révision 4, plan révision 5 ; une durée maximale de location apparaît sans que la spec l'ait discutée.
+- Coût : un exemple et une garde. Risque : faible. Rollback : revert.
+- Traçabilité : RG-06 · EX-001-40 · US-006
+- Confiance : moyenne — le plafond de 366 jours est un choix, pas une règle validée.
+- Question humaine au retour : quelle durée maximale de location retenir ?
+
+### AUTO-18 · Trois trous de sonde relevés sur RG-06, laissés ouverts
+- Déclencheur : revue sécurité US-006, section Couverture — RG-06 × Données est marquée « écarté, aucune saisie libre », ce qui est faux depuis que la demande reçoit une adresse, un box et deux dates saisis ; RG-06 × Volume ne couvre que la lecture ; RG-06 × Autorisation ne parle que du loueur, pas du conducteur.
+- Choix : ne corriger que ce que US-006 peut prouver (EX-40, AUTO-17). Les dates invalides et l'identité du demandeur lue depuis le jeton appartiennent à la story qui monte la route (US-008) : la spec les recevra à ce moment-là, avec un barreau où elles sont observables.
+- Alternatives : tout ajouter maintenant — écarté, aucun exemple int-http n'a de route à interroger dans cette story.
+- Preuve : revue sécurité US-006, exemples proposés EX-41 (dates invalides) et EX-42 (`renterId` lu dans le corps).
+- Impact : la sonde de RG-06 reste fausse sur trois cellules jusqu'à US-008.
+- Coût : nul maintenant. Risque : moyen si US-008 monte la route sans reprendre ces exemples. Rollback : sans objet.
+- Traçabilité : RG-06 · US-006 · US-008
+- Confiance : moyenne
+- Question humaine au retour : valider les exemples EX-41 et EX-42 au moment de monter la route de demande.
 
 ## Écarts majeurs livrés
 

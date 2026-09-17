@@ -10,7 +10,6 @@ interface Props {
   ownerId: string;
   address: string;
   box: string;
-  unpublishedAt: Date;
 }
 
 export class UnpublishListing implements UseCase<

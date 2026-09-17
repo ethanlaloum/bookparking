@@ -25,8 +25,6 @@ interface UnpublishingInput {
   on: string;
 }
 
-const toUtcDate = (day: string): Date => new Date(`${day}T00:00:00.000Z`);
-
 const daysOf = (days: CalendarDayRange): CalendarDay[] => {
   const calendarDays: CalendarDay[] = [];
   for (let day = days.from; day <= days.to; day = dayAfter(day))
@@ -116,12 +114,31 @@ export const createUnpublishListingSUT = () => {
         ownerId: toAccountId(input.owner),
         address: input.address,
         box: input.box,
-        unpublishedAt: toUtcDate(input.on),
       });
     },
 
     thenResultIsRight(result: Either.Either<unknown, unknown>) {
       expect(Either.isRight(result)).toEqual(true);
+    },
+
+    thenUnpublicationIsRefusedWith(
+      result: Either.Either<unknown, unknown>,
+      ErrorClass: new (...args: never[]) => Error,
+    ) {
+      expect(Either.isLeft(result)).toEqual(true);
+      if (Either.isLeft(result)) {
+        expect(result.left).toBeInstanceOf(ErrorClass);
+      }
+    },
+
+    thenActiveListingOf(ownerName: string, place: Place) {
+      const activeListings = context.listingRepository.listingList.filter(
+        (listing) => listing.isActiveFor(place),
+      );
+      expect(activeListings).toHaveLength(1);
+      expect(activeListings[0].toState().ownerId).toEqual(
+        toAccountId(ownerName),
+      );
     },
 
     thenListingIsNoLongerPubliclyVisible(place: Place) {

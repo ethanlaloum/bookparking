@@ -26,7 +26,7 @@ interface PublishingInput {
   box: string;
   accessDescription: string;
   photos: string[];
-  pricing: { day: number; week: number; month: number };
+  pricing: { day: number | null; week: number | null; month: number | null };
   availability: { from: string; to: string };
   publishedAt: string;
 }

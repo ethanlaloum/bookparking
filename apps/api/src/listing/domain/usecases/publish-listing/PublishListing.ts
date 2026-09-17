@@ -10,6 +10,7 @@ import {
 import { ListingRepository } from '../../ports/ListingRepository';
 import { PhotoStorage } from '../../ports/PhotoStorage';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { IncompletePricingError } from './errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
@@ -30,6 +31,7 @@ export class PublishListing implements UseCase<
     Either.Either<
       Listing,
       | AvailabilityPeriodExpiredError
+      | IncompletePricingError
       | ListingAlreadyActiveError
       | PhotoStorageFailedError
       | UnknownError
@@ -47,6 +49,7 @@ export class PublishListing implements UseCase<
     Either.Either<
       Listing,
       | AvailabilityPeriodExpiredError
+      | IncompletePricingError
       | ListingAlreadyActiveError
       | PhotoStorageFailedError
       | UnknownError
@@ -61,6 +64,9 @@ export class PublishListing implements UseCase<
       )
         return Either.left(new AvailabilityPeriodExpiredError());
 
+      const publication = Listing.publish(props);
+      if (Either.isLeft(publication)) return Either.left(publication.left);
+
       const activeListing = await this.listingRepository.findActiveByPlaceKey(
         Listing.placeKeyOf({ address: props.address, box: props.box }),
       );
@@ -69,9 +75,8 @@ export class PublishListing implements UseCase<
       const storage = await this.photoStorage.storeAll(props.photos);
       if (Either.isLeft(storage)) return Either.left(storage.left);
 
-      const listing = Listing.publish(props);
-      await this.listingRepository.create(listing);
-      return Either.right(listing);
+      await this.listingRepository.create(publication.right);
+      return Either.right(publication.right);
     } catch (error: unknown) {
       if (error instanceof ListingAlreadyActiveError) return Either.left(error);
       return Either.left(

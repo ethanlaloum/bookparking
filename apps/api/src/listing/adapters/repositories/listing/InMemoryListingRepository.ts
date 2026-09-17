@@ -8,6 +8,16 @@ export class InMemoryListingRepository implements ListingRepository {
     this.listingList.push(listing);
   }
 
+  public async save(listing: Listing): Promise<void> {
+    const index = this.listingList.findIndex(
+      (stored) =>
+        stored.toState().status === listing.toState().status &&
+        stored.placeKey() === listing.placeKey(),
+    );
+    if (index === -1) return;
+    this.listingList[index] = listing;
+  }
+
   public async findActiveByPlaceKey(placeKey: string): Promise<Listing | null> {
     return (
       this.listingList.find(

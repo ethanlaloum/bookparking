@@ -1,11 +1,16 @@
+import { Either } from 'effect/index';
+
+import { IncompletePricingError } from '../usecases/publish-listing/errors/IncompletePricingError';
+import { ListingNotOwnedError } from '../usecases/update-listing-pricing/errors/ListingNotOwnedError';
+
 export enum ListingStatus {
   ACTIVE = 'ACTIVE',
 }
 
 export interface ListingPricing {
-  dayInCents: number;
-  weekInCents: number;
-  monthInCents: number;
+  dayInCents: number | null;
+  weekInCents: number | null;
+  monthInCents: number | null;
 }
 
 export interface ListingAvailability {
@@ -44,8 +49,36 @@ export class Listing {
     return new Listing(state);
   }
 
-  public static publish(params: Omit<Props, 'status'>): Listing {
-    return new Listing({ ...params, status: ListingStatus.ACTIVE });
+  public static publish(
+    params: Omit<Props, 'status'>,
+  ): Either.Either<Listing, IncompletePricingError> {
+    if (!Listing.offersAnyDuration(params.pricing))
+      return Either.left(new IncompletePricingError());
+    return Either.right(
+      new Listing({ ...params, status: ListingStatus.ACTIVE }),
+    );
+  }
+
+  public static offersAnyDuration(pricing: ListingPricing): boolean {
+    return [pricing.dayInCents, pricing.weekInCents, pricing.monthInCents].some(
+      (priceInCents) => priceInCents !== null,
+    );
+  }
+
+  public isOwnedBy(ownerId: string): boolean {
+    return this.props.ownerId === ownerId;
+  }
+
+  public changePricing(params: {
+    ownerId: string;
+    pricing: ListingPricing;
+  }): Either.Either<Listing, ListingNotOwnedError | IncompletePricingError> {
+    const { ownerId, pricing } = params;
+    if (!this.isOwnedBy(ownerId))
+      return Either.left(new ListingNotOwnedError());
+    if (!Listing.offersAnyDuration(pricing))
+      return Either.left(new IncompletePricingError());
+    return Either.right(new Listing({ ...this.props, pricing }));
   }
 
   public static isAvailabilityEntirelyPast(

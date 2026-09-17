@@ -56,6 +56,19 @@ export class KnexListingRepository implements ListingRepository {
     }
   }
 
+  public async save(listing: Listing, trx?: GenericTransaction): Promise<void> {
+    const state = listing.toState();
+    const query = this.connection<SchemaListingRepository>(this.tableName)
+      .where({ place_key: listing.placeKey(), status: state.status })
+      .update({
+        day_price_in_cents: state.pricing.dayInCents,
+        week_price_in_cents: state.pricing.weekInCents,
+        month_price_in_cents: state.pricing.monthInCents,
+      });
+    if (trx) query.transacting(trx);
+    await query;
+  }
+
   public async findActiveByPlaceKey(
     placeKey: string,
     trx?: GenericTransaction,

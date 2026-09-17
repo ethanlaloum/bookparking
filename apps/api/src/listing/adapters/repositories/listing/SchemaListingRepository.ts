@@ -6,9 +6,9 @@ export interface SchemaListingRepository {
   place_key: string;
   access_description: string;
   photos: string[];
-  day_price_in_cents: number;
-  week_price_in_cents: number;
-  month_price_in_cents: number;
+  day_price_in_cents: number | null;
+  week_price_in_cents: number | null;
+  month_price_in_cents: number | null;
   available_from: Date | string;
   available_to: Date | string;
   status: string;

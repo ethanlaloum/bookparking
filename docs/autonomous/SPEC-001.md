@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 7
+decisions: 10
 ecarts_majeurs: 3
 ---
 
@@ -112,6 +112,42 @@ ecarts_majeurs: 3
 - Traçabilité : RG-02 · EX-001-36 · US-002
 - Confiance : moyenne
 - Question humaine au retour : faut-il ajouter EX-38 dès maintenant, ou dans la story qui branche l'authentification ?
+
+### AUTO-08 · Une clé de place unique, calculée par le domaine et contrainte par la base
+- Déclencheur : revue sécurité US-003, constats majeurs 1 (`KnexListingRepository.ts:52`, normalisation SQL différente de `normalizeAddress`, index unique sur l'adresse brute) et 2 (`Listing.ts:61`, box jamais normalisé) ; revue conventions US-003, constat majeur 3 (filet ² de la sonde qui ne couvre pas la normalisation, requête Knex jamais exécutée contre Postgres).
+- Choix : le domaine calcule une seule clé de place (adresse et box normalisés de la même façon : Unicode NFKC, espaces de toute sorte réduits et rognés, minuscules) ; l'annonce stocke cette clé dans une colonne `place_key` écrite par le dépôt ; une nouvelle migration remplace l'index unique par `(place_key) WHERE status = 'ACTIVE'` ; la recherche lit `place_key` sans normalisation SQL ; une violation de cet index est traduite en `ListingAlreadyActiveError`. La spec gagne EX-38 (un box écrit avec une espace) au barreau `unit` et EX-39 (deux publications concurrentes de la même place écrite autrement) au barreau `int-repo`, rattachés à RG-01 et ajoutés à US-003, qui passe à 7 exemples.
+- Alternatives : (a) index sur expression SQL — écarté, deux normalisations (JS et SQL) divergent, c'est le défaut constaté ; (b) une story séparée pour ces refus — écarté, livrerait US-003 avec un contournement connu de EX-14 ; (c) rester à 5 exemples en reportant EX-38/EX-39 — même raison.
+- Preuve : revue sécurité US-003 (exploit « 12 » suivi d'une espace, retour à la ligne, espace insécable) ; `apps/api/src/infra/migrations/20260917120000_create_listings.ts:31`.
+- Impact : spec révision 3, plan révision 4 ; US-003 dépasse le plafond de 5 exemples par story (plan.md §4), dépassement assumé pour ne pas livrer un contournement.
+- Coût : une migration, un barreau int-repo de plus dans US-003.
+- Risque : faible — aucune donnée réelle, la route n'est montée nulle part (AUTO-03).
+- Rollback : revert de la PR US-003 et de sa migration.
+- Traçabilité : RG-01 · EX-001-16 · EX-001-38 · EX-001-39 · US-003
+- Confiance : haute
+- Question humaine au retour : « Box 12 », « n°12 » et « 12 » doivent-ils désigner le même box ? (la normalisation retenue ne les confond pas)
+- Note : l'identifiant EX-38 proposé dans AUTO-07 n'a jamais été inscrit dans la spec ; il est attribué ici. La proposition d'AUTO-07 recevra le prochain numéro libre si elle est retenue.
+
+### AUTO-09 · Le refus « place déjà annoncée » répond 409
+- Déclencheur : revue conventions US-003, constat majeur 1 (`listing.controller.ts:54-71`, `ListingAlreadyActiveError` tombe dans le 500).
+- Choix : ajouter la branche `ListingAlreadyActiveError → 409` à l'échelle du contrôleur, sans nouvel exemple int-http (même traitement que `UnknownError` en AUTO-02).
+- Alternatives : un exemple int-http du 409 — écarté, le refus est déjà prouvé en unit par EX-02/14/16 et la route n'est pas montée.
+- Preuve : `backend-conventions/rest.md` §6.
+- Impact : branche du contrôleur sans test dédié.
+- Coût : faible. Risque : faible. Rollback : revert.
+- Traçabilité : RG-01 · US-003
+- Confiance : haute
+- Question humaine au retour : aucune
+
+### AUTO-10 · La ligne « la location n'est pas touchée » d'EX-15 n'est pas encore observable
+- Déclencheur : revue conventions US-003, constat majeur 2 (`PublishListing.sut.ts:121-124,235-238`, `thenRentalIsUnchanged` relit l'état qu'il vient d'écrire).
+- Choix : retirer cette assertion tautologique du cadre EX-15 ; le refus et « l'annonce existante reste la seule active » restent assérés. La dernière ligne `Et` sera observée quand un dépôt de locations existera (stories de `rental/`).
+- Alternatives : (a) garder l'assertion — écarté, elle ne peut jamais échouer ; (b) créer un dépôt de locations maintenant — écarté, empiète sur US-005 à US-008.
+- Preuve : revue conventions US-003 constat 2.
+- Impact : une ligne `Et` d'EX-15 sans preuve jusqu'aux stories de location.
+- Coût : nul. Risque : faible. Rollback : rétablir l'assertion sur un vrai dépôt.
+- Traçabilité : RG-01 · EX-001-15 · US-003
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

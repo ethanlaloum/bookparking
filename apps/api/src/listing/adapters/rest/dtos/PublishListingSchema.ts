@@ -1,7 +1,6 @@
 import { Schema } from 'effect/index';
 
 export const PublishListingSchema = Schema.Struct({
-  ownerName: Schema.NonEmptyString,
   address: Schema.NonEmptyString,
   box: Schema.NonEmptyString,
   accessDescription: Schema.NonEmptyString,

@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 14
+decisions: 15
 ecarts_majeurs: 3
 ---
 
@@ -192,6 +192,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-04 · EX-001-07 · EX-001-24 · US-004
 - Confiance : haute
 - Question humaine au retour : aucune
+
+### AUTO-15 · Ce que « couvre » un palier : pavage exact de la période, mois calendaire
+- Déclencheur : US-005 (EX-05, EX-20, EX-21, EX-23). La spec ne définit ni la longueur d'un mois ni ce que « couvrir » veut dire ; EX-21 refuse sept jours avec une grille au seul mois, ce qui exclut qu'un mois « couvre » une période plus courte.
+- Choix : la période va du premier au dernier jour inclus ; un prix est une combinaison de paliers qui pave exactement la période, sans chevauchement ni reste — jour = 1 jour, semaine = 7 jours consécutifs, mois = du jour J au jour J−1 du mois suivant (le 01/10 au 31/10) ; on retient la combinaison la moins chère ; aucune combinaison possible → pas de prix. Les montants restent en centimes entiers, additionnés sans arrondi. La fonction reçoit une grille `{ dayInCents, weekInCents, monthInCents }` aux durées éventuellement `null` (US-004) et rend `{ amountInCents }` ou `null`.
+- Alternatives : (a) un mois = 30 jours — écarté, EX-05 (octobre, 31 jours) vaudrait 30 jours + 1 ; (b) un palier plus long peut couvrir une période plus courte — écarté, contredit EX-21.
+- Preuve : EX-05 (01/10–31/10 = un mois), EX-20 (dix jours = une semaine + trois jours), EX-21 (sept jours, grille au mois seul, pas de prix).
+- Impact : fonction pure de `rental/domain/services/`, sans dépendance à `listing/`.
+- Coût : faible. Risque : moyen — un mois commençant le 31 est ambigu (31/01 → 28/02 ?) et n'est couvert par aucun exemple. Rollback : revert.
+- Traçabilité : RG-03 · EX-001-05 · EX-001-20 · EX-001-21 · EX-001-23 · US-005
+- Confiance : moyenne
+- Question humaine au retour : comment compter un mois qui commence un 29, 30 ou 31 ?
 
 ## Écarts majeurs livrés
 

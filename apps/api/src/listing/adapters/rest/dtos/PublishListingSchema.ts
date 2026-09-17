@@ -6,9 +6,9 @@ export const PublishListingSchema = Schema.Struct({
   accessDescription: Schema.NonEmptyString,
   photos: Schema.Array(Schema.NonEmptyString).pipe(Schema.minItems(1)),
   pricing: Schema.Struct({
-    dayInCents: Schema.Int,
-    weekInCents: Schema.Int,
-    monthInCents: Schema.Int,
+    dayInCents: Schema.optional(Schema.Int),
+    weekInCents: Schema.optional(Schema.Int),
+    monthInCents: Schema.optional(Schema.Int),
   }),
   availability: Schema.Struct({
     from: Schema.Date,

@@ -15,6 +15,7 @@ import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
 import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
+import { IncompletePricingError } from '../../../../domain/usecases/publish-listing/errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-listing/errors/PhotoStorageFailedError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
@@ -47,7 +48,11 @@ export class ListingController {
         box: parsedBody.box,
         accessDescription: parsedBody.accessDescription,
         photos: [...parsedBody.photos],
-        pricing: { ...parsedBody.pricing },
+        pricing: {
+          dayInCents: parsedBody.pricing.dayInCents ?? null,
+          weekInCents: parsedBody.pricing.weekInCents ?? null,
+          monthInCents: parsedBody.pricing.monthInCents ?? null,
+        },
         availability: { ...parsedBody.availability },
         publishedAt: new Date(),
       });
@@ -55,6 +60,9 @@ export class ListingController {
       if (Either.isLeft(result)) {
         const error = result.left;
         if (error instanceof AvailabilityPeriodExpiredError) {
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        if (error instanceof IncompletePricingError) {
           throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
         if (error instanceof ListingAlreadyActiveError) {

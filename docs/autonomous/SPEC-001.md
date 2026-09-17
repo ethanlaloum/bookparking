@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 15
+decisions: 16
 ecarts_majeurs: 3
 ---
 
@@ -203,6 +203,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-03 · EX-001-05 · EX-001-20 · EX-001-21 · EX-001-23 · US-005
 - Confiance : moyenne
 - Question humaine au retour : comment compter un mois qui commence un 29, 30 ou 31 ?
+
+### AUTO-16 · La demande de location lit l'annonce par ses propres ports, et fige son prix
+- Déclencheur : US-006 (EX-09, EX-10, EX-22, EX-28, EX-29). Le cas d'usage a besoin de la grille de l'annonce et des locations confirmées, alors que l'issue interdit `apps/api/src/listing/**` et que le stockage des demandes appartient à US-008.
+- Choix : le contexte `rental` déclare ses propres ports dans `apps/api/src/rental/domain/ports/` — un lecteur d'annonce publiée (place → grille, publiée ou non) et un dépôt de locations et demandes — avec leurs doublures en mémoire ; aucun import de `listing/`. Le prix est calculé par `computeRentalPrice` (US-005) au moment de la demande et figé dans l'entité `RentalRequest` : un changement de grille ultérieur ne le modifie pas (EX-22). Une journée demandée est bornée sur le calendrier `Europe/Paris` (EX-29), converti sans dépendance nouvelle (`Intl.DateTimeFormat`). Les dates déjà louées sont refusées dès qu'elles se chevauchent, dernier jour compris (EX-10, EX-28).
+- Alternatives : (a) importer `ListingRepository` depuis `listing/` — écarté, couplage entre contextes et couche interdite par l'issue ; (b) recalculer le prix à l'acceptation — écarté, EX-22 fige le prix à la demande.
+- Preuve : corps de l'issue #7 (« Couches interdites : `apps/api/src/listing/**` ») ; EX-22 et EX-29 de la spec.
+- Impact : `rental/domain/ports/` s'ajoute aux couches autorisées par l'issue, qui ne listait que `usecases/request-rental/**` et `entities/**`.
+- Coût : deux ports et leurs doublures. Risque : faible, rien n'est monté. Rollback : revert.
+- Traçabilité : RG-03 · RG-06 · EX-001-09 · EX-001-10 · EX-001-22 · EX-001-28 · EX-001-29 · US-006
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

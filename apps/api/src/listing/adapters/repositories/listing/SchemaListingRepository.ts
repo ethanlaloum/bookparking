@@ -3,7 +3,7 @@ export interface SchemaListingRepository {
   owner_id: string;
   address: string;
   box: string;
-  place_key?: string;
+  place_key: string;
   access_description: string;
   photos: string[];
   day_price_in_cents: number;

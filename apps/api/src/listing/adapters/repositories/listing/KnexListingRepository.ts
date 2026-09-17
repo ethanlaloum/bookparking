@@ -3,7 +3,18 @@ import type { Knex } from 'knex';
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
 import { Listing, ListingStatus } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
+import { ListingAlreadyActiveError } from '../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { SchemaListingRepository } from './SchemaListingRepository';
+
+const UNIQUE_VIOLATION = '23505';
+const ACTIVE_PLACE_KEY_UNIQUE_INDEX = 'listings_active_place_key_unique';
+
+const isActivePlaceKeyViolation = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  (error as { code?: unknown }).code === UNIQUE_VIOLATION &&
+  (error as { constraint?: unknown }).constraint ===
+    ACTIVE_PLACE_KEY_UNIQUE_INDEX;
 
 export class KnexListingRepository implements ListingRepository {
   private readonly tableName = 'listings';
@@ -22,6 +33,7 @@ export class KnexListingRepository implements ListingRepository {
       owner_id: state.ownerId,
       address: state.address,
       box: state.box,
+      place_key: listing.placeKey(),
       access_description: state.accessDescription,
       photos: state.photos,
       day_price_in_cents: state.pricing.dayInCents,
@@ -34,7 +46,14 @@ export class KnexListingRepository implements ListingRepository {
     };
     const query = this.connection(this.tableName).insert(row);
     if (trx) query.transacting(trx);
-    await query;
+    try {
+      await query;
+    } catch (error: unknown) {
+      if (isActivePlaceKeyViolation(error)) {
+        throw new ListingAlreadyActiveError();
+      }
+      throw error;
+    }
   }
 
   public async findActiveByPlaceKey(

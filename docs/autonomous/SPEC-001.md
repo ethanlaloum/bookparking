@@ -1,9 +1,9 @@
 ---
 spec: SPEC-001
 mode: autonomous
-statut: a-revoir
+statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
-termine_le: 2026-09-17T10:02:12Z
+termine_le: null
 decisions: 7
 ecarts_majeurs: 3
 ---
@@ -129,7 +129,7 @@ ecarts_majeurs: 3
 
 ## À relire au retour
 
-- **Arrêt** : fusionner la PR #13 (ou autoriser `gh pr merge` dans les permissions), puis relancer `/jp-way:build SPEC-001`.
+- Reprise le 17/09/2026 : `/jp-way:build SPEC-001` relancé après ajout de la règle `Bash(gh pr merge:*)` ; l'arrêt sur la fusion de la PR #13 est levé.
 
 - AUTO-01 : quel mécanisme d'authentification alimente `AccessTokenVerifier` ?
 - AUTO-03 : stockage de photos et base de production au premier démarrage de l'api.

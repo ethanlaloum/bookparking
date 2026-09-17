@@ -28,7 +28,7 @@ republier la même place, dépublie d'abord l'annonce active existante.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-001","story":"US-003","ex":["EX-02","EX-14","EX-15","EX-16","EX-35","EX-38","EX-39"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-003","ex":["EX-02","EX-14","EX-15","EX-16","EX-35","EX-38","EX-39"],"pr":14} -->
 
 ## Une annonce incomplète ou usurpée n'est plus publiée
 

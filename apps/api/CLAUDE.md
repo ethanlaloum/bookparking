@@ -15,6 +15,8 @@
 
 `src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route.
 
+`src/rental` porte le second contexte métier : pour l'instant seulement `domain/services/computeRentalPrice.ts`, une fonction pure sans port ni adaptateur — RG-03 ne dépend d'aucun état extérieur, et rien ne l'appelle encore (aucun cas d'usage, aucune route). Un `domain/usecases/` et ses adaptateurs n'y entrent que lorsqu'une story la consomme (US-006).
+
 `src/infra` porte ce qui parle à une vraie base : les migrations Knex (`infra/migrations`) et l'outillage du barreau `int` (`testKnexfile.ts`, `testcontainers-setup.ts`, qui démarre un conteneur `postgres:15` par exécution). `src/shared/test/http` porte les doublures communes aux tests `int-http` (`TestAuthGuard`, `UseCaseDouble`, `createControllerTestApp`).
 
 Chaque cas d'usage ou contrôleur porte un fichier `<Nom>.sut.ts` à côté de son test (`PublishListing.sut.ts`, `listing.controller.sut.ts`) : il construit le double — en mémoire, ou le module de test Nest — et les fonctions `given/when/then`, et n'est importé que par ce test-là.
@@ -28,7 +30,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**17 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| unit (**21 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
 | int-repo + int-http (**2 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-17 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
@@ -62,6 +64,14 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 - **Un palier absent de la grille tarifaire est `null`, jamais `0` — `0` est un prix valide.**
   `Listing.offersAnyDuration` (`Listing.ts`) teste `!== null` sur chaque durée, pas sa valeur.
   Voir `ADR-002` pour l'alternative écartée (représenter l'absence par `0`) et son coût.
+
+- **`computeRentalPrice` mesure un mois par `Date.UTC(année, mois + 1, jour)`, qui déborde silencieusement dans le mois suivant pour un départ le 29, 30 ou 31.**
+  `sameDayNextMonth` (`computeRentalPrice.ts:25-28`) ne vérifie jamais que le mois cible porte ce quantième : pour une période commençant le 31/01/2026, le palier « mois » couvre jusqu'au 03/03/2026, pas jusqu'au dernier jour de février (vérifiable dans n'importe quelle console JS : `Date.UTC(2026, 1, 31)` retombe sur le 3 mars). Aucun `EX-nn` ne teste ce départ ; c'est la question restée ouverte dans `AUTO-15` (`docs/autonomous/SPEC-001.md`).
+  Ne pas exposer un palier mensuel sur une annonce dont la période de disponibilité démarre après le 28 sans relire cette question.
+
+- **`computeRentalPrice` compte les jours en millisecondes UTC, alors que SPEC-001 §8 borne toute journée de location sur `Europe/Paris` (EX-29).**
+  `daysBetween` (`computeRentalPrice.ts:19-20`) divise un écart de `getTime()` par `86 400 000` ; il ne connaît aucun fuseau, seule une date déjà ramenée à minuit UTC du jour Europe/Paris donne le bon compte de jours — exactement ce que fait l'auxiliaire de test `period()` (`computeRentalPrice.unit.spec.ts:3-6`), et rien d'autre encore ne le garantit puisqu'aucun cas d'usage n'appelle la fonction.
+  Ne jamais lui passer un `Date` local de l'appareil ; normaliser à minuit UTC du jour Europe/Paris avant l'appel.
 
 ## Frozen versions — do not bump without reading the reason
 

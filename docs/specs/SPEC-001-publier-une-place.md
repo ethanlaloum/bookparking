@@ -3,7 +3,7 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 4
+revision: 5
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
@@ -12,7 +12,7 @@ valide_par: jp-way:auto
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 8
-exemples: 40
+exemples: 41
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -385,6 +385,15 @@ Et aucune demande n'est enregistrée pour cette période
 
 <!-- jp-way:ex {"id":"EX-40","regle":"RG-06","origine":"bug","barreau":"unit","empreinte":"c2a1f9a6"} -->
 
+#### EX-41 · une date de demande impossible
+
+Étant donné l'annonce active de `Marc D.`, louée du `01/10/2026` au `31/10/2026`
+Quand `Léa T.` demande la place du `01/10/2026` au `45/13/2026`
+Alors la demande est refusée, les dates demandées sont invalides
+Et aucune demande n'est enregistrée pour cette période
+
+<!-- jp-way:ex {"id":"EX-41","regle":"RG-06","origine":"bug","barreau":"unit","empreinte":"b72de22e"} -->
+
 #### EX-30 · deux conducteurs demandent les mêmes dates au même instant
 
 Étant donné l'annonce active de `Marc D.`, les dates du `05/11/2026` au `12/11/2026` libres
@@ -473,7 +482,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 | RG-03 | EX-20 | EX-21 | EX-22 | écarté¹³ | écarté¹⁴ | écarté¹⁵ | EX-23 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-24 | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-26 | EX-27 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
-| RG-06 | EX-28 | EX-09 | EX-29 | EX-30 | filet⁸ | EX-31 | écarté³ | EX-40 filet²¹ | écarté⁵ | écarté¹⁷ |
+| RG-06 | EX-28 | EX-09 | EX-29 | EX-30 | filet⁸ | EX-31 | écarté³ | EX-40 filet²¹ | écarté⁵ | EX-41 |
 | RG-07 | écarté¹⁹ | EX-11 | écarté²² | EX-32 | filet²³ | EX-33 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 | RG-08 | écarté¹⁹ | EX-12 | écarté¹⁸ | écarté¹³ | écarté²⁴ | EX-34 | écarté²⁵ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 
@@ -503,7 +512,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
 
-EX-40 est né de la revue de sécurité de US-006 (AUTO-17) : une période demandée sans borne bloquerait l'api. Les cellules RG-06 × Données et RG-06 × Autorisation restent fausses tant que la route de demande n'existe pas (AUTO-18).
+EX-41 est né de la revue de sécurité de US-006 (AUTO-19) : une date impossible échappait à toutes les gardes. EX-40 est né de la revue de sécurité de US-006 (AUTO-17) : une période demandée sans borne bloquerait l'api. Les cellules RG-06 × Données et RG-06 × Autorisation restent fausses tant que la route de demande n'existe pas (AUTO-18).
 
 EX-38 et EX-39 sont nés de la revue de sécurité de US-003 (AUTO-08) : une place est reconnue par une clé normalisée que la base contraint aussi.
 
@@ -632,3 +641,4 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 | 2 | 17/09/2026 | Construction autonome de US-002 (AUTO-01) : RG-02 gagne EX-36 (un visiteur non connecté ne publie pas) et EX-37 (le loueur est le compte connecté, jamais un nom saisi) ; la cellule RG-02 × Autorisation passe de filet à exemples. |
 | 3 | 17/09/2026 | Construction autonome de US-003 (AUTO-08) : RG-01 gagne EX-38 (un box écrit avec une espace en trop est le même box) et EX-39 (deux publications simultanées de la même place écrite autrement : une seule active) ; RG-01 × Concurrence passe à `EX-39 filet²`. |
 | 4 | 17/09/2026 | Construction autonome de US-006 (AUTO-17) : RG-06 gagne EX-40, une période demandée au-delà de 366 jours est refusée ; RG-06 × Volume passe à `EX-40 filet²¹`. |
+| 5 | 17/09/2026 | Construction autonome de US-006 (AUTO-19) : RG-06 gagne EX-41, une date de demande impossible est refusée ; RG-06 × Données passe d'`écarté¹⁷` à `EX-41`. |

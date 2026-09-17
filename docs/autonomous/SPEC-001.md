@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 18
+decisions: 19
 ecarts_majeurs: 3
 ---
 
@@ -236,6 +236,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-06 · US-006 · US-008
 - Confiance : moyenne
 - Question humaine au retour : valider les exemples EX-41 et EX-42 au moment de monter la route de demande.
+
+### AUTO-19 · Une date impossible est refusée par le domaine, pas seulement par la requête
+- Déclencheur : revue sécurité US-006 tour 2, constat mineur 3 (`RentalRequest.ts:52`) : un jour non analysable (`2026-13-45`) donne un compte de jours `NaN`, qui passe la borne des 366 jours, échappe au contrôle des dates louées (`overlaps` compare des `NaN`) et produit une demande au prix `undefined`.
+- Choix : refuser dans l'entité tout compte de jours non fini, avec `InvalidRequestedPeriodError`, avant la borne et avant tout calcul de prix. La spec gagne EX-41 (RG-06, barreau `unit`), rattaché à US-006, qui passe à 7 exemples. La proposition initiale de la revue plaçait EX-41 au barreau `int-http` ; elle est reclassée `unit`, barreau le plus bas qui observe le défaut.
+- Alternatives : (a) ne valider qu'au schéma de la future route — écarté, le défaut est dans le domaine que tout appelant traverse ; (b) livrer en écart mineur — écarté, une demande sans prix qui échappe au contrôle des dates louées est une réservation gratuite dès qu'une route existe.
+- Preuve : revue sécurité US-006 tour 2, constat 3.
+- Impact : spec révision 5, plan révision 6. La note ¹⁷ de la sonde (« aucune saisie libre n'entre dans ce chemin ») reste fausse pour RG-06 × Données : corrigée avec la story qui monte la route (AUTO-18).
+- Coût : un exemple, une garde. Risque : faible. Rollback : revert.
+- Traçabilité : RG-06 · EX-001-41 · US-006
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

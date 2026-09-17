@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 13
+decisions: 14
 ecarts_majeurs: 3
 ---
 
@@ -181,6 +181,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-04 · EX-001-06 · EX-001-07 · EX-001-24 · EX-001-25 · US-004
 - Confiance : moyenne — le texte « la grille tarifaire est signalée comme incomplète » ne fixe pas le message exact.
 - Question humaine au retour : quel message exact afficher pour une grille sans durée ?
+
+### AUTO-14 · Erreurs partagées dans `domain/errors/` et écriture `save` en mise à jour seule
+- Déclencheur : revue conventions US-004, constats majeurs 1 (`Listing.ts:3`, `IncompletePricingError` rangée sous `publish-listing/errors/` alors que deux cas d'usage et l'entité l'utilisent ; même motif pour `ListingNotOwnedError`) et 2 (`KnexListingRepository.save` insère quand aucune ligne active ne correspond, `InMemoryListingRepository.save` ne fait rien).
+- Choix : (1) déplacer vers `apps/api/src/listing/domain/errors/` les erreurs levées par l'entité (`IncompletePricingError`, `ListingNotOwnedError`) ; (2) `save` ne crée jamais d'annonce : il met à jour la ligne active de la même clé de place et lève `ActiveListingNotFoundError` si aucune ne correspond, à l'identique dans les deux dépôts. La publication reste le seul chemin de création.
+- Alternatives : `insert … onConflict(place_key).merge()` comme proposé par la revue — écarté, l'index unique est partiel (`WHERE status = 'ACTIVE'`) et un upsert créerait des annonces hors de `PublishListing`.
+- Preuve : revue conventions US-004 ; `backend-conventions/domain.md` (erreurs réutilisées), `data-and-events.md` §13.5 (sémantique miroir).
+- Impact : chemins d'import modifiés dans les cadres unit (les chemins d'erreur ne sont pas des assertions) ; aucun comportement d'exemple changé.
+- Coût : deux dispatchs. Risque : faible. Rollback : revert des commits.
+- Traçabilité : RG-04 · EX-001-07 · EX-001-24 · US-004
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

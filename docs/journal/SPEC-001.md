@@ -2,12 +2,39 @@
 spec: SPEC-001
 langue: fr
 entrees:
+  - { us: US-006, date: null, titre: "Une demande de location porte sur des dates réellement libres, à un prix figé" }
   - { us: US-004, date: null, titre: "Une grille tarifaire doit toujours proposer au moins un tarif" }
   - { us: US-003, date: null, titre: "Une même place ne peut plus recevoir deux annonces actives" }
   - { us: US-002, date: null, titre: "Une annonce incomplète ou usurpée n'est plus publiée" }
 ---
 
 # Publier une place — ce qui change pour toi
+
+## Une demande de location porte sur des dates réellement libres, à un prix figé
+
+**Ce qui change** — Un conducteur peut désormais demander une place sur une période précise. La
+demande n'est recevable que si aucune de ces dates n'est déjà couverte par une location confirmée sur
+cette place, y compris son tout dernier jour. Le prix retenu est celui de la grille tarifaire au moment
+de la demande : il ne change plus si le loueur modifie ensuite ses tarifs.
+
+**Pour qui** — Les conducteurs qui demandent une place, et les loueurs dont l'annonce reçoit des
+demandes.
+
+**Ce que tu vois maintenant** — Demander une place sur des dates libres après une location en cours est
+accepté, et l'annonce reste publiée pendant toute la durée de cette location. Demander des dates déjà
+couvertes par une location, y compris son tout dernier jour, est refusé : ces dates te sont signalées
+comme déjà louées, et aucune demande n'est enregistrée pour elles. Une demande faite avec l'heure de ton
+téléphone réglée sur un autre pays porte toujours sur la journée entière en heure de Paris, de minuit à
+23h59, jamais sur une partie de la veille ou du lendemain. Une période demandée de plus de `366` jours
+est refusée, tout comme des dates impossibles à lire.
+
+**Ce qu'il faut faire différemment** — Rien : le prix affiché au moment de ta demande reste le tien
+même si le loueur change sa grille juste après.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-006","ex":["EX-09","EX-10","EX-22","EX-28","EX-29","EX-40","EX-41"],"pr":17} -->
 
 ## Une grille tarifaire doit toujours proposer au moins un tarif
 

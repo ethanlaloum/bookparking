@@ -15,7 +15,7 @@
 
 `src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route.
 
-`src/rental` porte le second contexte métier : pour l'instant seulement `domain/services/computeRentalPrice.ts`, une fonction pure sans port ni adaptateur — RG-03 ne dépend d'aucun état extérieur, et rien ne l'appelle encore (aucun cas d'usage, aucune route). Un `domain/usecases/` et ses adaptateurs n'y entrent que lorsqu'une story la consomme (US-006).
+`src/rental` porte le second contexte métier, avec son propre `domain/ports/` (`PublishedListingReader`, `RentalRepository`) et leurs doublures en mémoire sous `adapters/repositories/` : le cas d'usage `domain/usecases/request-rental/` (`RequestRental.ts`, son `.sut.ts`, son sous-dossier `errors/`) ne dépend d'aucune classe de `listing/`, même pour lire la grille d'une annonce publiée — l'issue de US-006 interdisait cet import (`docs/autonomous/SPEC-001.md`, AUTO-16). Les entités `domain/entities/RentalPlace`, `RentalRequest` et `ConfirmedRental` sont construites par `fromState()` ou par `RentalRequest.request()`, jamais par un constructeur public. `domain/services/computeRentalPrice.ts` reste la seule fonction pure du contexte ; `RequestRental` l'appelle désormais au moment de la demande (voir « Things that will bite you »).
 
 `src/infra` porte ce qui parle à une vraie base : les migrations Knex (`infra/migrations`) et l'outillage du barreau `int` (`testKnexfile.ts`, `testcontainers-setup.ts`, qui démarre un conteneur `postgres:15` par exécution). `src/shared/test/http` porte les doublures communes aux tests `int-http` (`TestAuthGuard`, `UseCaseDouble`, `createControllerTestApp`).
 
@@ -30,7 +30,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**21 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| unit (**28 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
 | int-repo + int-http (**2 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-17 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
@@ -69,9 +69,17 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   `sameDayNextMonth` (`computeRentalPrice.ts:25-28`) ne vérifie jamais que le mois cible porte ce quantième : pour une période commençant le 31/01/2026, le palier « mois » couvre jusqu'au 03/03/2026, pas jusqu'au dernier jour de février (vérifiable dans n'importe quelle console JS : `Date.UTC(2026, 1, 31)` retombe sur le 3 mars). Aucun `EX-nn` ne teste ce départ ; c'est la question restée ouverte dans `AUTO-15` (`docs/autonomous/SPEC-001.md`).
   Ne pas exposer un palier mensuel sur une annonce dont la période de disponibilité démarre après le 28 sans relire cette question.
 
-- **`computeRentalPrice` compte les jours en millisecondes UTC, alors que SPEC-001 §8 borne toute journée de location sur `Europe/Paris` (EX-29).**
-  `daysBetween` (`computeRentalPrice.ts:19-20`) divise un écart de `getTime()` par `86 400 000` ; il ne connaît aucun fuseau, seule une date déjà ramenée à minuit UTC du jour Europe/Paris donne le bon compte de jours — exactement ce que fait l'auxiliaire de test `period()` (`computeRentalPrice.unit.spec.ts:3-6`), et rien d'autre encore ne le garantit puisqu'aucun cas d'usage n'appelle la fonction.
-  Ne jamais lui passer un `Date` local de l'appareil ; normaliser à minuit UTC du jour Europe/Paris avant l'appel.
+- **`computeRentalPrice` compte les jours en millisecondes UTC sans connaître de fuseau : ne jamais lui donner les vrais instants `Europe/Paris`.**
+  `dayCountingPeriodOfDays` (`CalendarDay.ts:88-93`) construit la paire neutre attendue par le calcul de prix ; `parisPeriodOfDays` (`CalendarDay.ts:76-79`) construit les vrais bornes utilisées par `overlaps()` — les deux renvoient le même type `RentalPeriod` et rien ne les distingue à l'appel.
+  Utiliser `dayCountingPeriodOfDays` pour le prix, `parisPeriodOfDays` pour tout chevauchement — voir `RequestRental.ts` pour le bon appariement.
+
+- **Dans `RequestRental`, l'ordre des gardes est chargé de sens : dates lisibles, puis durée ≤ `366` jours, puis prix, puis disponibilité.**
+  `dayCountOfDays` (`CalendarDay.ts:56-61`) rend `NaN` sur une date invalide et `NaN > 366` vaut `false` : sans `isReadableDayRange` avant la borne de durée (`RentalRequest.ts:31-34`), puis la demande construite avant `findConfirmedByPlace` (`RequestRental.ts:57-80`), une date impossible franchirait la borne et lirait la place comme libre (`overlaps()` sur un `NaN` vaut toujours `false`).
+  Ne jamais réordonner ces gardes.
+
+- **`RentalPlace.placeKeyOf` duplique à la lettre `Listing.placeKeyOf` (même `normalizePlacePart`), sans import entre les deux contextes.**
+  `RentalPlace.ts:6-7` et `Listing.ts:26-27` portent la même fonction de normalisation ; le contexte `rental` ne peut pas réutiliser celle de `listing/` (AUTO-16, `docs/autonomous/SPEC-001.md`).
+  Faire évoluer l'une sans l'autre romprait silencieusement l'accord sur ce qu'est « la même place ».
 
 ## Frozen versions — do not bump without reading the reason
 

@@ -3,10 +3,10 @@ spec: SPEC-001
 statut: valide
 valide_le: 2026-09-17
 valide_par: jp-way:auto
-revision: 5
+revision: 6
 derive_de: SPEC-001@6a4a2bd86012937c99afc033c416e16d44f62de6
 apps: [api, e2e]
-cas: 42
+cas: 43
 stories: 10
 ---
 
@@ -16,12 +16,12 @@ stories: 10
 
 | Barreau | api | e2e | Cas | Exemples |
 |---|---|---|---|---|
-| unit | 31 | — | 31 | 31 |
+| unit | 32 | — | 32 | 32 |
 | int-repo | 4 | — | 4 | 4 |
 | int-http | 6 | — | 6 | 6 |
 | journey | 0 | — | 0 | 0 |
 | e2e | — | 1 | 1 | 1 |
-| **total** | **41** | **1** | **42** | 40 exemples, 0 sans cas |
+| **total** | **42** | **1** | **43** | 41 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 - EX-03 — suggéré `e2e` seul, planifié `unit` **et** `e2e` : sa première ligne `Alors` (« l'annonce est active ») est une décision de domaine (ligne 1, T1) ; sans cas `unit`, le chemin nominal de RG-02 ne serait prouvé qu'en haut de la pyramide. Redondance assumée (T7), seul `e2e` de la spec (T3).
@@ -33,6 +33,7 @@ stories: 10
 - EX-38, EX-39 — ajoutés en révision 4 (17/09/2026, construction autonome de US-003, AUTO-08) : EX-38 est un refus de domaine (ligne 1, `unit`) ; EX-39 est une contrainte d'unicité sur une clé de place normalisée que seule une vraie base prouve (ligne 2, `int-repo`). Ils rejoignent US-003, qui passe à 7 exemples : dépassement du plafond de 5 assumé pour ne pas livrer un contournement connu de RG-01.
 - EX-15 — sa dernière ligne `Et` (« la location … n'est pas touchée ») n'a aucun sujet observable tant qu'aucun dépôt de locations n'existe (AUTO-10) ; le cas `unit` n'asserte que le refus et l'unicité.
 
+- EX-41 — ajouté en révision 6 (17/09/2026, AUTO-19) : une date impossible échappait à la borne des 366 jours comme au contrôle des dates louées ; le barreau le plus bas qui l'observe est `unit` (T1). US-006 passe à 7 exemples.
 - EX-40 — ajouté en révision 5 (17/09/2026, construction autonome de US-006, AUTO-17) : le refus d'une période démesurée est une décision de domaine (ligne 1, `unit`). US-006 passe à 6 exemples.
 
 **Découpage — le rouge d'abord**
@@ -80,6 +81,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | EX-28 | unit | api | US-006 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | refuses a request starting on the last rented day |
 | EX-29 | unit | api | US-006 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | bounds a requested day on the Europe/Paris calendar day |
 | EX-40 | unit | api | US-006 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | refuses a request longer than the maximum rental period |
+| EX-41 | unit | api | US-006 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | refuses a request whose dates cannot be read |
 | EX-11 | unit | api | US-007 | `apps/api/src/listing/domain/usecases/unpublish-listing/UnpublishListing.unit.spec.ts` | unpublishes a listing without releasing its confirmed rental |
 | EX-33 | unit | api | US-007 | `apps/api/src/listing/domain/usecases/unpublish-listing/UnpublishListing.unit.spec.ts` | keeps an already unpublished listing unpublished without error |
 | EX-31 | unit | api | US-007 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | refuses a request on an unpublished listing |
@@ -123,6 +125,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 <!-- jp-way:cas {"ex":"EX-28","barreau":"unit","app":"api","story":"US-006","chemin":"apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts","titre":"refuses a request starting on the last rented day","empreinte":"d0e3da6c"} -->
 <!-- jp-way:cas {"ex":"EX-29","barreau":"unit","app":"api","story":"US-006","chemin":"apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts","titre":"bounds a requested day on the Europe/Paris calendar day","empreinte":"f741bf4e"} -->
 <!-- jp-way:cas {"ex":"EX-40","barreau":"unit","app":"api","story":"US-006","chemin":"apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts","titre":"refuses a request longer than the maximum rental period","empreinte":"c2a1f9a6"} -->
+<!-- jp-way:cas {"ex":"EX-41","barreau":"unit","app":"api","story":"US-006","chemin":"apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts","titre":"refuses a request whose dates cannot be read","empreinte":"b72de22e"} -->
 <!-- jp-way:cas {"ex":"EX-11","barreau":"unit","app":"api","story":"US-007","chemin":"apps/api/src/listing/domain/usecases/unpublish-listing/UnpublishListing.unit.spec.ts","titre":"unpublishes a listing without releasing its confirmed rental","empreinte":"9e24fb4c"} -->
 <!-- jp-way:cas {"ex":"EX-33","barreau":"unit","app":"api","story":"US-007","chemin":"apps/api/src/listing/domain/usecases/unpublish-listing/UnpublishListing.unit.spec.ts","titre":"keeps an already unpublished listing unpublished without error","empreinte":"e1ed63cf"} -->
 <!-- jp-way:cas {"ex":"EX-31","barreau":"unit","app":"api","story":"US-007","chemin":"apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts","titre":"refuses a request on an unpublished listing","empreinte":"bd5b02a4"} -->
@@ -143,7 +146,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | 3 | US-003 | N'accepter qu'une annonce active par box | api | unit int-repo | EX-02 EX-14 EX-15 EX-16 EX-35 EX-38 EX-39 | #4 |
 | 4 | US-004 | Exiger au moins une durée dans la grille | api | unit | EX-07 EX-24 EX-06 EX-25 | #5 |
 | 5 | US-005 | Calculer le prix d'une période | api | unit | EX-05 EX-20 EX-21 EX-23 | #6 |
-| 6 | US-006 | Demander une place sur des dates libres | api | unit | EX-22 EX-09 EX-10 EX-28 EX-29 EX-40 | #7 |
+| 6 | US-006 | Demander une place sur des dates libres | api | unit | EX-22 EX-09 EX-10 EX-28 EX-29 EX-40 EX-41 | #7 |
 | 7 | US-007 | Dépublier une annonce | api | unit | EX-11 EX-33 EX-31 EX-13 | #8 |
 | 8 | US-008 | Enregistrer une seule demande malgré la concurrence | api | int-repo | EX-30 EX-32 | #9 |
 | 9 | US-009 | Exposer l'adresse exacte d'une annonce | api | int-http | EX-08 EX-26 EX-27 | #10 |

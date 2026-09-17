@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 15
+decisions: 19
 ecarts_majeurs: 3
 ---
 
@@ -203,6 +203,50 @@ ecarts_majeurs: 3
 - Traçabilité : RG-03 · EX-001-05 · EX-001-20 · EX-001-21 · EX-001-23 · US-005
 - Confiance : moyenne
 - Question humaine au retour : comment compter un mois qui commence un 29, 30 ou 31 ?
+
+### AUTO-16 · La demande de location lit l'annonce par ses propres ports, et fige son prix
+- Déclencheur : US-006 (EX-09, EX-10, EX-22, EX-28, EX-29). Le cas d'usage a besoin de la grille de l'annonce et des locations confirmées, alors que l'issue interdit `apps/api/src/listing/**` et que le stockage des demandes appartient à US-008.
+- Choix : le contexte `rental` déclare ses propres ports dans `apps/api/src/rental/domain/ports/` — un lecteur d'annonce publiée (place → grille, publiée ou non) et un dépôt de locations et demandes — avec leurs doublures en mémoire ; aucun import de `listing/`. Le prix est calculé par `computeRentalPrice` (US-005) au moment de la demande et figé dans l'entité `RentalRequest` : un changement de grille ultérieur ne le modifie pas (EX-22). Une journée demandée est bornée sur le calendrier `Europe/Paris` (EX-29), converti sans dépendance nouvelle (`Intl.DateTimeFormat`). Les dates déjà louées sont refusées dès qu'elles se chevauchent, dernier jour compris (EX-10, EX-28).
+- Alternatives : (a) importer `ListingRepository` depuis `listing/` — écarté, couplage entre contextes et couche interdite par l'issue ; (b) recalculer le prix à l'acceptation — écarté, EX-22 fige le prix à la demande.
+- Preuve : corps de l'issue #7 (« Couches interdites : `apps/api/src/listing/**` ») ; EX-22 et EX-29 de la spec.
+- Impact : `rental/domain/ports/` s'ajoute aux couches autorisées par l'issue, qui ne listait que `usecases/request-rental/**` et `entities/**`. Deux branches d'erreur du cas d'usage ne sont couvertes par aucun exemple ni aucun test de cette story : `ListingNotPublishedError` (le lecteur d'annonce rend `null`), dont l'exemple EX-31 est planifié en US-007, et `NoPriceForRequestedPeriodError` (aucune combinaison de paliers ne couvre la période), prouvé au niveau du service par EX-21 mais jamais remonté au cas d'usage.
+- Coût : deux ports et leurs doublures. Risque : faible, rien n'est monté. Rollback : revert.
+- Traçabilité : RG-03 · RG-06 · EX-001-09 · EX-001-10 · EX-001-22 · EX-001-28 · EX-001-29 · US-006
+- Confiance : haute
+- Question humaine au retour : aucune
+
+### AUTO-17 · Une demande ne dépasse pas 366 jours, et porte l'adresse de l'annonce
+- Déclencheur : revue sécurité US-006, constat majeur 1 (`RentalRequest.ts:45-48`, aucune borne de durée : une demande de plusieurs millions de jours bloque la boucle d'événements) et constat mineur 2 (`RentalRequest.ts:55-56`, la demande garde l'orthographe du demandeur au lieu de celle de l'annonce).
+- Choix : (1) une période demandée porte au plus **366 jours**, bornes comprises ; au-delà, la demande est refusée avec `RequestedPeriodTooLongError` avant tout calcul de prix. La spec gagne EX-40 (RG-06, barreau `unit`), rattaché à US-006, qui passe à 6 exemples. (2) la demande est construite avec l'adresse et le box de l'annonce publiée, jamais avec ceux du demandeur.
+- Alternatives : (a) borner seulement à la frontière HTTP — écarté, le cas d'usage doit tenir seul et la route n'existe pas encore ; (b) une durée maximale plus courte (par exemple 90 jours) — écarté faute de règle produit ; 366 jours couvre une location à l'année sans laisser passer d'abus.
+- Preuve : revue sécurité US-006 (exploit `2026-01-01` → `+275760-09-13`).
+- Impact : spec révision 4, plan révision 5 ; une durée maximale de location apparaît sans que la spec l'ait discutée.
+- Coût : un exemple et une garde. Risque : faible. Rollback : revert.
+- Traçabilité : RG-06 · EX-001-40 · US-006
+- Confiance : moyenne — le plafond de 366 jours est un choix, pas une règle validée.
+- Question humaine au retour : quelle durée maximale de location retenir ?
+
+### AUTO-18 · Trois trous de sonde relevés sur RG-06, laissés ouverts
+- Déclencheur : revue sécurité US-006, section Couverture — RG-06 × Données est marquée « écarté, aucune saisie libre », ce qui est faux depuis que la demande reçoit une adresse, un box et deux dates saisis ; RG-06 × Volume ne couvre que la lecture ; RG-06 × Autorisation ne parle que du loueur, pas du conducteur.
+- Choix : ne corriger que ce que US-006 peut prouver (EX-40, AUTO-17). Les dates invalides et l'identité du demandeur lue depuis le jeton appartiennent à la story qui monte la route (US-008) : la spec les recevra à ce moment-là, avec un barreau où elles sont observables.
+- Alternatives : tout ajouter maintenant — écarté, aucun exemple int-http n'a de route à interroger dans cette story.
+- Preuve : revue sécurité US-006, exemples proposés EX-41 (dates invalides) et EX-42 (`renterId` lu dans le corps).
+- Impact : la sonde de RG-06 reste fausse sur trois cellules jusqu'à US-008.
+- Coût : nul maintenant. Risque : moyen si US-008 monte la route sans reprendre ces exemples. Rollback : sans objet.
+- Traçabilité : RG-06 · US-006 · US-008
+- Confiance : moyenne
+- Question humaine au retour : valider les exemples EX-41 et EX-42 au moment de monter la route de demande.
+
+### AUTO-19 · Une date impossible est refusée par le domaine, pas seulement par la requête
+- Déclencheur : revue sécurité US-006 tour 2, constat mineur 3 (`RentalRequest.ts:52`) : un jour non analysable (`2026-13-45`) donne un compte de jours `NaN`, qui passe la borne des 366 jours, échappe au contrôle des dates louées (`overlaps` compare des `NaN`) et produit une demande au prix `undefined`.
+- Choix : refuser dans l'entité tout compte de jours non fini, avec `InvalidRequestedPeriodError`, avant la borne et avant tout calcul de prix. La spec gagne EX-41 (RG-06, barreau `unit`), rattaché à US-006, qui passe à 7 exemples. La proposition initiale de la revue plaçait EX-41 au barreau `int-http` ; elle est reclassée `unit`, barreau le plus bas qui observe le défaut.
+- Alternatives : (a) ne valider qu'au schéma de la future route — écarté, le défaut est dans le domaine que tout appelant traverse ; (b) livrer en écart mineur — écarté, une demande sans prix qui échappe au contrôle des dates louées est une réservation gratuite dès qu'une route existe.
+- Preuve : revue sécurité US-006 tour 2, constat 3.
+- Impact : spec révision 5, plan révision 6. La note ¹⁷ de la sonde (« aucune saisie libre n'entre dans ce chemin ») reste fausse pour RG-06 × Données : corrigée avec la story qui monte la route (AUTO-18).
+- Coût : un exemple, une garde. Risque : faible. Rollback : revert.
+- Traçabilité : RG-06 · EX-001-41 · US-006
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

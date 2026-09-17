@@ -1,3 +1,4 @@
+import { InvalidRequestedPeriodError } from '../../errors/InvalidRequestedPeriodError';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { createRequestRentalSUT } from './RequestRental.sut';
@@ -129,5 +130,24 @@ describe('RequestRental @SPEC-001', () => {
 
     sut.thenRequestIsRefusedWith(result, RequestedPeriodTooLongError);
     sut.thenNoRequestRecordedFor({ from: '2026-01-01', to: '9999-12-31' });
+  });
+
+  it('refuses a request whose dates cannot be read @EX-001-41', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...PLACE,
+      pricing: { day: 1200, week: 6000, month: 18000 },
+    });
+    sut.givenRentedPeriod({ ...PLACE, from: '2026-10-01', to: '2026-10-31' });
+
+    const result = await sut.whenRequestedBy(LEA, {
+      ...PLACE,
+      from: '2026-10-01',
+      to: '2026-13-45',
+      requestedAt: '2026-09-20',
+    });
+
+    sut.thenRequestIsRefusedWith(result, InvalidRequestedPeriodError);
+    sut.thenNoRequestRecordedFor({ from: '2026-10-01', to: '2026-13-45' });
   });
 });

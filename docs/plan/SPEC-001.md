@@ -3,10 +3,10 @@ spec: SPEC-001
 statut: valide
 valide_le: 2026-09-17
 valide_par: jp-way:auto
-revision: 3
+revision: 4
 derive_de: SPEC-001@ec9a88eacbc0b97d728c371ad7599e031822efbc
 apps: [api, e2e]
-cas: 39
+cas: 41
 stories: 10
 ---
 
@@ -16,12 +16,12 @@ stories: 10
 
 | Barreau | api | e2e | Cas | Exemples |
 |---|---|---|---|---|
-| unit | 29 | — | 29 | 29 |
-| int-repo | 3 | — | 3 | 3 |
+| unit | 30 | — | 30 | 30 |
+| int-repo | 4 | — | 4 | 4 |
 | int-http | 6 | — | 6 | 6 |
 | journey | 0 | — | 0 | 0 |
 | e2e | — | 1 | 1 | 1 |
-| **total** | **38** | **1** | **39** | 37 exemples, 0 sans cas |
+| **total** | **40** | **1** | **41** | 39 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 - EX-03 — suggéré `e2e` seul, planifié `unit` **et** `e2e` : sa première ligne `Alors` (« l'annonce est active ») est une décision de domaine (ligne 1, T1) ; sans cas `unit`, le chemin nominal de RG-02 ne serait prouvé qu'en haut de la pyramide. Redondance assumée (T7), seul `e2e` de la spec (T3).
@@ -29,6 +29,9 @@ stories: 10
 - EX-16 — suggéré `int-repo`, planifié `unit` : reconnaître deux écritures d'une même adresse comme la même place est une normalisation observable sans base (T1) ; la contrainte d'unicité en base est le filet ² de la sonde (T5).
 
 - EX-36, EX-37 — ajoutés en révision 3 (17/09/2026, construction autonome de US-002, AUTO-01), suggérés et planifiés `int-http` : un garde qui refuse un appelant non authentifié et un loueur lu sur la requête authentifiée ne s'observent qu'à la frontière HTTP (ligne 3). Ils rejoignent US-002, story ouverte de la même app portant RG-02, qui passe à 5 exemples.
+
+- EX-38, EX-39 — ajoutés en révision 4 (17/09/2026, construction autonome de US-003, AUTO-08) : EX-38 est un refus de domaine (ligne 1, `unit`) ; EX-39 est une contrainte d'unicité sur une clé de place normalisée que seule une vraie base prouve (ligne 2, `int-repo`). Ils rejoignent US-003, qui passe à 7 exemples : dépassement du plafond de 5 assumé pour ne pas livrer un contournement connu de RG-01.
+- EX-15 — sa dernière ligne `Et` (« la location … n'est pas touchée ») n'a aucun sujet observable tant qu'aucun dépôt de locations n'existe (AUTO-10) ; le cas `unit` n'asserte que le refus et l'unicité.
 
 **Découpage — le rouge d'abord**
 - Un exemple qui affirme une **acceptation** ne peut être rouge pour la bonne raison que dans la story qui **crée** son use-case : après elle, la publication accepte déjà tout ce qu'aucune contrainte n'interdit, et le cadre est vert avant la moindre ligne de code — un cadre vide au sens de `build.md`, qui arrête la construction. Un **refus** ajoute une contrainte et reste rouge quelle que soit sa story.
@@ -59,6 +62,8 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | EX-15 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a new listing for a box whose active listing is under rental |
 | EX-16 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | treats a differently spelled address with the same box as the same place |
 | EX-35 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | accepts a listing for another box at the same address |
+| EX-38 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a listing whose box differs from an active one only by surrounding spaces |
+| EX-39 | int-repo | api | US-003 | `apps/api/src/listing/adapters/repositories/listing/KnexListingRepository.int.spec.ts` | keeps a single active listing when the same place is written twice differently |
 | EX-07 | unit | api | US-004 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a listing whose pricing offers no duration |
 | EX-24 | unit | api | US-004 | `apps/api/src/listing/domain/usecases/update-listing-pricing/UpdateListingPricing.unit.spec.ts` | refuses removing the last duration from a published listing's pricing |
 | EX-06 | unit | api | US-004 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | publishes a listing whose pricing offers only the month |
@@ -99,6 +104,8 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 <!-- jp-way:cas {"ex":"EX-15","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a new listing for a box whose active listing is under rental","empreinte":"83a12eee"} -->
 <!-- jp-way:cas {"ex":"EX-16","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"treats a differently spelled address with the same box as the same place","empreinte":"0c2e49e5"} -->
 <!-- jp-way:cas {"ex":"EX-35","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"accepts a listing for another box at the same address","empreinte":"72eebb9c"} -->
+<!-- jp-way:cas {"ex":"EX-38","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a listing whose box differs from an active one only by surrounding spaces","empreinte":"8dbd2ebb"} -->
+<!-- jp-way:cas {"ex":"EX-39","barreau":"int-repo","app":"api","story":"US-003","chemin":"apps/api/src/listing/adapters/repositories/listing/KnexListingRepository.int.spec.ts","titre":"keeps a single active listing when the same place is written twice differently","empreinte":"82c89208"} -->
 <!-- jp-way:cas {"ex":"EX-07","barreau":"unit","app":"api","story":"US-004","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a listing whose pricing offers no duration","empreinte":"c8c2f730"} -->
 <!-- jp-way:cas {"ex":"EX-24","barreau":"unit","app":"api","story":"US-004","chemin":"apps/api/src/listing/domain/usecases/update-listing-pricing/UpdateListingPricing.unit.spec.ts","titre":"refuses removing the last duration from a published listing's pricing","empreinte":"1c2a81f2"} -->
 <!-- jp-way:cas {"ex":"EX-06","barreau":"unit","app":"api","story":"US-004","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"publishes a listing whose pricing offers only the month","empreinte":"e0cbbcb5"} -->
@@ -129,7 +136,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 |---|---|---|---|---|---|---|
 | 1 | US-001 | Publier une annonce | api | unit | EX-03 EX-01 EX-17 EX-12 EX-34 | #2 |
 | 2 | US-002 | Refuser une annonce incomplète | api | unit int-repo int-http | EX-18 EX-19 EX-04 EX-36 EX-37 | #3 |
-| 3 | US-003 | N'accepter qu'une annonce active par box | api | unit | EX-02 EX-14 EX-15 EX-16 EX-35 | #4 |
+| 3 | US-003 | N'accepter qu'une annonce active par box | api | unit int-repo | EX-02 EX-14 EX-15 EX-16 EX-35 EX-38 EX-39 | #4 |
 | 4 | US-004 | Exiger au moins une durée dans la grille | api | unit | EX-07 EX-24 EX-06 EX-25 | #5 |
 | 5 | US-005 | Calculer le prix d'une période | api | unit | EX-05 EX-20 EX-21 EX-23 | #6 |
 | 6 | US-006 | Demander une place sur des dates libres | api | unit | EX-22 EX-09 EX-10 EX-28 EX-29 | #7 |
@@ -149,7 +156,7 @@ Graphe acyclique, vérifié. Les autres enchaînements sont de l'ordre, pas des 
 
 ## Ce qui n'est pas testé, et pourquoi
 
-- RG-01 × Concurrence — `filet` ² : contrainte d'unicité en base sur l'identifiant de place restreinte aux annonces actives, à créer dans la migration de cette spec.
+- RG-01 × Concurrence — `EX-39 filet` ² : contrainte d'unicité en base sur la clé de place normalisée, restreinte aux annonces actives ; EX-39 en est le représentant testé contre Postgres.
 - RG-02 × Vide — `EX-04 filet` ⁶ : l'absence d'un champ obligatoire est refusée par la validation de la requête ; EX-04 en est le représentant testé et porte déjà un cas — cette cellule n'est pas « non testée », elle est le filet dont EX-04 est l'échantillon.
 - RG-04 × Autorisation, RG-06 × Autorisation — `filet` ⁸ (même mécanisme, deux règles) : garde d'authentification sur la route, et vérification que le loueur agit sur sa propre annonce. RG-02 × Autorisation n'est plus un filet depuis la révision 3 : EX-36 et EX-37 la portent.
 - RG-02 × Volume — `filet` ¹¹ : nombre et taille des fichiers bornés par la validation à la frontière HTTP.

@@ -1,6 +1,7 @@
 import { Either } from 'effect/index';
 
 import { NoPriceForRequestedPeriodError } from '../errors/NoPriceForRequestedPeriodError';
+import { RequestedPeriodTooLongError } from '../errors/RequestedPeriodTooLongError';
 import {
   computeRentalPrice,
   RentalPeriod,
@@ -9,9 +10,12 @@ import {
 import {
   CalendarDayRange,
   dayCountingPeriodOfDays,
+  dayCountOfDays,
   parisPeriodOfDays,
 } from './CalendarDay';
 import { designatesSamePlace, RentalPlace } from './RentalPlace';
+
+export const MAX_REQUESTED_PERIOD_IN_DAYS = 366;
 
 interface Props {
   renterId: string;
@@ -41,7 +45,13 @@ export class RentalRequest {
     days: CalendarDayRange;
     pricing: RentalPricing;
     requestedAt: Date;
-  }): Either.Either<RentalRequest, NoPriceForRequestedPeriodError> {
+  }): Either.Either<
+    RentalRequest,
+    NoPriceForRequestedPeriodError | RequestedPeriodTooLongError
+  > {
+    if (dayCountOfDays(params.days) > MAX_REQUESTED_PERIOD_IN_DAYS)
+      return Either.left(new RequestedPeriodTooLongError());
+
     const price = computeRentalPrice(
       params.pricing,
       dayCountingPeriodOfDays(params.days),

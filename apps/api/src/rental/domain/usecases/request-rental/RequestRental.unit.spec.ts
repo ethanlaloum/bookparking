@@ -1,5 +1,5 @@
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
-import { RequestedPeriodTooLongError } from './errors/RequestedPeriodTooLongError';
+import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { createRequestRentalSUT } from './RequestRental.sut';
 
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };

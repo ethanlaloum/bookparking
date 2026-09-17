@@ -53,6 +53,13 @@ export const dayAfter = (day: CalendarDay): CalendarDay =>
     .toISOString()
     .slice(0, 10);
 
+export const dayCountOfDays = (days: CalendarDayRange): number =>
+  Math.round(
+    (Date.parse(`${days.to}T00:00:00.000Z`) -
+      Date.parse(`${days.from}T00:00:00.000Z`)) /
+      MILLISECONDS_PER_DAY,
+  ) + 1;
+
 export const parisDayOf = (instant: Date): CalendarDay =>
   new Intl.DateTimeFormat('fr-CA', {
     timeZone: PARIS_TIME_ZONE,

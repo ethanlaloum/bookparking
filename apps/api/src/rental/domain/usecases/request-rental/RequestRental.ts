@@ -5,6 +5,7 @@ import { UseCase } from '../../../../shared/use-case/UseCase';
 import { CalendarDay, parisPeriodOfDays } from '../../entities/CalendarDay';
 import { RentalRequest } from '../../entities/RentalRequest';
 import { NoPriceForRequestedPeriodError } from '../../errors/NoPriceForRequestedPeriodError';
+import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { PublishedListingReader } from '../../ports/PublishedListingReader';
 import { RentalRepository } from '../../ports/RentalRepository';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
@@ -27,6 +28,7 @@ export class RequestRental implements UseCase<
       | DatesAlreadyRentedError
       | ListingNotPublishedError
       | NoPriceForRequestedPeriodError
+      | RequestedPeriodTooLongError
       | UnknownError
     >
   >
@@ -44,6 +46,7 @@ export class RequestRental implements UseCase<
       | DatesAlreadyRentedError
       | ListingNotPublishedError
       | NoPriceForRequestedPeriodError
+      | RequestedPeriodTooLongError
       | UnknownError
     >
   > {
@@ -66,8 +69,8 @@ export class RequestRental implements UseCase<
 
       const rentalRequest = RentalRequest.request({
         renterId: props.renterId,
-        address: props.address,
-        box: props.box,
+        address: publishedListing.address,
+        box: publishedListing.box,
         days,
         pricing: publishedListing.pricing,
         requestedAt: props.requestedAt,

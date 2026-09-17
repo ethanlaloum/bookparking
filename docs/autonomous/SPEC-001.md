@@ -1,9 +1,9 @@
 ---
 spec: SPEC-001
 mode: autonomous
-statut: en-cours
+statut: a-revoir
 demarre_le: 2026-09-17T01:34:49Z
-termine_le: null
+termine_le: 2026-09-17T10:02:12Z
 decisions: 7
 ecarts_majeurs: 3
 ---
@@ -122,9 +122,14 @@ ecarts_majeurs: 3
 ## Résultat livré
 
 - US-001 (#2) fusionnée (PR #12) avant ce run.
-- Restent : US-002 à US-010.
+- US-002 (#3) : DoD complet, PR #13 prête (`status:in-review`), **non fusionnée**. Barreaux : unit `Tests: 7 passed, 7 total` · int `Tests: 4 passed, 4 total` · build exit 0 · eslint exit 0, sur `3b561ad`. Exemples prouvés : EX-18, EX-19, EX-04, EX-36, EX-37. Revues tour 2 : conventions ECARTS MAJEURS · sécurité ECARTS MINEURS · conformité ECARTS MAJEURS.
+- Arrêt §9-1 (impossibilité externe) : `gh pr merge 13 --squash --delete-branch` refusé par le mode de permissions de la session (classifieur auto mode), le 17/09/2026. US-003 à US-010 construisent sur le code de US-002 et démarrent après sa fusion : aucune story sûre ne reste éligible.
+- Restent : US-003 à US-010, `status:todo`.
+- Dernier audit : non relancé après l'arrêt (27 exemples de stories futures non couverts, attendu).
 
 ## À relire au retour
+
+- **Arrêt** : fusionner la PR #13 (ou autoriser `gh pr merge` dans les permissions), puis relancer `/jp-way:build SPEC-001`.
 
 - AUTO-01 : quel mécanisme d'authentification alimente `AccessTokenVerifier` ?
 - AUTO-03 : stockage de photos et base de production au premier démarrage de l'api.

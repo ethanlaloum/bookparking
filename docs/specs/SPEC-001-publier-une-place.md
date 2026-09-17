@@ -3,7 +3,7 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 2
+revision: 3
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
@@ -12,7 +12,7 @@ valide_par: jp-way:auto
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 8
-exemples: 37
+exemples: 39
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -123,6 +123,25 @@ Et aucune seconde annonce n'existe pour ce couple adresse + box
 Et les deux écritures désignent la même place
 
 <!-- jp-way:ex {"id":"EX-16","regle":"RG-01","origine":"sonde","barreau":"int-repo","empreinte":"0c2e49e5"} -->
+
+#### EX-38 · le même box écrit avec une espace en trop
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand `Pierre L.` publie une annonce pour le box `12 ` du `12 rue Barla, 06300 Nice`
+Alors la publication est refusée avec « Cette place a déjà une annonce active »
+Et aucune annonce de `Pierre L.` n'existe pour ce box
+
+<!-- jp-way:ex {"id":"EX-38","regle":"RG-01","origine":"bug","barreau":"unit","empreinte":"8dbd2ebb"} -->
+
+#### EX-39 · deux publications simultanées de la même place écrite autrement
+
+Étant donné aucune annonce active pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand `Marc D.` publie `12 rue barla, 06300 nice` et le `box 12`,
+  et au même instant `Pierre L.` publie `12 Rue Barla, 06300 NICE` suivi d'un retour à la ligne et le `box 12`
+Alors une seule des deux annonces est active pour cette place
+Et l'autre publication est refusée avec « Cette place a déjà une annonce active »
+
+<!-- jp-way:ex {"id":"EX-39","regle":"RG-01","origine":"bug","barreau":"int-repo","empreinte":"82c89208"} -->
 
 ### RG-02 · une annonce n'est publiable que si elle porte une adresse, un numéro de box, une description de l'accès, au moins une photo, une grille tarifaire et une période de disponibilité
 
@@ -440,7 +459,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 
 | Règle | Limites | Vide | Temps | Concurrence | Autorisation | État | Argent | Volume | Panne | Données |
 |---|---|---|---|---|---|---|---|---|---|---|
-| RG-01 | EX-01 EX-02 | écarté¹ | EX-13 | filet² | EX-14 | EX-15 | écarté³ | écarté⁴ | écarté⁵ | EX-16 |
+| RG-01 | EX-01 EX-02 | écarté¹ | EX-13 | EX-39 filet² | EX-14 | EX-15 | écarté³ | écarté⁴ | écarté⁵ | EX-16 EX-38 |
 | RG-02 | EX-17 | EX-04 filet⁶ | EX-18 | écarté⁷ | EX-36 EX-37 | écarté⁹ | écarté¹⁰ | filet¹¹ | EX-19 | filet¹² |
 | RG-03 | EX-20 | EX-21 | EX-22 | écarté¹³ | écarté¹⁴ | écarté¹⁵ | EX-23 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-24 | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
@@ -474,6 +493,8 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 ²³ vérification que le loueur est propriétaire de l'annonce qu'il dépublie.
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
+
+EX-38 et EX-39 sont nés de la revue de sécurité de US-003 (AUTO-08) : une place est reconnue par une clé normalisée que la base contraint aussi.
 
 EX-36 et EX-37 sont nés de la revue de sécurité de US-002 (registre autonome, AUTO-01) : ils remplacent le filet ⁸ de RG-02 × Autorisation par deux exemples. La vérification que le loueur agit sur sa propre annonce reste le filet ⁸ de RG-04, RG-06 et le filet ²³ de RG-07.
 
@@ -598,3 +619,4 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 |---|---|---|
 | 1 | 16/09/2026 | Création. Issue de la séance d'example mapping ouverte le 10/09/2026 sur BR-20260910-reserver-et-louer-une-place : huit règles, trente-cinq exemples, trois écrans, cinq questions toutes résolues. |
 | 2 | 17/09/2026 | Construction autonome de US-002 (AUTO-01) : RG-02 gagne EX-36 (un visiteur non connecté ne publie pas) et EX-37 (le loueur est le compte connecté, jamais un nom saisi) ; la cellule RG-02 × Autorisation passe de filet à exemples. |
+| 3 | 17/09/2026 | Construction autonome de US-003 (AUTO-08) : RG-01 gagne EX-38 (un box écrit avec une espace en trop est le même box) et EX-39 (deux publications simultanées de la même place écrite autrement : une seule active) ; RG-01 × Concurrence passe à `EX-39 filet²`. |

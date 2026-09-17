@@ -2,10 +2,33 @@
 spec: SPEC-001
 langue: fr
 entrees:
+  - { us: US-003, date: null, titre: "Une même place ne peut plus recevoir deux annonces actives" }
   - { us: US-002, date: null, titre: "Une annonce incomplète ou usurpée n'est plus publiée" }
 ---
 
 # Publier une place — ce qui change pour toi
+
+## Une même place ne peut plus recevoir deux annonces actives
+
+**Ce qui change** — Une place, identifiée par son adresse et son numéro de box, ne peut plus porter
+qu'une seule annonce active à la fois. Que ce soit toi qui republies, ou un autre loueur qui publie sur
+le même box, la seconde publication est refusée — même quand l'adresse ou le numéro de box sont écrits
+autrement (majuscules, espace en trop).
+
+**Pour qui** — Les loueurs qui publient une annonce.
+
+**Ce que tu vois maintenant** — Si la place que tu publies porte déjà une annonce active, ta publication
+est refusée avec le message « Cette place a déjà une annonce active », et l'annonce déjà active pour
+cette place n'est pas modifiée. Publier un autre box à la même adresse fonctionne normalement : les deux
+annonces restent actives, une par box.
+
+**Ce qu'il faut faire différemment** — Rien, tant que tu publies une seule annonce par place. Si tu veux
+republier la même place, dépublie d'abord l'annonce active existante.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-003","ex":["EX-02","EX-14","EX-15","EX-16","EX-35","EX-38","EX-39"],"pr":14} -->
 
 ## Une annonce incomplète ou usurpée n'est plus publiée
 

@@ -10,6 +10,7 @@
 - `adapters/repositories/<agrégat>/` — les implémentations des ports, y compris les doublures en mémoire utilisées par les tests unitaires (`InMemoryListingRepository`), plus un `Schema<Nom>.ts` par table Knex (`SchemaListingRepository`) qui décrit les colonnes réelles.
 - `adapters/rest/controllers/<agrégat>/` et `adapters/rest/dtos/` — les contrôleurs Nest et leurs schémas `effect/Schema` de validation de requête.
 - `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur (`InMemoryPhotoStorage`).
+- `domain/builders/<Entité>Builder.ts` — un bâtisseur d'entité partagé entre plusieurs `.sut.ts` d'un même agrégat (`ListingBuilder` est utilisé à la fois par `PublishListing.sut.ts` et par `KnexListingRepository.sut.ts`) : il construit l'entité via `fromState()`, jamais par un constructeur public, pour donner à toute fixture d'annonce active un seul point de vérité entre les barreaux `unit` et `int-repo`.
 
 `src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route.
 
@@ -26,7 +27,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**7 specs** — `grep -c '  it(' apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| unit (**13 specs** — `grep -c '  it(' apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
 | int-repo + int-http (**2 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-17 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
@@ -48,6 +49,10 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 - **`createControllerTestApp` remplace toujours `AuthGuard` par `TestAuthGuard` — le vrai garde n'est prouvé par aucun test.**
   `createControllerTestApp.ts:12` fait `overrideGuard(AuthGuard).useValue(new TestAuthGuard(...))` pour chaque test `int-http` ; une régression dans `auth.guard.ts` ne ferait échouer ni `@EX-001-36` ni `@EX-001-37`.
   Un test contre le vrai `AuthGuard` reste à écrire quand un `AccessTokenVerifier` réel existera.
+
+- **Modifier `normalizePlacePart` (`Listing.ts`) ne recalcule aucune `place_key` déjà stockée.**
+  `infra/migrations/20260917130000_enforce_unique_active_listing_place_key.ts:3-9` en garde une copie figée en JavaScript brut, parce que Postgres ne normalise ni la casse ni les espaces Unicode (`U+00A0`, NFKC) comme le fait `String.prototype.normalize('NFKC')` — un backfill écrit en SQL produirait des clés que le runtime ne produit jamais, et l'index unique partiel laisserait passer un doublon.
+  Toute évolution de la règle de normalisation exige une nouvelle migration qui recalcule `place_key` sur les lignes existantes, jamais une simple modification de `Listing.ts`.
 
 ## Frozen versions — do not bump without reading the reason
 

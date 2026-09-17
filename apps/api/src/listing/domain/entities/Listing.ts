@@ -13,6 +13,14 @@ export interface ListingAvailability {
   to: Date;
 }
 
+export interface ListingPlace {
+  address: string;
+  box: string;
+}
+
+const normalizePlacePart = (part: string): string =>
+  part.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
+
 interface Props {
   ownerId: string;
   address: string;
@@ -47,11 +55,25 @@ export class Listing {
     return availability.to.getTime() < at.getTime();
   }
 
-  public isActiveFor(place: { address: string; box: string }): boolean {
-    return (
-      this.props.status === ListingStatus.ACTIVE &&
-      this.props.address === place.address &&
-      this.props.box === place.box
-    );
+  public static placeKeyOf(place: ListingPlace): string {
+    return JSON.stringify([
+      normalizePlacePart(place.address),
+      normalizePlacePart(place.box),
+    ]);
+  }
+
+  public placeKey(): string {
+    return Listing.placeKeyOf({
+      address: this.props.address,
+      box: this.props.box,
+    });
+  }
+
+  public designates(place: ListingPlace): boolean {
+    return this.placeKey() === Listing.placeKeyOf(place);
+  }
+
+  public isActiveFor(place: ListingPlace): boolean {
+    return this.props.status === ListingStatus.ACTIVE && this.designates(place);
   }
 }

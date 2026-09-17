@@ -3,6 +3,7 @@ import {
   startTestDatabase,
   stopTestDatabase,
 } from '../../../../infra/testcontainers-setup';
+import { ListingAlreadyActiveError } from '../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { createKnexListingRepositorySUT } from './KnexListingRepository.sut';
 
 describe('KnexListingRepository @SPEC-001', () => {
@@ -38,5 +39,28 @@ describe('KnexListingRepository @SPEC-001', () => {
       address: '12 rue Barla, 06300 Nice',
       box: '12',
     });
+  });
+
+  it('keeps a single active listing when the same place is written twice differently @EX-001-39', async () => {
+    const sut = createKnexListingRepositorySUT();
+
+    const first = await sut.whenCreatingActiveListing({
+      owner: 'Marc D.',
+      address: '12 rue barla, 06300 nice',
+      box: '12',
+    });
+    const second = await sut.whenCreatingActiveListing({
+      owner: 'Pierre L.',
+      address: '12 Rue Barla, 06300 NICE\n',
+      box: '12',
+    });
+
+    sut.thenCreationSucceeded(first);
+    sut.thenCreationIsRefusedWith(
+      second,
+      ListingAlreadyActiveError,
+      'Cette place a déjà une annonce active',
+    );
+    await sut.thenActiveRowCountIs(1);
   });
 });

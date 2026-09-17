@@ -2,6 +2,7 @@ import { Either } from 'effect/index';
 
 import { Listing, ListingStatus } from '../../entities/Listing';
 import { InMemoryListingRepository } from '../../../adapters/repositories/listing/InMemoryListingRepository';
+import { InMemoryPhotoStorage } from '../../../adapters/services/photo-storage/InMemoryPhotoStorage';
 import { PublishListing } from './PublishListing';
 
 interface Place {
@@ -54,6 +55,7 @@ const toDisplayedListing = (listing: Listing) => {
 
 export const createPublishListingSUT = () => {
   const listingRepository = new InMemoryListingRepository();
+  const photoStorage = new InMemoryPhotoStorage();
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
@@ -61,10 +63,11 @@ export const createPublishListingSUT = () => {
     boxForTest: '12',
   };
 
-  const publishListing = new PublishListing(listingRepository);
+  const publishListing = new PublishListing(listingRepository, photoStorage);
 
   const context = {
     listingRepository,
+    photoStorage,
     publishListing,
     testConstants,
     owner: null as OwnerForTest | null,
@@ -82,6 +85,10 @@ export const createPublishListingSUT = () => {
         context.listingRepository.listingList.filter(
           (listing) => !listing.isActiveFor(place),
         );
+    },
+
+    givenPhotoStorageFailingOnEveryUpload() {
+      context.photoStorage.enableFailureOnEveryUpload();
     },
 
     givenOwner(owner: OwnerForTest) {

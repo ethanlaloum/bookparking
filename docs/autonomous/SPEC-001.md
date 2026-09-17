@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 19
+decisions: 20
 ecarts_majeurs: 3
 ---
 
@@ -247,6 +247,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-06 · EX-001-41 · US-006
 - Confiance : haute
 - Question humaine au retour : aucune
+
+### AUTO-20 · Une annonce dépubliée est anonymisée au bout de 12 mois
+- Déclencheur : revue conformité US-007, constat majeur (RGPD) : ce diff crée l'état dépublié sans durée de conservation, alors qu'AUTO-05 avait justement reporté cette décision à US-007.
+- Choix : une annonce dépubliée est conservée **12 mois** à compter de sa dépublication, puis **anonymisée** — l'adresse, le numéro de box, la description d'accès et les photos sont effacés ; la ligne survit sans donnée personnelle, parce que les locations passées la référencent et que leur suivi comptable appartient à SPEC-003. La règle est écrite dans la spec §8 et dans l'ADR-003. Le mécanisme qui l'applique (tâche planifiée et sa preuve) n'appartient pas à SPEC-001, dont le périmètre §2 s'arrête à la publication : il est ouvert comme dette tracée, et l'issue correspondante est créée dans ce run.
+- Alternatives : (a) supprimer la ligne — écarté, les locations confirmées la référencent ; (b) conserver sans limite — écarté, c'est le constat RGPD ; (c) implémenter la purge dans US-007 — écarté, ni règle ni exemple ne la décrivent et la story livrerait du code que rien ne prouve.
+- Preuve : spec §8 « Rétention » (phrase constatant l'absence de décision, remplacée dans ce commit) ; revue conformité US-007.
+- Impact : spec révision 6 ; ADR-003 ; une issue `kind:dette` porte le mécanisme.
+- Coût : nul dans cette story. Risque : la règle est écrite mais rien ne l'applique tant que la dette n'est pas traitée — et aucune donnée réelle n'existe (AUTO-03). Rollback : revert du commit de spec.
+- Traçabilité : RG-07 · US-007
+- Confiance : moyenne — 12 mois est un choix de la construction autonome, pas une durée validée par un juriste.
+- Question humaine au retour : 12 mois est-il la bonne durée, et l'anonymisation suffit-elle par rapport à une suppression ?
 
 ## Écarts majeurs livrés
 

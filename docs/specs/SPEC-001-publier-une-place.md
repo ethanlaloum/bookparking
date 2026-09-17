@@ -3,7 +3,7 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 5
+revision: 6
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
@@ -601,7 +601,7 @@ Conséquence appliquée : RG-03 est écrite en ces termes, EX-20 vaut `96,00 €
 - **Fichiers.** Une annonce porte au moins une photo, envoyée depuis un appareil mobile ; le chemin de publication dépend donc d'un stockage de fichiers, dont la panne est un comportement spécifié (EX-19).
 - **Temps.** Toutes les dates de location, et la journée comme unité, sont bornées sur `Europe/Paris`, quel que soit le fuseau de l'appareil (EX-29).
 - **Langue.** Tout ce qu'un loueur ou un conducteur lit est en français.
-- **Rétention.** Aucune durée de conservation d'une annonce dépubliée n'a été fixée en séance.
+- **Rétention.** Une annonce dépubliée est conservée douze mois à compter de sa dépublication, puis anonymisée : l'adresse, le numéro de box, la description de l'accès et les photos sont effacés, la ligne subsistant sans donnée personnelle pour les locations passées qui la référencent. Durée et mécanisme tranchés en construction autonome (ADR-003), faute de décision en séance ; la tâche qui applique l'anonymisation sort du périmètre de cette spec et est portée comme dette tracée.
 
 ## 9. Impacts par app
 
@@ -642,3 +642,4 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 | 3 | 17/09/2026 | Construction autonome de US-003 (AUTO-08) : RG-01 gagne EX-38 (un box écrit avec une espace en trop est le même box) et EX-39 (deux publications simultanées de la même place écrite autrement : une seule active) ; RG-01 × Concurrence passe à `EX-39 filet²`. |
 | 4 | 17/09/2026 | Construction autonome de US-006 (AUTO-17) : RG-06 gagne EX-40, une période demandée au-delà de 366 jours est refusée ; RG-06 × Volume passe à `EX-40 filet²¹`. |
 | 5 | 17/09/2026 | Construction autonome de US-006 (AUTO-19) : RG-06 gagne EX-41, une date de demande impossible est refusée ; RG-06 × Données passe d'`écarté¹⁷` à `EX-41`. |
+| 6 | 17/09/2026 | Construction autonome de US-007 (AUTO-20) : §8 « Rétention » fixe douze mois puis anonymisation d'une annonce dépubliée, en réponse au constat de conformité laissé ouvert par AUTO-05. |

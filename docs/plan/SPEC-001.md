@@ -3,10 +3,10 @@ spec: SPEC-001
 statut: valide
 valide_le: 2026-09-16
 valide_par: JP
-revision: 2
+revision: 3
 derive_de: SPEC-001@c3f04ea70b1f612ba674d0b2d07cc95ffe0bc2a7
 apps: [api, e2e]
-cas: 37
+cas: 39
 stories: 10
 ---
 
@@ -18,15 +18,17 @@ stories: 10
 |---|---|---|---|---|
 | unit | 29 | — | 29 | 29 |
 | int-repo | 3 | — | 3 | 3 |
-| int-http | 4 | — | 4 | 4 |
+| int-http | 6 | — | 6 | 6 |
 | journey | 0 | — | 0 | 0 |
 | e2e | — | 1 | 1 | 1 |
-| **total** | **36** | **1** | **37** | 35 exemples, 0 sans cas |
+| **total** | **38** | **1** | **39** | 37 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 - EX-03 — suggéré `e2e` seul, planifié `unit` **et** `e2e` : sa première ligne `Alors` (« l'annonce est active ») est une décision de domaine (ligne 1, T1) ; sans cas `unit`, le chemin nominal de RG-02 ne serait prouvé qu'en haut de la pyramide. Redondance assumée (T7), seul `e2e` de la spec (T3).
 - EX-19 — suggéré `int-repo`, planifié `unit` **et** `int-repo` (révision 2, 16/09/2026, pendant la construction de US-002) : sa ligne `Alors` « la publication est refusée avec « Impossible d'enregistrer les photos » » est un refus de domaine, observable au plus bas en `unit` (ligne 1, T1) ; sa ligne `Et` « aucune annonce, même incomplète, n'existe » est une garantie transactionnelle que seule une vraie base prouve (ligne 2). La révision 1 n'avait posé que le cas `int-repo`, ce qui obligeait `backend-data` à écrire dans un use-case. Redondance assumée (T7).
 - EX-16 — suggéré `int-repo`, planifié `unit` : reconnaître deux écritures d'une même adresse comme la même place est une normalisation observable sans base (T1) ; la contrainte d'unicité en base est le filet ² de la sonde (T5).
+
+- EX-36, EX-37 — ajoutés en révision 3 (17/09/2026, construction autonome de US-002, AUTO-01), suggérés et planifiés `int-http` : un garde qui refuse un appelant non authentifié et un loueur lu sur la requête authentifiée ne s'observent qu'à la frontière HTTP (ligne 3). Ils rejoignent US-002, story ouverte de la même app portant RG-02, qui passe à 5 exemples.
 
 **Découpage — le rouge d'abord**
 - Un exemple qui affirme une **acceptation** ne peut être rouge pour la bonne raison que dans la story qui **crée** son use-case : après elle, la publication accepte déjà tout ce qu'aucune contrainte n'interdit, et le cadre est vert avant la moindre ligne de code — un cadre vide au sens de `build.md`, qui arrête la construction. Un **refus** ajoute une contrainte et reste rouge quelle que soit sa story.
@@ -50,6 +52,8 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | EX-19 | unit | api | US-002 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a listing when photo storage fails |
 | EX-19 | int-repo | api | US-002 | `apps/api/src/listing/adapters/repositories/listing/KnexListingRepository.int.spec.ts` | leaves no partial listing when photo storage fails |
 | EX-04 | int-http | api | US-002 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | responds with a validation error when the listing has no photo |
+| EX-36 | int-http | api | US-002 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | refuses to publish a listing for an unauthenticated visitor |
+| EX-37 | int-http | api | US-002 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | publishes the listing for the authenticated landlord whatever owner the body names |
 | EX-02 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a second listing for a box that already has an active one |
 | EX-14 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses another owner's listing for a box that already has an active one |
 | EX-15 | unit | api | US-003 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | refuses a new listing for a box whose active listing is under rental |
@@ -88,6 +92,8 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 <!-- jp-way:cas {"ex":"EX-19","barreau":"unit","app":"api","story":"US-002","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a listing when photo storage fails","empreinte":"fe908700"} -->
 <!-- jp-way:cas {"ex":"EX-19","barreau":"int-repo","app":"api","story":"US-002","chemin":"apps/api/src/listing/adapters/repositories/listing/KnexListingRepository.int.spec.ts","titre":"leaves no partial listing when photo storage fails","empreinte":"fe908700"} -->
 <!-- jp-way:cas {"ex":"EX-04","barreau":"int-http","app":"api","story":"US-002","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"responds with a validation error when the listing has no photo","empreinte":"463074f7"} -->
+<!-- jp-way:cas {"ex":"EX-36","barreau":"int-http","app":"api","story":"US-002","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"refuses to publish a listing for an unauthenticated visitor","empreinte":"c0b202fc"} -->
+<!-- jp-way:cas {"ex":"EX-37","barreau":"int-http","app":"api","story":"US-002","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"publishes the listing for the authenticated landlord whatever owner the body names","empreinte":"a589a181"} -->
 <!-- jp-way:cas {"ex":"EX-02","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a second listing for a box that already has an active one","empreinte":"9422c560"} -->
 <!-- jp-way:cas {"ex":"EX-14","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses another owner's listing for a box that already has an active one","empreinte":"575cdec5"} -->
 <!-- jp-way:cas {"ex":"EX-15","barreau":"unit","app":"api","story":"US-003","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"refuses a new listing for a box whose active listing is under rental","empreinte":"83a12eee"} -->
@@ -122,7 +128,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | Ordre | Story | Titre | App | Barreaux | Exemples | Issue |
 |---|---|---|---|---|---|---|
 | 1 | US-001 | Publier une annonce | api | unit | EX-03 EX-01 EX-17 EX-12 EX-34 | #2 |
-| 2 | US-002 | Refuser une annonce incomplète | api | unit int-repo int-http | EX-18 EX-19 EX-04 | #3 |
+| 2 | US-002 | Refuser une annonce incomplète | api | unit int-repo int-http | EX-18 EX-19 EX-04 EX-36 EX-37 | #3 |
 | 3 | US-003 | N'accepter qu'une annonce active par box | api | unit | EX-02 EX-14 EX-15 EX-16 EX-35 | #4 |
 | 4 | US-004 | Exiger au moins une durée dans la grille | api | unit | EX-07 EX-24 EX-06 EX-25 | #5 |
 | 5 | US-005 | Calculer le prix d'une période | api | unit | EX-05 EX-20 EX-21 EX-23 | #6 |
@@ -145,7 +151,7 @@ Graphe acyclique, vérifié. Les autres enchaînements sont de l'ordre, pas des 
 
 - RG-01 × Concurrence — `filet` ² : contrainte d'unicité en base sur l'identifiant de place restreinte aux annonces actives, à créer dans la migration de cette spec.
 - RG-02 × Vide — `EX-04 filet` ⁶ : l'absence d'un champ obligatoire est refusée par la validation de la requête ; EX-04 en est le représentant testé et porte déjà un cas — cette cellule n'est pas « non testée », elle est le filet dont EX-04 est l'échantillon.
-- RG-02 × Autorisation, RG-04 × Autorisation, RG-06 × Autorisation — `filet` ⁸ (même mécanisme, trois règles) : garde d'authentification sur la route, et vérification que le loueur agit sur sa propre annonce.
+- RG-04 × Autorisation, RG-06 × Autorisation — `filet` ⁸ (même mécanisme, deux règles) : garde d'authentification sur la route, et vérification que le loueur agit sur sa propre annonce. RG-02 × Autorisation n'est plus un filet depuis la révision 3 : EX-36 et EX-37 la portent.
 - RG-02 × Volume — `filet` ¹¹ : nombre et taille des fichiers bornés par la validation à la frontière HTTP.
 - RG-02 × Données — `filet` ¹² : longueur maximale et jeu de caractères portés par le schéma de la requête.
 - RG-06 × Volume — `filet` ²¹ : index sur les dates de location et pagination de l'historique d'une annonce.

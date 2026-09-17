@@ -63,4 +63,28 @@ describe('KnexListingRepository @SPEC-001', () => {
     );
     await sut.thenActiveRowCountIs(1);
   });
+
+  it('stores a listing as unpublished and stops returning it as active @EX-001-42', async () => {
+    const sut = createKnexListingRepositorySUT();
+    await sut.whenCreatingActiveListing({
+      owner: 'Marc D.',
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+    });
+
+    await sut.whenUnpublishing({
+      owner: 'Marc D.',
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+    });
+
+    await sut.thenStoredListingIsUnpublished({
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+    });
+    await sut.thenNoActiveListingIsFoundFor({
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+    });
+  });
 });

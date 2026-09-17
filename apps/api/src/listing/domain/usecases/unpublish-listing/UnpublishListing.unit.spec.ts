@@ -1,6 +1,8 @@
+import { ListingNotOwnedError } from '../../errors/ListingNotOwnedError';
 import { createUnpublishListingSUT } from './UnpublishListing.sut';
 
 const MARC = 'Marc D.';
+const PIERRE = 'Pierre L.';
 const PLACE = { address: '12 rue Barla, 06300 Nice', box: '12' };
 const OCTOBER = { from: '2026-10-01', to: '2026-10-31' };
 
@@ -40,5 +42,19 @@ describe('UnpublishListing @SPEC-001', () => {
     sut.thenResultIsRight(result);
     sut.thenListingIsNoLongerPubliclyVisible(PLACE);
     sut.thenRentalStaysConfirmed({ ...PLACE, ...OCTOBER });
+  });
+
+  it("refuses to unpublish another landlord's listing @EX-001-43", async () => {
+    const sut = createUnpublishListingSUT();
+    sut.givenActiveListing({ owner: MARC, ...PLACE });
+
+    const result = await sut.whenUnpublishing({
+      owner: PIERRE,
+      ...PLACE,
+      on: '2026-10-10',
+    });
+
+    sut.thenUnpublicationIsRefusedWith(result, ListingNotOwnedError);
+    sut.thenActiveListingOf(MARC, PLACE);
   });
 });

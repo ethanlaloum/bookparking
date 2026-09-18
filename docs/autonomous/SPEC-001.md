@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 22
+decisions: 23
 ecarts_majeurs: 3
 ---
 
@@ -281,6 +281,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-01 · RG-08 · US-007
 - Confiance : moyenne
 - Question humaine au retour : une place doit-elle rester réservée à son dernier loueur tant qu'une location confirmée court ?
+
+### AUTO-23 · Ce que la base garantit quand une demande croise une dépublication
+- Déclencheur : US-008 (EX-30, EX-32). EX-30 — deux demandes au même instant sur les mêmes dates — se prouve par une contrainte d'exclusion. EX-32 — une demande à l'instant de la dépublication — ne peut pas, lui, dépendre de qui gagne la course : si la demande passait avant, une ligne survivrait sur une annonce dépubliée, ce que la ligne `Et` de l'exemple interdit.
+- Choix : la garantie portée par la base est **l'état final**, pas l'ordre d'arrivée — après la collision, l'annonce est dépubliée et aucune demande n'existe sur elle. La demande lit l'annonce avec un verrou de ligne puis vérifie son état avant d'écrire, si bien qu'elle ne peut jamais s'insérer sur une annonce déjà dépubliée ; le test rend l'entrelacement explicite plutôt que de dépendre d'un hasard d'ordonnancement, et le dit dans son SUT. EX-30 s'appuie sur une contrainte d'exclusion sur (place, période) qui rend la seconde insertion impossible, jamais sur une lecture préalable.
+- Alternatives : (a) laisser l'ordre décider — écarté, le test serait instable et l'exemple faux une fois sur deux ; (b) faire annuler par la dépublication les demandes en attente — écarté, ce serait une règle produit nouvelle, absente de RG-07 ; (c) sérialiser toute l'application — écarté, hors de proportion.
+- Preuve : EX-30 et EX-32 de la spec ; corps de l'issue #9 (« garanties de concurrence que seule une vraie base peut prouver »).
+- Impact : une migration crée la table des demandes avec sa contrainte d'exclusion ; le dépôt Knex des demandes et le lecteur d'annonce publiée réel apparaissent.
+- Coût : une migration, deux adaptateurs. Risque : moyen — la contrainte d'exclusion demande l'extension `btree_gist`. Rollback : revert de la PR et de sa migration.
+- Traçabilité : RG-06 · RG-07 · EX-001-30 · EX-001-32 · US-008
+- Confiance : moyenne — l'entrelacement explicite du test est un choix d'écriture, pas une garantie de la base.
+- Question humaine au retour : une dépublication doit-elle annuler les demandes en attente sur l'annonce ?
 
 ## Écarts majeurs livrés
 

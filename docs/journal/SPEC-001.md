@@ -35,7 +35,7 @@ personne d'autre que toi ne peut dépublier ton annonce.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-001","story":"US-007","ex":["EX-11","EX-33","EX-31","EX-13","EX-43"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-007","ex":["EX-11","EX-33","EX-31","EX-13","EX-43"],"pr":19} -->
 
 ## Une demande de location porte sur des dates réellement libres, à un prix figé
 

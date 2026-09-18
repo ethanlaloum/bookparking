@@ -1,7 +1,8 @@
 import { getTestDbConnection } from '../../../../infra/testcontainers-setup';
 import { ListingBuilder } from '../../../domain/builders/ListingBuilder';
-import { ListingStatus } from '../../../domain/entities/Listing';
+import { Listing, ListingStatus } from '../../../domain/entities/Listing';
 import { PublishListing } from '../../../domain/usecases/publish-listing/PublishListing';
+import { UnpublishListing } from '../../../domain/usecases/unpublish-listing/UnpublishListing';
 import { InMemoryPhotoStorage } from '../../services/photo-storage/InMemoryPhotoStorage';
 import { KnexListingRepository } from './KnexListingRepository';
 import { SchemaListingRepository } from './SchemaListingRepository';
@@ -29,6 +30,7 @@ export const createKnexListingRepositorySUT = () => {
   const listingRepository = new KnexListingRepository(testDbConnection);
   const photoStorage = new InMemoryPhotoStorage();
   const publishListing = new PublishListing(listingRepository, photoStorage);
+  const unpublishListing = new UnpublishListing(listingRepository);
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
@@ -47,6 +49,7 @@ export const createKnexListingRepositorySUT = () => {
     listingRepository,
     photoStorage,
     publishListing,
+    unpublishListing,
     testConstants,
   };
 
@@ -95,6 +98,14 @@ export const createKnexListingRepositorySUT = () => {
       }
     },
 
+    async whenUnpublishing(input: { owner: string } & Place) {
+      return context.unpublishListing.execute({
+        ownerId: toAccountId(input.owner),
+        address: input.address,
+        box: input.box,
+      });
+    },
+
     thenCreationSucceeded(outcome: unknown) {
       expect(outcome).toEqual(null);
     },
@@ -113,6 +124,21 @@ export const createKnexListingRepositorySUT = () => {
         .testDbConnection<SchemaListingRepository>('listings')
         .where({ status: ListingStatus.ACTIVE });
       expect(rows).toHaveLength(count);
+    },
+
+    async thenStoredListingIsUnpublished(place: Place) {
+      const rows = await context
+        .testDbConnection<SchemaListingRepository>('listings')
+        .where({ place_key: Listing.placeKeyOf(place) });
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toEqual(ListingStatus.UNPUBLISHED);
+    },
+
+    async thenNoActiveListingIsFoundFor(place: Place) {
+      const found = await context.listingRepository.findActiveByPlaceKey(
+        Listing.placeKeyOf(place),
+      );
+      expect(found).toEqual(null);
     },
 
     async thenNoListingRow(place: Place) {

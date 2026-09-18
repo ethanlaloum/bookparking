@@ -2,6 +2,7 @@
 spec: SPEC-001
 langue: fr
 entrees:
+  - { us: US-007, date: null, titre: "Dépublier une annonce ne libère jamais les dates déjà louées" }
   - { us: US-006, date: null, titre: "Une demande de location porte sur des dates réellement libres, à un prix figé" }
   - { us: US-004, date: null, titre: "Une grille tarifaire doit toujours proposer au moins un tarif" }
   - { us: US-003, date: null, titre: "Une même place ne peut plus recevoir deux annonces actives" }
@@ -9,6 +10,32 @@ entrees:
 ---
 
 # Publier une place — ce qui change pour toi
+
+## Dépublier une annonce ne libère jamais les dates déjà louées
+
+**Ce qui change** — Tu peux désormais dépublier ton annonce à tout moment. Une location déjà confirmée
+sur cette place n'est pas affectée : elle reste confirmée normalement. Redemander la dépublication d'une
+annonce déjà dépubliée ne fait rien de plus, sans t'afficher d'erreur.
+
+**Pour qui** — Les loueurs qui dépublient une annonce, et les conducteurs qui la consultaient ou
+essaient de la demander après coup.
+
+**Ce que tu vois maintenant** — Dès que tu dépublies ton annonce, elle n'est plus consultable
+publiquement. Une location déjà confirmée sur cette place, elle, reste confirmée : aucune de ses dates
+n'est libérée. Si tu redemandes la dépublication d'une annonce déjà dépubliée, elle reste dépubliée et
+rien ne t'est signalé comme une erreur. Un conducteur qui demande une place sur une annonce dépubliée
+voit sa demande refusée, et aucune demande n'est enregistrée pour elle. Tu peux ensuite publier une
+nouvelle annonce pour cette même place : elle devient la seule annonce active du box. Un autre loueur qui
+tente de dépublier ton annonce en est empêché — la dépublication lui est refusée parce que l'annonce ne
+lui appartient pas — et ton annonce reste active.
+
+**Ce qu'il faut faire différemment** — Rien : dépublier ne casse jamais une location en cours, et
+personne d'autre que toi ne peut dépublier ton annonce.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-007","ex":["EX-11","EX-33","EX-31","EX-13","EX-43"],"pr":19} -->
 
 ## Une demande de location porte sur des dates réellement libres, à un prix figé
 

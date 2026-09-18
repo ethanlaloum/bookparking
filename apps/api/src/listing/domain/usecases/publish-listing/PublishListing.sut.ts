@@ -110,6 +110,17 @@ export const createPublishListingSUT = () => {
       return { listing };
     },
 
+    givenUnpublishedListingFor(params: Place & { unpublishedOn: string }) {
+      const listing = new ListingBuilder()
+        .withOwnerId(context.testConstants.ownerIdForTest)
+        .withAddress(params.address)
+        .withBox(params.box)
+        .withStatus(ListingStatus.UNPUBLISHED)
+        .build();
+      context.listingRepository.listingList.push(listing);
+      return { listing, unpublishedOn: params.unpublishedOn };
+    },
+
     givenPhotoStorageFailingOnEveryUpload() {
       context.photoStorage.enableFailureOnEveryUpload();
     },
@@ -156,11 +167,12 @@ export const createPublishListingSUT = () => {
 
     thenListingIsActive(result: Either.Either<Listing, unknown>) {
       thenResultIsRight(result);
-      const listings = context.listingRepository.listingList;
-      expect(listings).toHaveLength(1);
-      expect(listings[0].toState().status).toEqual(ListingStatus.ACTIVE);
+      const activeListings = context.listingRepository.listingList.filter(
+        (listing) => listing.toState().status === ListingStatus.ACTIVE,
+      );
+      expect(activeListings).toHaveLength(1);
       if (Either.isRight(result)) {
-        expect(result.right.toState()).toEqual(listings[0].toState());
+        expect(result.right.toState()).toEqual(activeListings[0].toState());
       }
     },
 

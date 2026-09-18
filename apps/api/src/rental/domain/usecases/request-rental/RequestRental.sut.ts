@@ -93,21 +93,34 @@ export const createRequestRentalSUT = () => {
         address: params.address,
         box: params.box,
         pricing: toRentalPricing(params.pricing),
+        published: true,
       };
-      context.publishedListingReader.publishedListingList.push(
-        publishedListing,
-      );
+      context.publishedListingReader.listingList.push(publishedListing);
       return { publishedListing };
     },
 
+    givenUnpublishedListing(
+      params: RentalPlace & {
+        pricing: PricingForTest;
+        unpublishedOn: string;
+      },
+    ) {
+      const unpublishedListing = {
+        address: params.address,
+        box: params.box,
+        pricing: toRentalPricing(params.pricing),
+        published: false,
+      };
+      context.publishedListingReader.listingList.push(unpublishedListing);
+      return { unpublishedListing, unpublishedOn: params.unpublishedOn };
+    },
+
     givenPricingChangedTo(pricing: PricingForTest) {
-      context.publishedListingReader.publishedListingList =
-        context.publishedListingReader.publishedListingList.map(
-          (publishedListing) => ({
-            ...publishedListing,
-            pricing: toRentalPricing(pricing),
-          }),
-        );
+      context.publishedListingReader.listingList =
+        context.publishedListingReader.listingList.map((listing) => ({
+          ...listing,
+          pricing: toRentalPricing(pricing),
+        }));
     },
 
     givenRentedPeriod(
@@ -188,10 +201,11 @@ export const createRequestRentalSUT = () => {
 
     thenListingStaysPublished(place: RentalPlace) {
       const publishedListings =
-        context.publishedListingReader.publishedListingList.filter(
-          (publishedListing) =>
-            publishedListing.address === place.address &&
-            publishedListing.box === place.box,
+        context.publishedListingReader.listingList.filter(
+          (listing) =>
+            listing.published &&
+            listing.address === place.address &&
+            listing.box === place.box,
         );
       expect(publishedListings).toHaveLength(1);
     },

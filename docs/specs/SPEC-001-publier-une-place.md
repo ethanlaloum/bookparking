@@ -3,7 +3,7 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 5
+revision: 7
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
@@ -12,7 +12,7 @@ valide_par: jp-way:auto
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 8
-exemples: 41
+exemples: 43
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -448,6 +448,24 @@ Et la location du `01/10/2026` au `31/10/2026` reste confirmée
 
 <!-- jp-way:ex {"id":"EX-33","regle":"RG-07","origine":"sonde","barreau":"unit","empreinte":"e1ed63cf"} -->
 
+#### EX-42 · la dépublication vue de la base
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`, enregistrée
+Quand `Marc D.` dépublie son annonce le `10/10/2026`
+Alors l'annonce enregistrée porte l'état dépublié
+Et aucune annonce active n'existe plus pour le `box 12` du `12 rue Barla, 06300 Nice`
+
+<!-- jp-way:ex {"id":"EX-42","regle":"RG-07","origine":"bug","barreau":"int-repo","empreinte":"3767dbc7"} -->
+
+#### EX-43 · dépublier l'annonce d'un autre loueur
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`
+Quand le loueur `Pierre L.` demande la dépublication de cette annonce le `10/10/2026`
+Alors la dépublication est refusée, l'annonce ne lui appartient pas
+Et l'annonce de `Marc D.` reste active
+
+<!-- jp-way:ex {"id":"EX-43","regle":"RG-07","origine":"bug","barreau":"unit","empreinte":"384b921d"} -->
+
 ### RG-08 · publier une annonce n'exige ni identité vérifiée ni IBAN
 
 #### EX-12 · publier sans pièce d'identité ni IBAN
@@ -483,7 +501,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 | RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-24 | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-26 | EX-27 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 | RG-06 | EX-28 | EX-09 | EX-29 | EX-30 | filet⁸ | EX-31 | écarté³ | EX-40 filet²¹ | écarté⁵ | EX-41 |
-| RG-07 | écarté¹⁹ | EX-11 | écarté²² | EX-32 | filet²³ | EX-33 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
+| RG-07 | écarté¹⁹ | EX-11 | écarté²² | EX-32 | EX-43 | EX-33 EX-42 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 | RG-08 | écarté¹⁹ | EX-12 | écarté¹⁸ | écarté¹³ | écarté²⁴ | EX-34 | écarté²⁵ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 
 ¹ l'absence d'annonce pour une place est le cas nominal, déjà porté par EX-01.
@@ -508,15 +526,15 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 ²⁰ l'adresse est un champ obligatoire, son absence relève de RG-02.
 ²¹ index sur les dates de location et pagination de l'historique d'une annonce.
 ²² la règle ne dépend pas de l'instant de la dépublication.
-²³ vérification que le loueur est propriétaire de l'annonce qu'il dépublie.
+²³ vérification que le loueur est propriétaire de l'annonce qu'il dépublie — remplacée par EX-43 en révision 7, la note reste pour les renvois antérieurs.
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
 
-EX-41 est né de la revue de sécurité de US-006 (AUTO-19) : une date impossible échappait à toutes les gardes. EX-40 est né de la revue de sécurité de US-006 (AUTO-17) : une période demandée sans borne bloquerait l'api. Les cellules RG-06 × Données et RG-06 × Autorisation restent fausses tant que la route de demande n'existe pas (AUTO-18).
+EX-42 et EX-43 sont nés de la revue de sécurité de US-007 (AUTO-21) : la base n'acceptait que le statut actif, et le refus de dépublier l'annonce d'autrui n'était prouvé par rien. EX-41 est né de la revue de sécurité de US-006 (AUTO-19) : une date impossible échappait à toutes les gardes. EX-40 est né de la revue de sécurité de US-006 (AUTO-17) : une période demandée sans borne bloquerait l'api. Les cellules RG-06 × Données et RG-06 × Autorisation restent fausses tant que la route de demande n'existe pas (AUTO-18).
 
 EX-38 et EX-39 sont nés de la revue de sécurité de US-003 (AUTO-08) : une place est reconnue par une clé normalisée que la base contraint aussi.
 
-EX-36 et EX-37 sont nés de la revue de sécurité de US-002 (registre autonome, AUTO-01) : ils remplacent le filet ⁸ de RG-02 × Autorisation par deux exemples. La vérification que le loueur agit sur sa propre annonce reste le filet ⁸ de RG-04, RG-06 et le filet ²³ de RG-07.
+EX-36 et EX-37 sont nés de la revue de sécurité de US-002 (registre autonome, AUTO-01) : ils remplacent le filet ⁸ de RG-02 × Autorisation par deux exemples. La vérification que le loueur agit sur sa propre annonce reste le filet ⁸ de RG-04 et RG-06 ; pour RG-07, elle est portée par EX-43 depuis la révision 7.
 
 EX-35 est né de la résolution de Q-04, après la validation de la grille : il n'occupe aucune intersection et complète EX-14 sur le couple adresse + box.
 
@@ -601,7 +619,7 @@ Conséquence appliquée : RG-03 est écrite en ces termes, EX-20 vaut `96,00 €
 - **Fichiers.** Une annonce porte au moins une photo, envoyée depuis un appareil mobile ; le chemin de publication dépend donc d'un stockage de fichiers, dont la panne est un comportement spécifié (EX-19).
 - **Temps.** Toutes les dates de location, et la journée comme unité, sont bornées sur `Europe/Paris`, quel que soit le fuseau de l'appareil (EX-29).
 - **Langue.** Tout ce qu'un loueur ou un conducteur lit est en français.
-- **Rétention.** Aucune durée de conservation d'une annonce dépubliée n'a été fixée en séance.
+- **Rétention.** Une annonce dépubliée est conservée douze mois à compter de sa dépublication, puis anonymisée : l'adresse, le numéro de box, la description de l'accès et les photos sont effacés, la ligne subsistant sans donnée personnelle pour les locations passées qui la référencent. Durée et mécanisme tranchés en construction autonome (ADR-003), faute de décision en séance ; la tâche qui applique l'anonymisation sort du périmètre de cette spec et est portée comme dette tracée.
 
 ## 9. Impacts par app
 
@@ -642,3 +660,5 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 | 3 | 17/09/2026 | Construction autonome de US-003 (AUTO-08) : RG-01 gagne EX-38 (un box écrit avec une espace en trop est le même box) et EX-39 (deux publications simultanées de la même place écrite autrement : une seule active) ; RG-01 × Concurrence passe à `EX-39 filet²`. |
 | 4 | 17/09/2026 | Construction autonome de US-006 (AUTO-17) : RG-06 gagne EX-40, une période demandée au-delà de 366 jours est refusée ; RG-06 × Volume passe à `EX-40 filet²¹`. |
 | 5 | 17/09/2026 | Construction autonome de US-006 (AUTO-19) : RG-06 gagne EX-41, une date de demande impossible est refusée ; RG-06 × Données passe d'`écarté¹⁷` à `EX-41`. |
+| 6 | 17/09/2026 | Construction autonome de US-007 (AUTO-20) : §8 « Rétention » fixe douze mois puis anonymisation d'une annonce dépubliée, en réponse au constat de conformité laissé ouvert par AUTO-05. |
+| 7 | 17/09/2026 | Construction autonome de US-007 (AUTO-21) : RG-07 gagne EX-42 (la dépublication vue de la base) et EX-43 (dépublier l'annonce d'un autre loueur est refusé, à la place du filet ²³). |

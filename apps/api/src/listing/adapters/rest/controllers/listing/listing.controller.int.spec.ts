@@ -72,4 +72,63 @@ describe('ListingController @SPEC-001', () => {
       );
     });
   });
+
+  describe('GET /listing/:id', () => {
+    it('exposes the exact address and box to a signed-in driver without any booking @EX-001-08', async () => {
+      sut.givenActiveListing({
+        id: 'listing-12',
+        address: '12 rue Barla, 06300 Nice',
+        box: '12',
+      });
+
+      const response = await http()
+        .get('/listing/listing-12')
+        .set('Authorization', 'Bearer token-of-lea');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.address).toEqual('12 rue Barla, 06300 Nice');
+      expect(response.body.box).toEqual('12');
+      expect(sut.getListing.calls).toEqual([
+        expect.objectContaining({ listingId: 'listing-12' }),
+      ]);
+    });
+
+    it('exposes the exact address and box to an unauthenticated visitor @EX-001-26', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListing({
+        id: 'listing-12',
+        address: '12 rue Barla, 06300 Nice',
+        box: '12',
+      });
+
+      const response = await http().get('/listing/listing-12');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.address).toEqual('12 rue Barla, 06300 Nice');
+      expect(response.body.box).toEqual('12');
+      expect(sut.getListing.calls).toEqual([
+        expect.objectContaining({ listingId: 'listing-12' }),
+      ]);
+    });
+
+    it('does not serve an unpublished listing nor its address @EX-001-27', async () => {
+      sut.givenUnpublishedListing({
+        id: 'listing-12',
+        address: '12 rue Barla, 06300 Nice',
+        box: '12',
+      });
+
+      const response = await http()
+        .get('/listing/listing-12')
+        .set('Authorization', 'Bearer token-of-lea');
+
+      expect(response.status).toEqual(404);
+      expect(response.body.message).toEqual('Annonce introuvable');
+      expect(response.body.address).toBeUndefined();
+      expect(response.body.box).toBeUndefined();
+      expect(sut.getListing.calls).toEqual([
+        expect.objectContaining({ listingId: 'listing-12' }),
+      ]);
+    });
+  });
 });

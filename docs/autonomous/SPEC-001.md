@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 27
+decisions: 28
 ecarts_majeurs: 3
 ---
 
@@ -334,6 +334,17 @@ ecarts_majeurs: 3
 - Impact : un fichier de test du contexte `rental` dépend de classes du contexte `listing` ; un renommage là-bas le casse. Exclu du build de production.
 - Coût : nul. Risque : faible. Rollback : réécrire le SUT en SQL brut.
 - Traçabilité : RG-07 · EX-001-32 · US-008
+- Confiance : haute
+- Question humaine au retour : aucune
+
+### AUTO-28 · L'annonce reçoit enfin un identifiant, et sa route s'appelle `/listing/:id`
+- Déclencheur : US-009 (EX-08, EX-26, EX-27) expose une annonce à l'unité. Jusqu'ici aucune annonce ne portait d'identifiant de domaine : la décision de le poser à US-009 est consignée depuis US-002 (mémoire de projet, « Listing id deferred to US-009 »), parce que tous les exemples antérieurs étaient des refus qui ne rendaient jamais d'annonce.
+- Choix : `Listing.publish()` engendre l'identifiant (UUID) dans le domaine, et le dépôt l'écrit, plutôt que de relire la valeur par défaut de la base — une annonce connaît son identité dès sa création, sans aller-retour. Un cas d'usage `GetListing` rend l'annonce active correspondante, ou rien ; la route est `GET /listing/:id`, sur le contrôleur existant `@Controller('listing')`, et non `/listings/:id` comme l'esquisse du corps de l'issue : le contrôleur et sa route de publication existent déjà au singulier, et deux préfixes pour une même ressource seraient une incohérence durable. La lecture n'exige aucune authentification (RG-05, EX-26) ; une annonce dépubliée ou inconnue répond « Annonce introuvable », sans jamais laisser filtrer l'adresse (EX-27).
+- Alternatives : (a) laisser la base engendrer l'identifiant — écarté, le domaine ne connaîtrait pas l'annonce qu'il vient de publier ; (b) identifier l'annonce par sa place — écarté, une place peut avoir porté plusieurs annonces successives (EX-13) ; (c) suivre `/listings/:id` — écarté, cf. ci-dessus.
+- Preuve : corps de l'issue #10 ; `Listing.ts` (aucun champ `id` avant cette story) ; `listing.controller.ts` (`@Controller('listing')`).
+- Impact : le domaine, le dépôt et le contrôleur changent ; US-010 (parcours e2e) devra utiliser `/listing/:id`.
+- Coût : trois dispatchs. Risque : faible. Rollback : revert de la PR.
+- Traçabilité : RG-05 · EX-001-08 · EX-001-26 · EX-001-27 · US-009
 - Confiance : haute
 - Question humaine au retour : aucune
 

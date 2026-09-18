@@ -15,7 +15,7 @@
 
 `src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route.
 
-`src/rental` porte le second contexte métier, avec son propre `domain/ports/` (`PublishedListingReader`, `RentalRepository`) et leurs doublures en mémoire sous `adapters/repositories/` : le cas d'usage `domain/usecases/request-rental/` (`RequestRental.ts`, son `.sut.ts`, son sous-dossier `errors/`) ne dépend d'aucune classe de `listing/`, même pour lire la grille d'une annonce publiée — l'issue de US-006 interdisait cet import (`docs/autonomous/SPEC-001.md`, AUTO-16). Les entités `domain/entities/RentalPlace`, `RentalRequest` et `ConfirmedRental` sont construites par `fromState()` ou par `RentalRequest.request()`, jamais par un constructeur public. `domain/services/computeRentalPrice.ts` reste la seule fonction pure du contexte ; `RequestRental` l'appelle désormais au moment de la demande (voir « Things that will bite you »).
+`src/rental` porte le second contexte métier, avec son propre `domain/ports/` (`PublishedListingReader`, `RentalRepository`) et leurs doublures en mémoire sous `adapters/repositories/` : le cas d'usage `domain/usecases/request-rental/` (`RequestRental.ts`, son `.sut.ts`, son sous-dossier `errors/`) ne dépend d'aucune classe de `listing/`, même pour lire la grille d'une annonce publiée — l'issue de US-006 interdisait cet import (`docs/autonomous/SPEC-001.md`, AUTO-16). Les entités `domain/entities/RentalPlace`, `RentalRequest` et `ConfirmedRental` sont construites par `fromState()` ou par `RentalRequest.request()`, jamais par un constructeur public. `domain/services/computeRentalPrice.ts` reste la seule fonction pure du contexte ; `RequestRental` l'appelle désormais au moment de la demande (voir « Things that will bite you »). Les deux ports ont désormais une implémentation Knex, sous le même schéma que `listing/` : `adapters/repositories/rental-request/` (`KnexRentalRequestRepository`, sa migration, son `Schema...`) et `adapters/repositories/published-listing/` (`KnexPublishedListingReader`, qui lit la table `listings` sans importer aucune classe de `listing/` — voir « Things that will bite you »).
 
 `src/infra` porte ce qui parle à une vraie base : les migrations Knex (`infra/migrations`) et l'outillage du barreau `int` (`testKnexfile.ts`, `testcontainers-setup.ts`, qui démarre un conteneur `postgres:15` par exécution). `src/shared/test/http` porte les doublures communes aux tests `int-http` (`TestAuthGuard`, `UseCaseDouble`, `createControllerTestApp`).
 
@@ -31,7 +31,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
 | unit (**33 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-18) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
-| int-repo + int-http (**2 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-17 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
+| int-repo + int-http (**3 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-18 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
 ## Things that will bite you
@@ -93,6 +93,60 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   `findActiveByPlaceKey` ne trouve aucune annonce active, sans lever d'erreur ni écrire en base :
   RG-07/EX-33 exige justement qu'une seconde demande de dépublication ne produise ni erreur ni changement.
   Ne pas transformer cette branche en erreur (par ex. `ListingAlreadyUnpublishedError`) : cela romprait EX-33.
+
+- **Deux demandes concurrentes sur la même place et les mêmes dates sont départagées par une contrainte
+  d'exclusion Postgres, jamais par du code applicatif.**
+  `rental_requests_place_period_excl` (`infra/migrations/20260918120000_create_rental_requests.ts:46-53`)
+  est un `EXCLUDE USING gist (place_key WITH =, tstzrange(period_from, period_to, '[]') WITH &&)`, qui a
+  besoin de l'extension `btree_gist` créée par la même migration ; `isPlacePeriodExclusionViolation`
+  (`KnexRentalRequestRepository.ts:19-27`) ne traduit en `DatesAlreadyRentedError` que le code Postgres
+  `23P01` sur ce nom de contrainte précis, toute autre erreur d'insertion remonte telle quelle.
+  Ne pas remplacer cette contrainte par une lecture préalable dans le cas d'usage — voir `ADR-004` pour
+  l'alternative écartée et son coût. Son `down()` (même fichier, ligne 66) fait
+  `DROP EXTENSION IF EXISTS btree_gist` sans condition : avant de rollback cette migration, vérifier
+  qu'aucune migration plus récente n'a ajouté un second index `gist`/`EXCLUDE` qui en dépend.
+
+- **`KnexPublishedListingReader` lit la table `listings` en dupliquant son nom et le littéral `'ACTIVE'`,
+  jamais en important une classe de `listing/`.**
+  `SchemaPublishedListingReader.ts:1-7` recopie `LISTINGS_TABLE` et `ACTIVE_LISTING_STATUS` à la main —
+  même discipline que `RentalPlace.placeKeyOf` pour `Listing.placeKeyOf` (AUTO-16) : le contexte `rental`
+  n'importe aucune classe de `listing/`. Un renommage du statut `ACTIVE` dans `listing/` ne casse rien à
+  la compilation ici et ne se voit qu'à l'exécution.
+  Faire évoluer le vocabulaire de statut de `listing/` exige d'éditer cette copie à la main.
+
+- **`createRequest` verrouille la ligne de l'annonce (`FOR UPDATE`) avant d'écrire, mais `UnpublishListing`
+  ne verrouille rien : la garantie « aucune demande après dépublication » ne marche que dans un sens.**
+  `insertOnActiveListing` (`KnexRentalRequestRepository.ts:83-86`) lit l'annonce `FOR UPDATE` dans la
+  transaction qui écrit la demande, ce qui la fait attendre une dépublication concurrente et voir le
+  retrait une fois celle-ci validée (AUTO-23, corrigé par AUTO-25 dans `docs/autonomous/SPEC-001.md`) —
+  mais si la demande valide sa transaction la première, une ligne `PENDING` peut survivre sur une annonce
+  dépubliée juste après : EX-32 ne prouve que le sens où la dépublication gagne.
+  Ne pas lire AUTO-23 seule comme « aucune demande ne coexiste jamais avec une annonce dépubliée » — le
+  sort d'une demande déjà insérée au moment de la dépublication reste ouvert, renvoyé à SPEC-002 (AUTO-25).
+
+- **Une demande `PENDING` jamais confirmée gèle la place sur toute sa période, jusqu'à 366 jours — rien
+  ne l'expire encore.**
+  La contrainte d'exclusion ci-dessus ne distingue pas `status` : une ligne `PENDING` bloque une nouvelle
+  demande sur la même place exactement comme une ligne `CONFIRMED` (AUTO-26, `docs/autonomous/SPEC-001.md`).
+  L'expiration d'une demande est hors périmètre de SPEC-001 (`docs/specs/SPEC-001-publier-une-place.md`,
+  §10) : ne pas inventer de délai ici, la question attend SPEC-002.
+
+- **`rental_requests` ne recopie ni `address` ni `box` — `findConfirmedByPlace` reconstruit la place à
+  partir de l'argument reçu, jamais d'une colonne stockée.**
+  `KnexRentalRequestRepository.ts:116-129` compose la `ConfirmedRental` renvoyée avec `place.address` et
+  `place.box`, la ligne ne portant que `listing_id` et `place_key` (minimisation décidée en AUTO-24 après
+  la revue de conformité). Cette fidélité ne tient que parce que la requête filtre sur
+  `placeKeyOf(place)` : appeler cette méthode avec une place différente de celle qui a produit les lignes
+  renverrait un mensonge silencieux, pas une erreur.
+  Ne pas ajouter `address`/`box` à la table sans rouvrir AUTO-24 et la dette de rétention (issue #18).
+
+- **`KnexRentalRequestRepository.sut.ts` est le seul fichier de `rental/` autorisé à importer `listing/`
+  — une exception de test, pas une porte ouverte.**
+  Le SUT importe `KnexListingRepository`, `ListingBuilder` et `UnpublishListing` pour piloter la vraie
+  dépublication qu'EX-32 met en scène (AUTO-27, `docs/autonomous/SPEC-001.md`) ; il est exclu du build de
+  production (`tsconfig.build.json:7-15`). `apps/api/src/rental/domain/**` et les adaptateurs livrés,
+  eux, n'importent toujours rien de `listing/`.
+  Ne pas copier cet import dans un fichier qui n'est pas un `.sut.ts` de ce test précis.
 
 ## Frozen versions — do not bump without reading the reason
 

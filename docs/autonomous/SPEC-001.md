@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 23
+decisions: 24
 ecarts_majeurs: 3
 ---
 
@@ -292,6 +292,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-06 · RG-07 · EX-001-30 · EX-001-32 · US-008
 - Confiance : moyenne — l'entrelacement explicite du test est un choix d'écriture, pas une garantie de la base.
 - Question humaine au retour : une dépublication doit-elle annuler les demandes en attente sur l'annonce ?
+
+### AUTO-24 · La demande ne recopie pas la place, et se conserve douze mois
+- Déclencheur : revue conformité US-008, constat majeur (RGPD) : `rental_requests` est la première table portant des données d'un conducteur (compte, adresse et box recopiés, période, prix) ; aucune durée de conservation ne la couvre, et l'anonymisation d'ADR-003 ne vise que `listings`, donc jamais cette copie.
+- Choix : (1) **minimisation** — la table ne recopie plus l'adresse ni le numéro de box : la place est désignée par l'annonce référencée et par la clé de place, qui suffisent à la contrainte d'exclusion comme aux lectures ; (2) **conservation** — une demande restée sans suite est supprimée douze mois après la fin de la période demandée ; une demande devenue une location confirmée relève du circuit de l'argent, donc de SPEC-003, et sort du périmètre de SPEC-001. La règle est écrite dans la spec §8 ; le mécanisme rejoint la dette #18, déjà ouverte pour l'anonymisation des annonces.
+- Alternatives : (a) garder l'adresse et le box pour la lisibilité des lignes — écarté, c'est une seconde copie de données personnelles qu'aucune purge n'atteindrait ; (b) fixer une durée différente de celle des annonces — écarté, deux horloges pour un même dossier compliquent la purge sans raison ; (c) trancher aussi le sort des demandes confirmées — écarté, elles appartiennent au circuit de l'argent de SPEC-003.
+- Preuve : revue conformité US-008 ; `20260918120000_create_rental_requests.ts` (colonnes `address`, `box`) ; ADR-003 (périmètre `listings`).
+- Impact : spec révision 8 ; la migration de cette story perd deux colonnes ; la dette #18 gagne un second jeu de données.
+- Coût : une reprise de la migration et du dépôt. Risque : faible, aucune donnée réelle (AUTO-03). Rollback : revert de la PR.
+- Traçabilité : RG-06 · RG-07 · US-008
+- Confiance : moyenne — douze mois reprend la durée d'ADR-003, sans validation juridique.
+- Question humaine au retour : douze mois après la fin de la période demandée est-il le bon repère pour une demande restée sans suite ?
 
 ## Écarts majeurs livrés
 

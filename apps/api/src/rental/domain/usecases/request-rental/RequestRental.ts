@@ -87,6 +87,11 @@ export class RequestRental implements UseCase<
       await this.rentalRepository.createRequest(rentalRequest.right);
       return Either.right(rentalRequest.right);
     } catch (error: unknown) {
+      if (
+        error instanceof DatesAlreadyRentedError ||
+        error instanceof ListingNotPublishedError
+      )
+        return Either.left(error);
       return Either.left(
         new UnknownError(
           error instanceof Error ? error.message : String(error),

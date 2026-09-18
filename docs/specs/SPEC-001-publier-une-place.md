@@ -3,7 +3,7 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 7
+revision: 8
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
@@ -621,6 +621,7 @@ Conséquence appliquée : RG-03 est écrite en ces termes, EX-20 vaut `96,00 €
 - **Langue.** Tout ce qu'un loueur ou un conducteur lit est en français.
 - **Rétention.** Une annonce dépubliée est conservée douze mois à compter de sa dépublication, puis anonymisée : l'adresse, le numéro de box, la description de l'accès et les photos sont effacés, la ligne subsistant sans donnée personnelle pour les locations passées qui la référencent. Durée et mécanisme tranchés en construction autonome (ADR-003), faute de décision en séance ; la tâche qui applique l'anonymisation sort du périmètre de cette spec et est portée comme dette tracée.
 
+- **Rétention des demandes.** Une demande de location restée sans suite est supprimée douze mois après la fin de la période demandée. Une demande devenue une location confirmée relève du circuit de l'argent et donc de SPEC-003, hors périmètre ici. La demande ne conserve aucune copie de l'adresse ni du numéro de box : elle désigne l'annonce et la place. Durée et mécanisme tranchés en construction autonome (AUTO-24), faute de décision en séance ; la tâche qui applique la suppression est portée comme dette tracée, avec celle des annonces.
 ## 9. Impacts par app
 
 Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune carte de code n'a jamais été dressée. Aucun `code-scout` n'a donc été dépêché, et rien de ce qui suit ne s'appuie sur du code observé.
@@ -662,3 +663,4 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 | 5 | 17/09/2026 | Construction autonome de US-006 (AUTO-19) : RG-06 gagne EX-41, une date de demande impossible est refusée ; RG-06 × Données passe d'`écarté¹⁷` à `EX-41`. |
 | 6 | 17/09/2026 | Construction autonome de US-007 (AUTO-20) : §8 « Rétention » fixe douze mois puis anonymisation d'une annonce dépubliée, en réponse au constat de conformité laissé ouvert par AUTO-05. |
 | 7 | 17/09/2026 | Construction autonome de US-007 (AUTO-21) : RG-07 gagne EX-42 (la dépublication vue de la base) et EX-43 (dépublier l'annonce d'un autre loueur est refusé, à la place du filet ²³). |
+| 8 | 18/09/2026 | Construction autonome de US-008 (AUTO-24) : §8 gagne la rétention des demandes de location — douze mois après la fin de la période demandée pour une demande sans suite — et pose que la demande ne recopie ni l'adresse ni le box. |

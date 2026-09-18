@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 22
+decisions: 27
 ecarts_majeurs: 3
 ---
 
@@ -281,6 +281,61 @@ ecarts_majeurs: 3
 - Traçabilité : RG-01 · RG-08 · US-007
 - Confiance : moyenne
 - Question humaine au retour : une place doit-elle rester réservée à son dernier loueur tant qu'une location confirmée court ?
+
+### AUTO-23 · Ce que la base garantit quand une demande croise une dépublication
+- Déclencheur : US-008 (EX-30, EX-32). EX-30 — deux demandes au même instant sur les mêmes dates — se prouve par une contrainte d'exclusion. EX-32 — une demande à l'instant de la dépublication — ne peut pas, lui, dépendre de qui gagne la course : si la demande passait avant, une ligne survivrait sur une annonce dépubliée, ce que la ligne `Et` de l'exemple interdit.
+- Choix : la garantie portée par la base est **l'état final**, pas l'ordre d'arrivée — après la collision, l'annonce est dépubliée et aucune demande n'existe sur elle. La demande lit l'annonce avec un verrou de ligne puis vérifie son état avant d'écrire, si bien qu'elle ne peut jamais s'insérer sur une annonce déjà dépubliée ; le test rend l'entrelacement explicite plutôt que de dépendre d'un hasard d'ordonnancement, et le dit dans son SUT. EX-30 s'appuie sur une contrainte d'exclusion sur (place, période) qui rend la seconde insertion impossible, jamais sur une lecture préalable.
+- Alternatives : (a) laisser l'ordre décider — écarté, le test serait instable et l'exemple faux une fois sur deux ; (b) faire annuler par la dépublication les demandes en attente — écarté, ce serait une règle produit nouvelle, absente de RG-07 ; (c) sérialiser toute l'application — écarté, hors de proportion.
+- Preuve : EX-30 et EX-32 de la spec ; corps de l'issue #9 (« garanties de concurrence que seule une vraie base peut prouver »).
+- Impact : une migration crée la table des demandes avec sa contrainte d'exclusion ; le dépôt Knex des demandes et le lecteur d'annonce publiée réel apparaissent.
+- Coût : une migration, deux adaptateurs. Risque : moyen — la contrainte d'exclusion demande l'extension `btree_gist`. Rollback : revert de la PR et de sa migration.
+- Traçabilité : RG-06 · RG-07 · EX-001-30 · EX-001-32 · US-008
+- Confiance : moyenne — l'entrelacement explicite du test est un choix d'écriture, pas une garantie de la base.
+- Question humaine au retour : une dépublication doit-elle annuler les demandes en attente sur l'annonce ?
+
+### AUTO-24 · La demande ne recopie pas la place, et se conserve douze mois
+- Déclencheur : revue conformité US-008, constat majeur (RGPD) : `rental_requests` est la première table portant des données d'un conducteur (compte, adresse et box recopiés, période, prix) ; aucune durée de conservation ne la couvre, et l'anonymisation d'ADR-003 ne vise que `listings`, donc jamais cette copie.
+- Choix : (1) **minimisation** — la table ne recopie plus l'adresse ni le numéro de box : la place est désignée par l'annonce référencée et par la clé de place, qui suffisent à la contrainte d'exclusion comme aux lectures ; (2) **conservation** — une demande restée sans suite est supprimée douze mois après la fin de la période demandée ; une demande devenue une location confirmée relève du circuit de l'argent, donc de SPEC-003, et sort du périmètre de SPEC-001. La règle est écrite dans la spec §8 ; le mécanisme rejoint la dette #18, déjà ouverte pour l'anonymisation des annonces.
+- Alternatives : (a) garder l'adresse et le box pour la lisibilité des lignes — écarté, c'est une seconde copie de données personnelles qu'aucune purge n'atteindrait ; (b) fixer une durée différente de celle des annonces — écarté, deux horloges pour un même dossier compliquent la purge sans raison ; (c) trancher aussi le sort des demandes confirmées — écarté, elles appartiennent au circuit de l'argent de SPEC-003.
+- Preuve : revue conformité US-008 ; `20260918120000_create_rental_requests.ts` (colonnes `address`, `box`) ; ADR-003 (périmètre `listings`).
+- Impact : spec révision 8 ; la migration de cette story perd deux colonnes ; la dette #18 gagne un second jeu de données.
+- Coût : une reprise de la migration et du dépôt. Risque : faible, aucune donnée réelle (AUTO-03). Rollback : revert de la PR.
+- Traçabilité : RG-06 · RG-07 · US-008
+- Confiance : moyenne — douze mois reprend la durée d'ADR-003, sans validation juridique.
+- Question humaine au retour : douze mois après la fin de la période demandée est-il le bon repère pour une demande restée sans suite ?
+
+### AUTO-25 · Ce que la base tient vraiment quand une demande croise une dépublication (corrige AUTO-23)
+- Déclencheur : revue sécurité US-008, constat mineur 2. AUTO-23 affirmait qu'après la collision « l'annonce est dépubliée et aucune demande n'existe sur elle, quel que soit l'ordre ». C'est faux dans un sens : si la demande prend le verrou la première, elle s'insère et valide, puis la dépublication passe — une demande en attente subsiste alors sur une annonce dépubliée. Le test ne le voit pas, puisqu'il pilote lui-même l'entrelacement.
+- Choix : corriger l'énoncé plutôt que le code. L'invariant réellement garanti est : **aucune demande n'est enregistrée après la dépublication**. Le sort d'une demande en attente au moment où le loueur dépublie — la laisser vivre, la refuser, l'annuler — est une règle produit que RG-07 ne porte pas : elle appartient à SPEC-002 (demander et confirmer), avec l'expiration des demandes. EX-32 reste vrai tel qu'il est écrit dans le sens que le test met en scène ; sa portée exacte est notée ici et dans la PR.
+- Alternatives : (a) faire prendre à la dépublication le même verrou et trancher le sort des demandes en attente — écarté, règle produit nouvelle ; (b) laisser AUTO-23 tel quel — écarté, le registre affirmerait une garantie que le code ne tient pas.
+- Preuve : revue sécurité US-008, constat mineur 2 (`KnexRentalRequestRepository.ts:82`, `UnpublishListing.ts:25` lit sans verrou).
+- Impact : AUTO-23 est superseded sur ce point précis ; le reste (contrainte d'exclusion pour EX-30) tient.
+- Coût : nul. Risque : moyen tant que le sort des demandes en attente n'est pas tranché. Rollback : sans objet.
+- Traçabilité : RG-07 · EX-001-32 · US-008 · supersede AUTO-23
+- Confiance : haute sur le constat, moyenne sur le report à SPEC-002.
+- Question humaine au retour : que devient une demande en attente quand le loueur dépublie son annonce ?
+
+### AUTO-26 · Une demande en attente gèle la place jusqu'à la fin de sa période
+- Déclencheur : revue sécurité US-008, constat mineur 1 : la contrainte d'exclusion ne distingue pas une demande en attente d'une location confirmée ; une demande jamais confirmée bloque la place sur toute la période demandée, jusqu'à 366 jours.
+- Choix : livrer en écart mineur. L'expiration d'une demande est explicitement hors périmètre — la spec la renvoie à SPEC-002 (§10, « l'expiration d'une demande »). Poser une durée de validité ici reviendrait à inventer la règle que SPEC-002 doit écrire.
+- Alternatives : ajouter une borne de validité et un exemple maintenant — écarté, même raison.
+- Preuve : spec §10 (« Demander et confirmer une location … l'expiration d'une demande. Objet de SPEC-002 ») ; revue sécurité US-008 constat 1.
+- Impact : une place peut rester gelée par une demande sans suite jusqu'à la fin de la période demandée.
+- Coût : nul. Risque : moyen à l'ouverture des routes, nul aujourd'hui (AUTO-03). Rollback : sans objet.
+- Traçabilité : RG-06 · US-008 · SPEC-002
+- Confiance : haute
+- Question humaine au retour : combien de temps une demande reste-t-elle valable avant d'expirer ? (à trancher dans SPEC-002)
+
+### AUTO-27 · Le test de la collision a le droit de piloter les deux contextes
+- Déclencheur : revue conventions US-008, constat majeur 1 : `KnexRentalRequestRepository.sut.ts` importe `UnpublishListing`, `ListingBuilder`, `ListingStatus` et `KnexListingRepository` du contexte « annonce », que l'issue #9 interdit et qu'AUTO-16 avait écarté pour le domaine `rental`.
+- Choix : autoriser explicitement cet import, dans ce seul fichier de test. EX-32 met en scène une demande qui croise une dépublication : l'exemple est par nature à cheval sur les deux contextes, et le prouver en pilotant la vraie dépublication vaut mieux qu'un `UPDATE` écrit à la main, qui ne testerait plus le chemin réel. La règle reste entière pour le code livré : `apps/api/src/rental/domain/**` et les adaptateurs de production n'importent rien de `listing/` — le lecteur d'annonce publiée lit la table, pas les classes.
+- Alternatives : (a) semer et dépublier par SQL brut dans le SUT — écarté, le test cesserait de prouver que la vraie dépublication et la vraie demande se sérialisent ; (b) déplacer EX-32 au barreau `journey` — écarté, aucun `AppModule` n'existe (AUTO-03).
+- Preuve : revue conventions US-008 constat 1 ; `KnexRentalRequestRepository.sut.ts:4-8`.
+- Impact : un fichier de test du contexte `rental` dépend de classes du contexte `listing` ; un renommage là-bas le casse. Exclu du build de production.
+- Coût : nul. Risque : faible. Rollback : réécrire le SUT en SQL brut.
+- Traçabilité : RG-07 · EX-001-32 · US-008
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

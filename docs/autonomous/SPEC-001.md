@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 24
+decisions: 26
 ecarts_majeurs: 3
 ---
 
@@ -303,6 +303,28 @@ ecarts_majeurs: 3
 - Traçabilité : RG-06 · RG-07 · US-008
 - Confiance : moyenne — douze mois reprend la durée d'ADR-003, sans validation juridique.
 - Question humaine au retour : douze mois après la fin de la période demandée est-il le bon repère pour une demande restée sans suite ?
+
+### AUTO-25 · Ce que la base tient vraiment quand une demande croise une dépublication (corrige AUTO-23)
+- Déclencheur : revue sécurité US-008, constat mineur 2. AUTO-23 affirmait qu'après la collision « l'annonce est dépubliée et aucune demande n'existe sur elle, quel que soit l'ordre ». C'est faux dans un sens : si la demande prend le verrou la première, elle s'insère et valide, puis la dépublication passe — une demande en attente subsiste alors sur une annonce dépubliée. Le test ne le voit pas, puisqu'il pilote lui-même l'entrelacement.
+- Choix : corriger l'énoncé plutôt que le code. L'invariant réellement garanti est : **aucune demande n'est enregistrée après la dépublication**. Le sort d'une demande en attente au moment où le loueur dépublie — la laisser vivre, la refuser, l'annuler — est une règle produit que RG-07 ne porte pas : elle appartient à SPEC-002 (demander et confirmer), avec l'expiration des demandes. EX-32 reste vrai tel qu'il est écrit dans le sens que le test met en scène ; sa portée exacte est notée ici et dans la PR.
+- Alternatives : (a) faire prendre à la dépublication le même verrou et trancher le sort des demandes en attente — écarté, règle produit nouvelle ; (b) laisser AUTO-23 tel quel — écarté, le registre affirmerait une garantie que le code ne tient pas.
+- Preuve : revue sécurité US-008, constat mineur 2 (`KnexRentalRequestRepository.ts:82`, `UnpublishListing.ts:25` lit sans verrou).
+- Impact : AUTO-23 est superseded sur ce point précis ; le reste (contrainte d'exclusion pour EX-30) tient.
+- Coût : nul. Risque : moyen tant que le sort des demandes en attente n'est pas tranché. Rollback : sans objet.
+- Traçabilité : RG-07 · EX-001-32 · US-008 · supersede AUTO-23
+- Confiance : haute sur le constat, moyenne sur le report à SPEC-002.
+- Question humaine au retour : que devient une demande en attente quand le loueur dépublie son annonce ?
+
+### AUTO-26 · Une demande en attente gèle la place jusqu'à la fin de sa période
+- Déclencheur : revue sécurité US-008, constat mineur 1 : la contrainte d'exclusion ne distingue pas une demande en attente d'une location confirmée ; une demande jamais confirmée bloque la place sur toute la période demandée, jusqu'à 366 jours.
+- Choix : livrer en écart mineur. L'expiration d'une demande est explicitement hors périmètre — la spec la renvoie à SPEC-002 (§10, « l'expiration d'une demande »). Poser une durée de validité ici reviendrait à inventer la règle que SPEC-002 doit écrire.
+- Alternatives : ajouter une borne de validité et un exemple maintenant — écarté, même raison.
+- Preuve : spec §10 (« Demander et confirmer une location … l'expiration d'une demande. Objet de SPEC-002 ») ; revue sécurité US-008 constat 1.
+- Impact : une place peut rester gelée par une demande sans suite jusqu'à la fin de la période demandée.
+- Coût : nul. Risque : moyen à l'ouverture des routes, nul aujourd'hui (AUTO-03). Rollback : sans objet.
+- Traçabilité : RG-06 · US-008 · SPEC-002
+- Confiance : haute
+- Question humaine au retour : combien de temps une demande reste-t-elle valable avant d'expirer ? (à trancher dans SPEC-002)
 
 ## Écarts majeurs livrés
 

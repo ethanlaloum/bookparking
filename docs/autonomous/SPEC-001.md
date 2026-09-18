@@ -258,6 +258,7 @@ ecarts_majeurs: 3
 - Traçabilité : RG-07 · US-007
 - Confiance : moyenne — 12 mois est un choix de la construction autonome, pas une durée validée par un juriste.
 - Question humaine au retour : 12 mois est-il la bonne durée, et l'anonymisation suffit-elle par rapport à une suppression ?
+- Complément (revue sécurité US-007, tour 2, constat mineur 5) : aucune colonne n'enregistre l'instant de la dépublication, et `updated_at` est repoussé par toute écriture ultérieure. L'échéance des douze mois n'a donc aucune ancre calculable : la dette #18 porte désormais explicitement le choix de cette ancre (colonne `unpublished_at` ou autre) avant toute anonymisation.
 
 ### AUTO-21 · La base doit accepter le statut dépublié, et la propriété doit être prouvée
 - Déclencheur : revue sécurité US-007, constats majeurs 1 (`20260917120000_create_listings.ts:25-26`, `CHECK (status IN ('ACTIVE'))` : contre la vraie base, `save` d'une annonce dépubliée viole la contrainte, l'erreur devient `UnknownError` et l'annonce reste consultable et louable — RG-07 entier inerte) et 2 (`Listing.ts:85-93`, le refus de dépublier l'annonce d'autrui n'est porté par aucun exemple ni aucun test).

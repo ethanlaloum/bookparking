@@ -526,7 +526,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 ²⁰ l'adresse est un champ obligatoire, son absence relève de RG-02.
 ²¹ index sur les dates de location et pagination de l'historique d'une annonce.
 ²² la règle ne dépend pas de l'instant de la dépublication.
-²³ vérification que le loueur est propriétaire de l'annonce qu'il dépublie.
+²³ vérification que le loueur est propriétaire de l'annonce qu'il dépublie — remplacée par EX-43 en révision 7, la note reste pour les renvois antérieurs.
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
 
@@ -534,7 +534,7 @@ EX-42 et EX-43 sont nés de la revue de sécurité de US-007 (AUTO-21) : la base
 
 EX-38 et EX-39 sont nés de la revue de sécurité de US-003 (AUTO-08) : une place est reconnue par une clé normalisée que la base contraint aussi.
 
-EX-36 et EX-37 sont nés de la revue de sécurité de US-002 (registre autonome, AUTO-01) : ils remplacent le filet ⁸ de RG-02 × Autorisation par deux exemples. La vérification que le loueur agit sur sa propre annonce reste le filet ⁸ de RG-04, RG-06 et le filet ²³ de RG-07.
+EX-36 et EX-37 sont nés de la revue de sécurité de US-002 (registre autonome, AUTO-01) : ils remplacent le filet ⁸ de RG-02 × Autorisation par deux exemples. La vérification que le loueur agit sur sa propre annonce reste le filet ⁸ de RG-04 et RG-06 ; pour RG-07, elle est portée par EX-43 depuis la révision 7.
 
 EX-35 est né de la résolution de Q-04, après la validation de la grille : il n'occupe aucune intersection et complète EX-14 sur le couple adresse + box.
 

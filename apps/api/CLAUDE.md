@@ -30,7 +30,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**28 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-17) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| unit (**33 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-18) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
 | int-repo + int-http (**2 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-17 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
@@ -80,6 +80,19 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 - **`RentalPlace.placeKeyOf` duplique à la lettre `Listing.placeKeyOf` (même `normalizePlacePart`), sans import entre les deux contextes.**
   `RentalPlace.ts:6-7` et `Listing.ts:26-27` portent la même fonction de normalisation ; le contexte `rental` ne peut pas réutiliser celle de `listing/` (AUTO-16, `docs/autonomous/SPEC-001.md`).
   Faire évoluer l'une sans l'autre romprait silencieusement l'accord sur ce qu'est « la même place ».
+
+- **La migration qui élargit `listings_status_check` ne se retourne pas une fois une annonce dépubliée.**
+  `20260917150000_widen_listing_status_check.ts` remplace `CHECK (status IN ('ACTIVE'))` par
+  `CHECK (status IN ('ACTIVE', 'UNPUBLISHED'))` ; son `down()` réinstalle l'ancienne contrainte avec
+  `ADD CONSTRAINT`, qui valide chaque ligne existante et échoue dès la première ligne `UNPUBLISHED`.
+  Ne jamais lancer un rollback sur cette migration une fois qu'une annonce a été dépubliée sans d'abord
+  décider ce que ces lignes deviennent.
+
+- **Dépublier une annonce déjà dépubliée réussit silencieusement — ce n'est pas un bug.**
+  `UnpublishListing.execute` (`UnpublishListing.ts:19-20`) renvoie `Either.right(undefined)` dès que
+  `findActiveByPlaceKey` ne trouve aucune annonce active, sans lever d'erreur ni écrire en base :
+  RG-07/EX-33 exige justement qu'une seconde demande de dépublication ne produise ni erreur ni changement.
+  Ne pas transformer cette branche en erreur (par ex. `ListingAlreadyUnpublishedError`) : cela romprait EX-33.
 
 ## Frozen versions — do not bump without reading the reason
 

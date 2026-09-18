@@ -7,8 +7,6 @@ export interface SchemaRentalRequestRepository {
   id: string;
   listing_id: string;
   renter_id: string;
-  address: string;
-  box: string;
   place_key: string;
   from_day: string;
   to_day: string;

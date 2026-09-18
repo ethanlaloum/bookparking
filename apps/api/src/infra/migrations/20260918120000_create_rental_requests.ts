@@ -13,8 +13,6 @@ export async function up(knex: Knex): Promise<void> {
       .onDelete('CASCADE')
       .index();
     table.text('renter_id').notNullable();
-    table.text('address').notNullable();
-    table.text('box').notNullable();
     table
       .text('place_key')
       .notNullable()

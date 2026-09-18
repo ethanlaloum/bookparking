@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 26
+decisions: 27
 ecarts_majeurs: 3
 ---
 
@@ -325,6 +325,17 @@ ecarts_majeurs: 3
 - Traçabilité : RG-06 · US-008 · SPEC-002
 - Confiance : haute
 - Question humaine au retour : combien de temps une demande reste-t-elle valable avant d'expirer ? (à trancher dans SPEC-002)
+
+### AUTO-27 · Le test de la collision a le droit de piloter les deux contextes
+- Déclencheur : revue conventions US-008, constat majeur 1 : `KnexRentalRequestRepository.sut.ts` importe `UnpublishListing`, `ListingBuilder`, `ListingStatus` et `KnexListingRepository` du contexte « annonce », que l'issue #9 interdit et qu'AUTO-16 avait écarté pour le domaine `rental`.
+- Choix : autoriser explicitement cet import, dans ce seul fichier de test. EX-32 met en scène une demande qui croise une dépublication : l'exemple est par nature à cheval sur les deux contextes, et le prouver en pilotant la vraie dépublication vaut mieux qu'un `UPDATE` écrit à la main, qui ne testerait plus le chemin réel. La règle reste entière pour le code livré : `apps/api/src/rental/domain/**` et les adaptateurs de production n'importent rien de `listing/` — le lecteur d'annonce publiée lit la table, pas les classes.
+- Alternatives : (a) semer et dépublier par SQL brut dans le SUT — écarté, le test cesserait de prouver que la vraie dépublication et la vraie demande se sérialisent ; (b) déplacer EX-32 au barreau `journey` — écarté, aucun `AppModule` n'existe (AUTO-03).
+- Preuve : revue conventions US-008 constat 1 ; `KnexRentalRequestRepository.sut.ts:4-8`.
+- Impact : un fichier de test du contexte `rental` dépend de classes du contexte `listing` ; un renommage là-bas le casse. Exclu du build de production.
+- Coût : nul. Risque : faible. Rollback : réécrire le SUT en SQL brut.
+- Traçabilité : RG-07 · EX-001-32 · US-008
+- Confiance : haute
+- Question humaine au retour : aucune
 
 ## Écarts majeurs livrés
 

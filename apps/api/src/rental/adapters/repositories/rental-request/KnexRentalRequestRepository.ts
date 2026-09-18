@@ -62,7 +62,9 @@ export class KnexRentalRequestRepository implements RentalRepository {
       .orderBy('period_from', 'asc');
     if (trx) query.transacting(trx);
     const rows = await query;
-    return rows.map(KnexRentalRequestRepository.toConfirmedRental);
+    return rows.map((row) =>
+      KnexRentalRequestRepository.toConfirmedRental(row, place),
+    );
   }
 
   // The listing row is read FOR UPDATE, in the very transaction that writes the
@@ -89,8 +91,6 @@ export class KnexRentalRequestRepository implements RentalRepository {
       await transaction<SchemaRentalRequestRepository>(this.tableName).insert({
         listing_id: activeListing.id,
         renter_id: state.renterId,
-        address: state.address,
-        box: state.box,
         place_key: placeKey,
         from_day: state.days.from,
         to_day: state.days.to,
@@ -108,13 +108,19 @@ export class KnexRentalRequestRepository implements RentalRepository {
     }
   }
 
+  // The row stores no address and no box on purpose: copying them here would put
+  // the listing's personal data behind a second door no purge of the listing
+  // opens. The place handed back is the one asked for, which is faithful only
+  // because the query keys on placeKeyOf(place) — the very equality
+  // designatesSamePlace tests, so every row returned designates that place.
   private static toConfirmedRental(
     row: SchemaRentalRequestRepository,
+    place: RentalPlace,
   ): ConfirmedRental {
     return ConfirmedRental.fromState({
       renterId: row.renter_id,
-      address: row.address,
-      box: row.box,
+      address: place.address,
+      box: place.box,
       period: {
         from: new Date(row.period_from),
         to: new Date(row.period_to),

@@ -130,5 +130,38 @@ describe('ListingController @SPEC-001', () => {
         expect.objectContaining({ listingId: 'listing-12' }),
       ]);
     });
+
+    it('serves a listing without its access description @EX-001-44', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListing({
+        id: 'listing-12',
+        address: '12 rue Barla, 06300 Nice',
+        box: '12',
+        accessDescription: 'portail bleu à gauche du 12',
+      });
+
+      const response = await http().get('/listing/listing-12');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.address).toEqual('12 rue Barla, 06300 Nice');
+      expect(response.body.box).toEqual('12');
+      expect(response.body.accessDescription).toBeUndefined();
+      expect(JSON.stringify(response.body)).not.toContain('portail bleu');
+    });
+
+    it('answers the same not-found response for a malformed listing id @EX-001-45', async () => {
+      sut.authState.user = null;
+      sut.givenNoListing();
+
+      const malformed = await http().get('/listing/pas-un-identifiant');
+      const unknown = await http().get(
+        '/listing/8f1d3b3e-9f1a-4a0e-8f1a-2b7c5d9e0a11',
+      );
+
+      expect(malformed.status).toEqual(unknown.status);
+      expect(malformed.body).toEqual(unknown.body);
+      expect(malformed.status).toEqual(404);
+      expect(malformed.body.message).toEqual('Annonce introuvable');
+    });
   });
 });

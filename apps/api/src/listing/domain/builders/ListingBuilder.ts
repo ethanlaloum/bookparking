@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   Listing,
   ListingAvailability,
@@ -10,6 +12,7 @@ export class ListingBuilder {
 
   constructor() {
     this.state = Listing.fromState({
+      id: randomUUID(),
       ownerId: 'account-marc',
       address: '12 rue Barla, 06300 Nice',
       box: '12',
@@ -24,6 +27,11 @@ export class ListingBuilder {
       status: ListingStatus.ACTIVE,
       publishedAt: new Date('2026-09-10T00:00:00.000Z'),
     });
+  }
+
+  withId(id: string): ListingBuilder {
+    this.state = Listing.fromState({ ...this.state.toState(), id });
+    return this;
   }
 
   withOwnerId(ownerId: string): ListingBuilder {

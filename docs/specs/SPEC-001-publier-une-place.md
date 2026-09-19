@@ -3,7 +3,7 @@ id: SPEC-001
 titre: Publier une place de parking en location
 slug: publier-une-place
 statut: valide
-revision: 8
+revision: 9
 derive_de: BR-20260910-reserver-et-louer-une-place@d3bf33b
 amont: present
 langue: fr
@@ -12,7 +12,7 @@ valide_par: jp-way:auto
 apps: [api, mobile, e2e]
 code_sha: { api: d3bf33b, mobile: d3bf33b, e2e: d3bf33b }
 regles: 8
-exemples: 43
+exemples: 45
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -337,6 +337,25 @@ Et ni `12 rue Barla, 06300 Nice` ni le `box 12` ne sont affichés
 
 <!-- jp-way:ex {"id":"EX-27","regle":"RG-05","origine":"sonde","barreau":"int-http","empreinte":"4a3d546a"} -->
 
+#### EX-44 · la description d'accès n'est pas publique
+
+Étant donné l'annonce active de `Marc D.` pour le `box 12` du `12 rue Barla, 06300 Nice`,
+  dont la description d'accès est « portail bleu à gauche du 12 »
+Quand un visiteur non connecté ouvre l'annonce le `12/09/2026`
+Alors il voit `12 rue Barla, 06300 Nice` et le `box 12`
+Et la description d'accès ne lui est pas montrée
+
+<!-- jp-way:ex {"id":"EX-44","regle":"RG-05","origine":"bug","barreau":"int-http","empreinte":"0dd39546"} -->
+
+#### EX-45 · un lien d'annonce mal formé
+
+Étant donné qu'aucune annonce ne porte l'identifiant `pas-un-identifiant`
+Quand un visiteur non connecté ouvre ce lien le `12/09/2026`
+Alors il voit « Annonce introuvable »
+Et la réponse est la même que pour une annonce inconnue
+
+<!-- jp-way:ex {"id":"EX-45","regle":"RG-05","origine":"bug","barreau":"int-http","empreinte":"7fb5bfe3"} -->
+
 ### RG-06 · une annonce reste publiée pendant une location, et les dates déjà louées ne sont plus demandables
 
 #### EX-09 · des dates libres après la location en cours
@@ -499,7 +518,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 | RG-02 | EX-17 | EX-04 filet⁶ | EX-18 | écarté⁷ | EX-36 EX-37 | écarté⁹ | écarté¹⁰ | filet¹¹ | EX-19 | filet¹² |
 | RG-03 | EX-20 | EX-21 | EX-22 | écarté¹³ | écarté¹⁴ | écarté¹⁵ | EX-23 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
 | RG-04 | EX-06 EX-07 | EX-07 | écarté¹⁸ | écarté¹³ | filet⁸ | EX-24 | EX-25 | écarté¹⁶ | écarté⁵ | écarté¹⁷ |
-| RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-26 | EX-27 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
+| RG-05 | écarté¹⁹ | écarté²⁰ | écarté¹⁸ | écarté¹³ | EX-26 | EX-27 | écarté³ | écarté⁴ | écarté⁵ | EX-44 EX-45 |
 | RG-06 | EX-28 | EX-09 | EX-29 | EX-30 | filet⁸ | EX-31 | écarté³ | EX-40 filet²¹ | écarté⁵ | EX-41 |
 | RG-07 | écarté¹⁹ | EX-11 | écarté²² | EX-32 | EX-43 | EX-33 EX-42 | écarté³ | écarté⁴ | écarté⁵ | écarté¹⁷ |
 | RG-08 | écarté¹⁹ | EX-12 | écarté¹⁸ | écarté¹³ | écarté²⁴ | EX-34 | écarté²⁵ | écarté⁴ | écarté⁵ | écarté¹⁷ |
@@ -530,7 +549,7 @@ Huit règles croisées avec les dix dimensions : 80 intersections, toutes résol
 ²⁴ la règle énonce précisément qu'aucune vérification n'est exigée pour publier.
 ²⁵ publier ne déclenche aucun mouvement d'argent.
 
-EX-42 et EX-43 sont nés de la revue de sécurité de US-007 (AUTO-21) : la base n'acceptait que le statut actif, et le refus de dépublier l'annonce d'autrui n'était prouvé par rien. EX-41 est né de la revue de sécurité de US-006 (AUTO-19) : une date impossible échappait à toutes les gardes. EX-40 est né de la revue de sécurité de US-006 (AUTO-17) : une période demandée sans borne bloquerait l'api. Les cellules RG-06 × Données et RG-06 × Autorisation restent fausses tant que la route de demande n'existe pas (AUTO-18).
+EX-44 et EX-45 sont nés de la revue de sécurité de US-009 (AUTO-29) : la lecture publique servait la description d'accès, et un identifiant mal formé répondait autre chose qu'« Annonce introuvable ». EX-42 et EX-43 sont nés de la revue de sécurité de US-007 (AUTO-21) : la base n'acceptait que le statut actif, et le refus de dépublier l'annonce d'autrui n'était prouvé par rien. EX-41 est né de la revue de sécurité de US-006 (AUTO-19) : une date impossible échappait à toutes les gardes. EX-40 est né de la revue de sécurité de US-006 (AUTO-17) : une période demandée sans borne bloquerait l'api. Les cellules RG-06 × Données et RG-06 × Autorisation restent fausses tant que la route de demande n'existe pas (AUTO-18).
 
 EX-38 et EX-39 sont nés de la revue de sécurité de US-003 (AUTO-08) : une place est reconnue par une clé normalisée que la base contraint aussi.
 
@@ -664,3 +683,4 @@ Aucun code n'existe : le dépôt ne porte aucune ligne d'application et aucune c
 | 6 | 17/09/2026 | Construction autonome de US-007 (AUTO-20) : §8 « Rétention » fixe douze mois puis anonymisation d'une annonce dépubliée, en réponse au constat de conformité laissé ouvert par AUTO-05. |
 | 7 | 17/09/2026 | Construction autonome de US-007 (AUTO-21) : RG-07 gagne EX-42 (la dépublication vue de la base) et EX-43 (dépublier l'annonce d'un autre loueur est refusé, à la place du filet ²³). |
 | 8 | 18/09/2026 | Construction autonome de US-008 (AUTO-24) : §8 gagne la rétention des demandes de location — douze mois après la fin de la période demandée pour une demande sans suite — et pose que la demande ne recopie ni l'adresse ni le box. |
+| 9 | 19/09/2026 | Construction autonome de US-009 (AUTO-29) : RG-05 gagne EX-44 (la description d'accès n'est pas servie publiquement) et EX-45 (un identifiant mal formé répond « Annonce introuvable ») ; RG-05 × Données passe d'`écarté¹⁷` à ces deux exemples. |

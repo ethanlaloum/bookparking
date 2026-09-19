@@ -3,10 +3,10 @@ spec: SPEC-001
 statut: valide
 valide_le: 2026-09-17
 valide_par: jp-way:auto
-revision: 7
+revision: 8
 derive_de: SPEC-001@6a4a2bd86012937c99afc033c416e16d44f62de6
 apps: [api, e2e]
-cas: 45
+cas: 47
 stories: 10
 ---
 
@@ -18,10 +18,10 @@ stories: 10
 |---|---|---|---|---|
 | unit | 33 | — | 33 | 33 |
 | int-repo | 5 | — | 5 | 5 |
-| int-http | 6 | — | 6 | 6 |
+| int-http | 8 | — | 8 | 8 |
 | journey | 0 | — | 0 | 0 |
 | e2e | — | 1 | 1 | 1 |
-| **total** | **44** | **1** | **45** | 43 exemples, 0 sans cas |
+| **total** | **46** | **1** | **47** | 45 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 - EX-03 — suggéré `e2e` seul, planifié `unit` **et** `e2e` : sa première ligne `Alors` (« l'annonce est active ») est une décision de domaine (ligne 1, T1) ; sans cas `unit`, le chemin nominal de RG-02 ne serait prouvé qu'en haut de la pyramide. Redondance assumée (T7), seul `e2e` de la spec (T3).
@@ -37,6 +37,8 @@ stories: 10
 - EX-40 — ajouté en révision 5 (17/09/2026, construction autonome de US-006, AUTO-17) : le refus d'une période démesurée est une décision de domaine (ligne 1, `unit`). US-006 passe à 6 exemples.
 
 - EX-42, EX-43 — ajoutés en révision 7 (17/09/2026, construction autonome de US-007, AUTO-21) : la contrainte de la base n'acceptait que le statut actif, donc la dépublication ne pouvait pas être écrite (ligne 2, `int-repo`), et le refus de dépublier l'annonce d'autrui n'était prouvé par rien (ligne 1, `unit`). US-007 passe à 6 exemples et gagne le barreau `int-repo`.
+
+- EX-44, EX-45 — ajoutés en révision 8 (19/09/2026, construction autonome de US-009, AUTO-29) : la lecture publique servait la description d'accès, que §8 n'autorise pas, et un identifiant mal formé ne répondait pas comme une annonce inconnue. Les deux s'observent à la frontière HTTP (ligne 3). US-009 passe à 5 exemples.
 
 **Découpage — le rouge d'abord**
 - Un exemple qui affirme une **acceptation** ne peut être rouge pour la bonne raison que dans la story qui **crée** son use-case : après elle, la publication accepte déjà tout ce qu'aucune contrainte n'interdit, et le cadre est vert avant la moindre ligne de code — un cadre vide au sens de `build.md`, qui arrête la construction. Un **refus** ajoute une contrainte et reste rouge quelle que soit sa story.
@@ -95,6 +97,8 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | EX-08 | int-http | api | US-009 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | exposes the exact address and box to a signed-in driver without any booking |
 | EX-26 | int-http | api | US-009 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | exposes the exact address and box to an unauthenticated visitor |
 | EX-27 | int-http | api | US-009 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | does not serve an unpublished listing nor its address |
+| EX-44 | int-http | api | US-009 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | serves a listing without its access description |
+| EX-45 | int-http | api | US-009 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | answers the same not-found response for a malformed listing id |
 | EX-03 | e2e | e2e | US-010 | `apps/e2e/tests/real/listing/publish-listing.spec.ts` | publishes a complete listing through the three-step form |
 
 <!-- jp-way:cas {"ex":"EX-03","barreau":"unit","app":"api","story":"US-001","chemin":"apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts","titre":"publishes a listing carrying every mandatory field","empreinte":"ecb18b1a"} -->
@@ -141,6 +145,8 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 <!-- jp-way:cas {"ex":"EX-08","barreau":"int-http","app":"api","story":"US-009","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"exposes the exact address and box to a signed-in driver without any booking","empreinte":"6742a31f"} -->
 <!-- jp-way:cas {"ex":"EX-26","barreau":"int-http","app":"api","story":"US-009","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"exposes the exact address and box to an unauthenticated visitor","empreinte":"62bb715f"} -->
 <!-- jp-way:cas {"ex":"EX-27","barreau":"int-http","app":"api","story":"US-009","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"does not serve an unpublished listing nor its address","empreinte":"4a3d546a"} -->
+<!-- jp-way:cas {"ex":"EX-44","barreau":"int-http","app":"api","story":"US-009","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"serves a listing without its access description","empreinte":"0dd39546"} -->
+<!-- jp-way:cas {"ex":"EX-45","barreau":"int-http","app":"api","story":"US-009","chemin":"apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts","titre":"answers the same not-found response for a malformed listing id","empreinte":"7fb5bfe3"} -->
 <!-- jp-way:cas {"ex":"EX-03","barreau":"e2e","app":"e2e","story":"US-010","chemin":"apps/e2e/tests/real/listing/publish-listing.spec.ts","titre":"publishes a complete listing through the three-step form","empreinte":"ecb18b1a"} -->
 
 ## Stories
@@ -155,7 +161,7 @@ UX-01 (huit états), UX-02 et UX-03 ne portent aucun exemple dont la ligne `Alor
 | 6 | US-006 | Demander une place sur des dates libres | api | unit | EX-22 EX-09 EX-10 EX-28 EX-29 EX-40 EX-41 | #7 |
 | 7 | US-007 | Dépublier une annonce | api | unit int-repo | EX-11 EX-33 EX-31 EX-13 EX-42 EX-43 | #8 |
 | 8 | US-008 | Enregistrer une seule demande malgré la concurrence | api | int-repo | EX-30 EX-32 | #9 |
-| 9 | US-009 | Exposer l'adresse exacte d'une annonce | api | int-http | EX-08 EX-26 EX-27 | #10 |
+| 9 | US-009 | Exposer l'adresse exacte d'une annonce | api | int-http | EX-08 EX-26 EX-27 EX-44 EX-45 | #10 |
 | 10 | US-010 | Parcours de publication d'une place | e2e | e2e | EX-03 | #11 |
 
 ## Dépendances

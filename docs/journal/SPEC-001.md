@@ -36,7 +36,7 @@ ton annonce est active.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-001","story":"US-009","ex":["EX-08","EX-26","EX-27","EX-44","EX-45"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-009","ex":["EX-08","EX-26","EX-27","EX-44","EX-45"],"pr":21} -->
 
 ## Dépublier une annonce ne libère jamais les dates déjà louées
 

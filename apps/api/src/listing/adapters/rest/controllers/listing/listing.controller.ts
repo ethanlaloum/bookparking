@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -15,15 +17,22 @@ import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
 import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
+import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
+import { ListingNotFoundError } from '../../../../domain/usecases/get-listing/errors/ListingNotFoundError';
 import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-listing/errors/PhotoStorageFailedError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
+import { ListingMapper } from '../../../mappers/ListingMapper';
+import { GetListingResponseDto } from '../../dtos/GetListingResponseDto';
 import { PublishListingSchema } from '../../dtos/PublishListingSchema';
 
 @Controller('listing')
 export class ListingController {
-  constructor(private readonly publishListingUseCase: PublishListing) {}
+  constructor(
+    private readonly publishListingUseCase: PublishListing,
+    private readonly getListingUseCase: GetListing,
+  ) {}
 
   @UseGuards(AuthGuard)
   @Post()
@@ -87,6 +96,34 @@ export class ListingController {
         name: 'ListingController',
         method: 'publishListing',
         userId: req.user.id,
+      });
+    }
+  }
+
+  @Get(':id')
+  async getListing(
+    @Param('id') id: string,
+  ): Promise<GetListingResponseDto | void> {
+    try {
+      const result = await this.getListingUseCase.execute({ listingId: id });
+
+      if (Either.isLeft(result)) {
+        const error = result.left;
+        if (error instanceof ListingNotFoundError) {
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        }
+        throw new HttpException(
+          "La lecture de l'annonce a échoué",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return ListingMapper.toGetListingDto(result.right);
+    } catch (error) {
+      controllerErrorHandler(error, {
+        name: 'ListingController',
+        method: 'getListing',
+        listingId: id,
       });
     }
   }

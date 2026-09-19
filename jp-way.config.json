@@ -25,7 +25,7 @@
       "commands": {},
       "testGlobs": {
         "unit": "src/**/*.unit.spec.ts",
-        "int-repo": "src/**/adapters/{repositories,services}/**/*.int.spec.ts",
+        "int-repo": "src/**/adapters/repositories/**/*.int.spec.ts",
         "int-http": "src/**/adapters/rest/**/*.int.spec.ts",
         "journey": "src/**/*.journey.int.spec.ts"
       }

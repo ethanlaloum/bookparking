@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 30
+decisions: 32
 ecarts_majeurs: 3
 ---
 
@@ -369,6 +369,29 @@ ecarts_majeurs: 3
 - Traçabilité : RG-05 · US-009 · SPEC-002
 - Confiance : haute
 - Question humaine au retour : prévoir une limite de débit avec la première route de recherche.
+
+### AUTO-31 · Le motif de recherche du barreau int-repo cachait deux fichiers de test
+- Déclencheur : l'audit de phase 5 rendait `LACUNES BLOQUANTES` en affirmant qu'EX-30, EX-32, EX-39 et EX-42 n'avaient aucun test, et qu'EX-19 était testé ailleurs que prévu — alors que les quatre tags existent et que les suites passent. L'audit n'avait scanné que 6 des 8 fichiers de test.
+- Choix : corriger le motif de `apps[].testGlobs["int-repo"]` dans `jp-way.config.json`, qui valait `src/**/adapters/{repositories,services}/**/*.int.spec.ts` : les accolades ne sont pas développées par l'outil, donc aucun fichier de dépôt n'était vu, quand le motif du barreau int-http (sans accolades) fonctionnait. Nouveau motif : `src/**/adapters/repositories/**/*.int.spec.ts`. Aucun test `int-spec` ne vit sous `adapters/services/` aujourd'hui ; le jour où il y en aura un, il faudra un motif qui les couvre tous les deux sans accolades.
+- Alternatives : (a) déclarer les quatre exemples couverts malgré l'audit — écarté, l'audit est la porte, on ne contourne pas une porte ; (b) déplacer les fichiers de test pour coller au motif — écarté, leur place est correcte.
+- Preuve : avant, `fichiersScannes: 6`, `bloquants: 6`, `decouverts: 4` ; après, `fichiersScannes: 8`, `bloquants: 0`, `couverts: 45 / 45`.
+- Impact : la couverture réelle n'a jamais changé ; c'est sa mesure qui était fausse. Les revues et les PR antérieures citaient des sorties de test réelles, pas l'audit.
+- Coût : une ligne de configuration. Risque : faible. Rollback : rétablir le motif précédent.
+- Traçabilité : SPEC-001 · US-008 · US-007
+- Confiance : haute
+- Question humaine au retour : aucune
+
+### AUTO-32 · US-010 est bloquée : son parcours exige une pile que la spec ne décrit pas
+- Déclencheur : US-010 (#11) devient éligible — ses neuf dépendances sont `status:done` — mais son unique exemple, EX-03 au barreau `e2e` (« publier une annonce complète par le formulaire en trois étapes »), demande un navigateur réel devant une application réelle.
+- Constat : trois pièces manquent, et aucune n'appartient à SPEC-001. (1) Il n'existe aucune application front : `apps/` ne contient que `api`, le plan ne porte aucune story front, et son propre commentaire le dit — « les trois écrans ne portent aucun exemple observable sur ce barreau (T2) ; le manque se corrige dans la spec, jamais dans le plan ». (2) L'api ne démarre pas : ni `AppModule` ni `main.ts`, écart majeur livré et assumé depuis US-002 (AUTO-03). (3) Publier exige un loueur authentifié (AUTO-01) et le vérificateur de jeton n'a aucune implémentation, la spec plaçant le compte hors périmètre (§2).
+- Choix : bloquer US-010 plutôt que d'inventer un produit. Construire un front, un démarrage d'api et un mécanisme d'authentification reviendrait à écrire trois applications que personne n'a spécifiées, et à prouver un parcours contre des écrans que la spec n'a jamais décrits autrement que par leurs noms accessibles. C'est la seconde condition d'arrêt : la preuve exigée par ce barreau ne peut pas être obtenue dans le périmètre.
+- Alternatives : (a) écrire le parcours en le faisant passer par l'api seule — écarté, ce ne serait plus un parcours et EX-03 serait rouge pour une mauvaise raison ; (b) rétrograder EX-03 à un barreau inférieur — interdit, et son cas `unit` existe déjà sous US-001.
+- Preuve : `ls apps` → `api` ; `find apps/api/src -iname '*.module.ts' -o -iname main.ts` → vide ; plan §Découpage, note « Aucun cas mobile ».
+- Impact : la spec s'arrête à neuf stories livrées sur dix.
+- Coût : nul. Risque : aucun tant que rien n'est monté. Rollback : sans objet.
+- Traçabilité : RG-02 · EX-001-03 · US-010
+- Confiance : haute
+- Question humaine au retour : dans quel ordre veux-tu la suite — une spec « comptes » pour l'authentification, le démarrage de l'api, puis un front avec ses propres exemples d'écran ? Tant que ces trois-là manquent, US-010 ne peut pas être prouvée.
 
 ## Écarts majeurs livrés
 

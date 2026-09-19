@@ -1,9 +1,9 @@
 ---
 spec: SPEC-001
 mode: autonomous
-statut: en-cours
+statut: a-revoir
 demarre_le: 2026-09-17T01:34:49Z
-termine_le: null
+termine_le: 2026-09-19T08:42:27Z
 decisions: 32
 ecarts_majeurs: 3
 ---
@@ -401,24 +401,41 @@ ecarts_majeurs: 3
 
 ## Résultat livré
 
-- US-001 (#2) fusionnée (PR #12) avant ce run.
-- US-002 (#3) fusionnée : PR #13, `7b61cc6`. Unit 7 passed · int 4 passed · build 0. Revues : conventions ECARTS MAJEURS (AUTO-03, AUTO-04 livrés) · sécurité ECARTS MINEURS · conformité ECARTS MAJEURS (AUTO-05 livré).
-- US-003 (#4) fusionnée : PR #14, `ba1f945`. Unit 13 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité ECARTS MINEURS (AUTO-12) · conformité CONFORME.
-- US-004 (#5) fusionnée : PR #15. Unit 17 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME · conformité CONFORME.
-- US-005 (#6) fusionnée : PR #16. Unit 21 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité SANS OBJET · conformité SANS OBJET.
-- US-006 (#7) fusionnée : PR #17. Unit 28 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME (3 tours) · conformité SANS OBJET.
-- US-007 (#8) fusionnée : PR #19. Unit 33 passed · int 6 passed · build 0. Revues : conventions ECARTS MINEURS (corrigé) · sécurité ECARTS MINEURS · conformité ECARTS MINEURS (règle de rétention écrite, ADR-003).
-- US-008 (#9) fusionnée : PR #20. Unit 33 passed · int 8 passed · build 0. Revues : conventions CONFORME · sécurité ECARTS MINEURS · conformité ECARTS MINEURS.
-- US-009 (#10) fusionnée : PR #21. Unit 33 passed · int 13 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME · conformité CONFORME.
-- Reste : US-010 (parcours e2e).
+Neuf stories sur dix livrées et fusionnées, toutes `status:done`, chacune avec ses tests, ses trois revues et son reçu.
+
+| Story | PR | Fusion | Barreaux prouvés |
+|---|---|---|---|
+| US-001 Publier une annonce | #12 | avant ce run | unit |
+| US-002 Refuser une annonce incomplète | #13 | `7b61cc6` | unit · int-repo · int-http |
+| US-003 Une seule annonce active par box | #14 | `ba1f945` | unit · int-repo |
+| US-004 Au moins une durée dans la grille | #15 | `3e65248` | unit |
+| US-005 Calculer le prix d'une période | #16 | `d18a13b` | unit |
+| US-006 Demander une place sur des dates libres | #17 | `7a025da` | unit |
+| US-007 Dépublier une annonce | #19 | `ce45424` | unit · int-repo |
+| US-008 Une seule demande malgré la concurrence | #20 | `7700e18` | int-repo |
+| US-009 Exposer l'adresse exacte d'une annonce | #21 | `f7900eb` | int-http |
+
+- **US-010 (#11) bloquée**, `status:blocked` : son parcours `e2e` exige un front, un démarrage d'api et une authentification, aucun des trois n'étant dans le périmètre de SPEC-001 (AUTO-32).
+- **Suites au dernier commit de `main`** : `build` exit 0 · unit `Tests: 33 passed, 33 total` · int `Tests: 13 passed, 13 total` · eslint exit 0.
+- **Audit de phase 5** : `LACUNES MINEURES` — 45 exemples sur 45 couverts, 0 bloquant, 0 orphelin, 10 mineurs (dérive de sha du plan, `code_sha` citant l'app `mobile` absente, fichier `e2e` planifié inexistant, et le décalage de chemin d'EX-19). Le verdict était faussement `LACUNES BLOQUANTES` jusqu'à AUTO-31.
+- **La spec a grandi sous les revues** : 35 exemples au départ, 45 à l'arrivée. Dix sont nés des revues de sécurité et de conformité (EX-36 à EX-45), et deux règles produit manquantes ont été écrites : la conservation des annonces dépubliées et celle des demandes.
+- **Dette ouverte** : issue #18 — purger les données personnelles (annonces dépubliées à douze mois, demandes sans suite), avec le choix de l'ancre de date.
 
 ## À relire au retour
 
+**Les trois écarts majeurs livrés** sont listés à la section précédente ; ils tiennent tous à la même racine : rien n'est monté dans une application.
 
-- AUTO-01 : quel mécanisme d'authentification alimente `AccessTokenVerifier` ?
-- AUTO-03 : stockage de photos et base de production au premier démarrage de l'api.
-- AUTO-05 : durée de conservation d'une annonce dépubliée (écart RGPD livré).
-- AUTO-06 : bornes de saisie et refus des prix négatifs.
-- AUTO-07 : ajouter un exemple « jeton inconnu refusé » (numéro à attribuer, EX-38 ayant servi en AUTO-08).
-- AUTO-08 : « Box 12 », « n°12 » et « 12 » désignent-ils le même box ?
-- AUTO-12 : exemple « caractère invisible dans le box ou l'adresse » avant de monter la route.
+**Décisions produit prises à ta place, à confirmer :**
+- **AUTO-20 / ADR-003** — une annonce dépubliée est conservée douze mois puis anonymisée. Durée choisie sans validation juridique.
+- **AUTO-24** — une demande sans suite est supprimée douze mois après la fin de la période demandée ; les demandes confirmées relèvent de SPEC-003.
+- **AUTO-17** — une demande porte au plus 366 jours.
+- **AUTO-29 / ADR-005** — la description d'accès n'est pas servie publiquement. Qui doit la voir, et à partir de quand ?
+- **AUTO-15** — un mois commençant un 29, 30 ou 31 n'est couvert par aucun exemple.
+- **AUTO-08** — « Box 12 », « n°12 » et « 12 » ne sont pas confondus.
+- **AUTO-22** — après dépublication, n'importe quel loueur peut publier la place, même pendant une location confirmée du précédent.
+- **AUTO-25 / AUTO-26** — le sort d'une demande en attente à la dépublication, et l'expiration des demandes, appartiennent à SPEC-002.
+- **AUTO-30** — aucune limitation de débit ; à prévoir avec la première route de recherche.
+- **AUTO-12** — les caractères invisibles ne sont pas retirés de la clé de place.
+- **AUTO-07** — un exemple « jeton inconnu refusé » reste à écrire.
+
+**Ce qui bloque la suite (AUTO-32)** : une spec « comptes » pour l'authentification, le démarrage de l'api, puis un front avec ses propres exemples d'écran.

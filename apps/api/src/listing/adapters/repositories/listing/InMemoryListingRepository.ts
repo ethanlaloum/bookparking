@@ -21,6 +21,14 @@ export class InMemoryListingRepository implements ListingRepository {
     this.listingList[index] = listing;
   }
 
+  public async findActiveById(listingId: string): Promise<Listing | null> {
+    return (
+      this.listingList.find(
+        (listing) => listing.isActive() && listing.id === listingId,
+      ) ?? null
+    );
+  }
+
   public async findActiveByPlaceKey(placeKey: string): Promise<Listing | null> {
     return (
       this.listingList.find(

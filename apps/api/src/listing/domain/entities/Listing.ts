@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Either } from 'effect/index';
 
 import { IncompletePricingError } from '../errors/IncompletePricingError';
@@ -28,6 +30,7 @@ const normalizePlacePart = (part: string): string =>
   part.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
 
 interface Props {
+  id: string;
   ownerId: string;
   address: string;
   box: string;
@@ -51,13 +54,25 @@ export class Listing {
   }
 
   public static publish(
-    params: Omit<Props, 'status'>,
+    params: Omit<Props, 'id' | 'status'>,
   ): Either.Either<Listing, IncompletePricingError> {
     if (!Listing.offersAnyDuration(params.pricing))
       return Either.left(new IncompletePricingError());
     return Either.right(
-      new Listing({ ...params, status: ListingStatus.ACTIVE }),
+      new Listing({
+        ...params,
+        id: randomUUID(),
+        status: ListingStatus.ACTIVE,
+      }),
     );
+  }
+
+  public get id(): string {
+    return this.props.id;
+  }
+
+  public isActive(): boolean {
+    return this.props.status === ListingStatus.ACTIVE;
   }
 
   public static offersAnyDuration(pricing: ListingPricing): boolean {

@@ -17,10 +17,7 @@ const isActivePlaceKeyViolation = (error: unknown): boolean =>
   (error as { constraint?: unknown }).constraint ===
     ACTIVE_PLACE_KEY_UNIQUE_INDEX;
 
-type ListingRow = Omit<
-  SchemaListingRepository,
-  'id' | 'created_at' | 'updated_at'
->;
+type ListingRow = Omit<SchemaListingRepository, 'created_at' | 'updated_at'>;
 
 export class KnexListingRepository implements ListingRepository {
   private readonly tableName = 'listings';
@@ -57,6 +54,19 @@ export class KnexListingRepository implements ListingRepository {
     }
   }
 
+  public async findActiveById(
+    listingId: string,
+    trx?: GenericTransaction,
+  ): Promise<Listing | null> {
+    const query = this.connection<SchemaListingRepository>(this.tableName)
+      .where({ id: listingId, status: ListingStatus.ACTIVE })
+      .first();
+    if (trx) query.transacting(trx);
+    const row = await query;
+    if (!row) return null;
+    return KnexListingRepository.toEntity(row);
+  }
+
   public async findActiveByPlaceKey(
     placeKey: string,
     trx?: GenericTransaction,
@@ -73,6 +83,7 @@ export class KnexListingRepository implements ListingRepository {
   private static toRow(listing: Listing): ListingRow {
     const state = listing.toState();
     return {
+      id: state.id,
       owner_id: state.ownerId,
       address: state.address,
       box: state.box,
@@ -91,6 +102,7 @@ export class KnexListingRepository implements ListingRepository {
 
   private static toEntity(row: SchemaListingRepository): Listing {
     return Listing.fromState({
+      id: row.id,
       ownerId: row.owner_id,
       address: row.address,
       box: row.box,

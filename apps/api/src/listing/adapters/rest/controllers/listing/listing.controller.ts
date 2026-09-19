@@ -105,7 +105,17 @@ export class ListingController {
     @Param('id') id: string,
   ): Promise<GetListingResponseDto | void> {
     try {
-      const result = await this.getListingUseCase.execute({ listingId: id });
+      const decode = Schema.decodeUnknownEither(Schema.UUID)(id);
+
+      if (Either.isLeft(decode))
+        throw new HttpException(
+          new ListingNotFoundError().message,
+          HttpStatus.NOT_FOUND,
+        );
+
+      const result = await this.getListingUseCase.execute({
+        listingId: decode.right,
+      });
 
       if (Either.isLeft(result)) {
         const error = result.left;

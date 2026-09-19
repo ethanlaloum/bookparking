@@ -9,7 +9,6 @@ export class ListingMapper {
       id: state.id,
       address: state.address,
       box: state.box,
-      accessDescription: state.accessDescription,
       photos: [...state.photos],
       pricing: {
         dayInCents: state.pricing.dayInCents,

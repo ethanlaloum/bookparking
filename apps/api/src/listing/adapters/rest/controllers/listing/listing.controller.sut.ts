@@ -16,6 +16,7 @@ interface ListingFixture {
   id: string;
   address: string;
   box: string;
+  accessDescription?: string;
 }
 
 export const createListingControllerSUT = () => {
@@ -38,16 +39,25 @@ export const createListingControllerSUT = () => {
     authState,
 
     givenActiveListing(fixture: ListingFixture) {
-      const listing = new ListingBuilder()
+      const builder = new ListingBuilder()
         .withId(fixture.id)
         .withOwnerId(MARC_ACCOUNT_ID)
         .withAddress(fixture.address)
         .withBox(fixture.box)
-        .withStatus(ListingStatus.ACTIVE)
-        .build();
+        .withStatus(ListingStatus.ACTIVE);
+
+      const listing = (
+        fixture.accessDescription
+          ? builder.withAccessDescription(fixture.accessDescription)
+          : builder
+      ).build();
 
       getListing.willResolve(Either.right(listing));
       return { listing };
+    },
+
+    givenNoListing() {
+      getListing.willResolve(Either.left(new ListingNotFoundError()));
     },
 
     givenUnpublishedListing(fixture: ListingFixture) {

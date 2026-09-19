@@ -386,7 +386,8 @@ ecarts_majeurs: 3
 - US-006 (#7) fusionnée : PR #17. Unit 28 passed · int 5 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME (3 tours) · conformité SANS OBJET.
 - US-007 (#8) fusionnée : PR #19. Unit 33 passed · int 6 passed · build 0. Revues : conventions ECARTS MINEURS (corrigé) · sécurité ECARTS MINEURS · conformité ECARTS MINEURS (règle de rétention écrite, ADR-003).
 - US-008 (#9) fusionnée : PR #20. Unit 33 passed · int 8 passed · build 0. Revues : conventions CONFORME · sécurité ECARTS MINEURS · conformité ECARTS MINEURS.
-- Restent : US-009 et US-010.
+- US-009 (#10) fusionnée : PR #21. Unit 33 passed · int 13 passed · build 0. Revues : conventions CONFORME · sécurité CONFORME · conformité CONFORME.
+- Reste : US-010 (parcours e2e).
 
 ## À relire au retour
 

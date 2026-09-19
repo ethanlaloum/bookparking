@@ -10,6 +10,7 @@
 - `domain/errors/` — les erreurs que l'entité elle-même peut lever, partagées par plusieurs cas d'usage (`IncompletePricingError`, levée à la fois par `Listing.publish()` et par `Listing.changePricing()`) ; une erreur qu'un seul cas d'usage renvoie reste sous son propre `domain/usecases/<cas-d-usage>/errors/`.
 - `adapters/repositories/<agrégat>/` — les implémentations des ports, y compris les doublures en mémoire utilisées par les tests unitaires (`InMemoryListingRepository`), plus un `Schema<Nom>.ts` par table Knex (`SchemaListingRepository`) qui décrit les colonnes réelles.
 - `adapters/rest/controllers/<agrégat>/` et `adapters/rest/dtos/` — les contrôleurs Nest et leurs schémas `effect/Schema` de validation de requête.
+- `adapters/mappers/<agrégat>/` — les convertisseurs entité → DTO de réponse (`ListingMapper`), un fichier par agrégat : ils décident seuls ce qu'une réponse HTTP montre, et donc ce qu'elle omet délibérément (voir « Things that will bite you »).
 - `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur (`InMemoryPhotoStorage`).
 - `domain/builders/<Entité>Builder.ts` — un bâtisseur d'entité partagé entre plusieurs `.sut.ts` d'un même agrégat (`ListingBuilder` est utilisé à la fois par `PublishListing.sut.ts` et par `KnexListingRepository.sut.ts`) : il construit l'entité via `fromState()`, jamais par un constructeur public, pour donner à toute fixture d'annonce active un seul point de vérité entre les barreaux `unit` et `int-repo`.
 
@@ -147,6 +148,28 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   production (`tsconfig.build.json:7-15`). `apps/api/src/rental/domain/**` et les adaptateurs livrés,
   eux, n'importent toujours rien de `listing/`.
   Ne pas copier cet import dans un fichier qui n'est pas un `.sut.ts` de ce test précis.
+
+- **`Listing.publish()` engendre lui-même l'identifiant, et le défaut de la colonne `id` en base ne joue plus jamais.**
+  `Listing.ts:64` appelle `randomUUID()` avant de construire l'entité, et `KnexListingRepository.toRow`
+  (`KnexListingRepository.ts:86`) écrit toujours cette valeur : `table.uuid('id').primary().defaultTo(knex.fn.uuid())`
+  (`infra/migrations/20260917120000_create_listings.ts:5`) ne s'exécute donc plus (AUTO-28, `docs/autonomous/SPEC-001.md`).
+  Ne pas retirer `id: state.id` de `toRow` en comptant sur ce défaut — rien ne relit jamais l'identifiant que Postgres aurait engendré.
+
+- **`GET /listing/:id` ne porte aucun `AuthGuard`, à la différence de `POST /listing` — ce n'est pas un oubli.**
+  RG-05 exige que l'adresse exacte et le box restent visibles pour une conductrice connectée sans réservation (EX-08)
+  et pour un visiteur non connecté (EX-26) ; `listing.controller.ts:103-106` ne déclare donc pas de garde sur cette route.
+  Ne pas ajouter `@UseGuards(AuthGuard)` ici sans rouvrir RG-05 — cela romprait EX-08 et EX-26.
+
+- **`ListingMapper.toGetListingDto` et `GetListingResponseDto` omettent volontairement `accessDescription`.**
+  Cette description partait dans la réponse publique jusqu'à la revue de sécurité de US-009 ; §8 de la spec
+  n'autorise publiquement que l'adresse exacte et le box, et §10 fait de ce texte le substitut du code de portail
+  (AUTO-29, `docs/autonomous/SPEC-001.md`). EX-44 fige cette non-exposition.
+  Ne pas ajouter ce champ à `GetListingResponseDto` sans rouvrir AUTO-29 — qui doit le voir, et quand, reste une question ouverte.
+
+- **Le paramètre de chemin `:id` de `GET /listing/:id` est décodé comme un UUID avant d'atteindre le dépôt — un identifiant mal formé répond comme une annonce inconnue, jamais 500.**
+  `listing.controller.ts:108` appelle `Schema.decodeUnknownEither(Schema.UUID)(id)` et lève, sur un échec de décodage,
+  la même `ListingNotFoundError` qu'une annonce absente (AUTO-29, `docs/autonomous/SPEC-001.md`) ; EX-45 fige cette égalité de réponse.
+  Toute nouvelle route qui prend un identifiant de domaine en paramètre de chemin doit le décoder de la même façon avant de l'utiliser.
 
 ## Frozen versions — do not bump without reading the reason
 

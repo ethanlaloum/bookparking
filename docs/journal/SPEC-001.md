@@ -2,6 +2,7 @@
 spec: SPEC-001
 langue: fr
 entrees:
+  - { us: US-009, date: null, titre: "L'adresse exacte d'une annonce est visible sans réservation ni connexion" }
   - { us: US-007, date: null, titre: "Dépublier une annonce ne libère jamais les dates déjà louées" }
   - { us: US-006, date: null, titre: "Une demande de location porte sur des dates réellement libres, à un prix figé" }
   - { us: US-004, date: null, titre: "Une grille tarifaire doit toujours proposer au moins un tarif" }
@@ -10,6 +11,32 @@ entrees:
 ---
 
 # Publier une place — ce qui change pour toi
+
+## L'adresse exacte d'une annonce est visible sans réservation ni connexion
+
+**Ce qui change** — Ouvrir une annonce montre désormais l'adresse exacte et le numéro de box, que tu
+sois connecté ou non, et sans avoir fait la moindre demande sur cette place. La description de l'accès,
+elle, reste réservée à toi seul : elle n'apparaît jamais dans cette lecture publique. Une annonce
+dépubliée, ou un lien mal formé, répondent tous les deux « Annonce introuvable », sans laisser filtrer
+la moindre information.
+
+**Pour qui** — Les conducteurs qui consultent une annonce, connectés ou non ; les loueurs, dont
+l'adresse et le box deviennent visibles dès la publication.
+
+**Ce que tu vois maintenant** — En ouvrant l'annonce active du `box 12` du `12 rue Barla, 06300 Nice`,
+tu vois cette adresse et ce numéro de box, sans qu'aucune réservation, confirmation ni connexion ne te
+soit demandée. La description de l'accès, elle, ne t'est pas montrée. Si l'annonce a été dépubliée, ou
+si le lien que tu suis ne désigne aucune annonce, tu vois « Annonce introuvable » — la même réponse dans
+les deux cas, sans que l'adresse ni le box n'apparaissent.
+
+**Ce qu'il faut faire différemment** — Rien : consulter une annonce ne demande toujours ni compte ni
+demande préalable. Retiens seulement que l'adresse que tu publies est visible par n'importe qui dès que
+ton annonce est active.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-001","story":"US-009","ex":["EX-08","EX-26","EX-27","EX-44","EX-45"],"pr":null} -->
 
 ## Dépublier une annonce ne libère jamais les dates déjà louées
 

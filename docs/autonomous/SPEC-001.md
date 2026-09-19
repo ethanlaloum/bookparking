@@ -4,7 +4,7 @@ mode: autonomous
 statut: en-cours
 demarre_le: 2026-09-17T01:34:49Z
 termine_le: null
-decisions: 28
+decisions: 30
 ecarts_majeurs: 3
 ---
 
@@ -347,6 +347,28 @@ ecarts_majeurs: 3
 - Traçabilité : RG-05 · EX-001-08 · EX-001-26 · EX-001-27 · US-009
 - Confiance : haute
 - Question humaine au retour : aucune
+
+### AUTO-29 · La description d'accès n'est pas publique, et un identifiant mal formé répond « introuvable »
+- Déclencheur : revue sécurité US-009, constat majeur 1 (`ListingMapper.ts:12`, `GetListingResponseDto.ts:5` : la description d'accès part dans la réponse publique) et constat mineur 2 (`listing.controller.ts:104` : l'identifiant de chemin n'est pas décodé, un identifiant mal formé fait répondre 500 au lieu de « Annonce introuvable »).
+- Choix : (1) retirer `accessDescription` de la réponse de lecture. §8 n'autorise publiquement que « l'adresse exacte et le numéro de box », et §10 désigne ce texte libre comme le substitut du code de portail : le servir sans authentification donnerait à n'importe qui le moyen d'entrer. EX-03, qui l'affiche, est la relecture de son annonce par le loueur lui-même (RG-02, barreau e2e), pas la lecture publique de RG-05. La spec gagne EX-44 (RG-05, `int-http`), qui fige la non-exposition. (2) décoder l'identifiant et répondre « Annonce introuvable » quand il ne décode pas, même code et même corps qu'un identifiant inconnu ; la spec gagne EX-45 (RG-05, `int-http`), qui remplace le `écarté¹⁷` de RG-05 × Données, devenu faux du jour où un paramètre de chemin libre franchit la frontière.
+- Alternatives : (a) garder la description d'accès et l'inscrire dans §8 — écarté, ce serait étendre l'exposition assumée sans que personne l'ait décidé, et c'est irréversible une fois publié ; (b) laisser le 500 — écarté, deux réponses différentes pour « cette annonce n'existe pas ».
+- Preuve : revue sécurité US-009 ; spec §8 (« l'adresse exacte et le numéro de box »), §10 (« l'accès est expliqué librement par le loueur, en texte »).
+- Impact : spec révision 9, plan révision 9 ; US-009 passe à 5 exemples. Le champ reste stocké et reste affiché au loueur ; seule la lecture publique le perd.
+- Coût : un dispatch. Risque : faible. Rollback : revert.
+- Traçabilité : RG-05 · EX-001-44 · EX-001-45 · US-009
+- Confiance : haute sur le retrait, moyenne sur le périmètre exact de ce qu'une annonce publique doit montrer.
+- Question humaine au retour : qui doit voir la description d'accès, et à partir de quand — à la demande, à la confirmation, jamais publiquement ?
+
+### AUTO-30 · Aucune limite de débit sur la première route publique
+- Déclencheur : revue sécurité US-009, section réexamen de RG-05 : la première route publique arrive sans limitation de débit.
+- Choix : ne rien ajouter dans cette story. Aucun corpus n'est récoltable aujourd'hui — l'identifiant est un UUID tiré au hasard, et il n'existe ni liste ni recherche. Le relecteur le dit lui-même : cela bascule le jour où une recherche ou une liste d'annonces existera, c'est-à-dire dans SPEC-002.
+- Alternatives : poser une limite maintenant — écarté, sans route de liste ni module monté (AUTO-03), elle protégerait d'un risque inexistant et serait écrite sans exemple.
+- Preuve : revue sécurité US-009 ; `Listing.publish()` engendre un UUID aléatoire ; aucune route de liste dans le dépôt.
+- Impact : à réexaminer avec la première route de recherche ou de liste.
+- Coût : nul. Risque : moyen à ce moment-là. Rollback : sans objet.
+- Traçabilité : RG-05 · US-009 · SPEC-002
+- Confiance : haute
+- Question humaine au retour : prévoir une limite de débit avec la première route de recherche.
 
 ## Écarts majeurs livrés
 

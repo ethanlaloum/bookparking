@@ -1,5 +1,5 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-20 15:08 — ne pas éditer à la main._
+_Généré le 2026-09-20 15:13 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|
@@ -34,7 +34,6 @@ _Généré le 2026-09-20 15:08 — ne pas éditer à la main._
 
 ## Dérives détectées
 
-- SPEC-002 · 1 modifié(s) depuis le plan → `/jp-way:build SPEC-002` (le routeur autonome rejoue le sync)
 - carte `api` · aucune carte → `/jp-way:map --app api`
 - carte `front` · aucune carte → `/jp-way:map --app front`
 - carte `bo` · aucune carte → `/jp-way:map --app bo`
@@ -43,4 +42,4 @@ _Généré le 2026-09-20 15:08 — ne pas éditer à la main._
 ## Reprises possibles
 
 - `/jp-way:build SPEC-001` — 3 story(ies) restante(s)
-- `/jp-way:build SPEC-002` — la spec a bougé depuis le plan, le build autonome rejouera le sync
+- `/jp-way:build SPEC-002` — 12 story(ies) restante(s)

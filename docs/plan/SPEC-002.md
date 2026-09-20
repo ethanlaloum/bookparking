@@ -134,17 +134,17 @@ déplacent aucun exemple.
 
 | Ordre | Story | Titre | App | Barreaux | Exemples | Issue |
 |---|---|---|---|---|---|---|
-| 1 | US-011 | Créer un compte | api | unit int-repo | EX-01 EX-03 EX-08 EX-10 | — |
-| 2 | US-012 | Refuser une adresse déjà utilisée | api | unit int-http | EX-02 EX-04 EX-07 EX-39 | — |
-| 3 | US-013 | Valider l'adresse et le mot de passe à l'inscription | api | int-http | EX-05 EX-06 EX-09 EX-34 EX-38 | — |
-| 4 | US-014 | Borner et assainir l'adresse | api | unit int-http | EX-35 EX-36 EX-37 EX-40 | — |
-| 5 | US-015 | Se connecter et obtenir un jeton | api | unit | EX-14 EX-17 EX-18 | — |
-| 6 | US-016 | Prolonger et expirer le jeton | api | unit | EX-15 EX-16 EX-19 | — |
-| 7 | US-017 | Ralentir les essais de connexion | api | unit | EX-22 EX-23 EX-24 EX-25 | — |
-| 8 | US-018 | Ralentir par origine et par fenêtre | api | unit | EX-26 EX-27 EX-28 | — |
-| 9 | US-019 | Changer son mot de passe | api | unit int-http | EX-29 EX-30 EX-31 EX-32 EX-33 | — |
-| 10 | US-020 | Exiger un compte pour demander une place | api | unit int-http | EX-12 EX-13 EX-20 | — |
-| 11 | US-021 | Publier avec un compte, lire sans | api | unit int-http | EX-11 EX-21 | — |
+| 1 | US-011 | Créer un compte | api | unit int-repo | EX-01 EX-03 EX-08 EX-10 | #25 |
+| 2 | US-012 | Refuser une adresse déjà utilisée | api | unit int-http | EX-02 EX-04 EX-07 EX-39 | #26 |
+| 3 | US-013 | Valider l'adresse et le mot de passe à l'inscription | api | int-http | EX-05 EX-06 EX-09 EX-34 EX-38 | #24 |
+| 4 | US-014 | Borner et assainir l'adresse | api | unit int-http | EX-35 EX-36 EX-37 EX-40 | #27 |
+| 5 | US-015 | Se connecter et obtenir un jeton | api | unit | EX-14 EX-17 EX-18 | #28 |
+| 6 | US-016 | Prolonger et expirer le jeton | api | unit | EX-15 EX-16 EX-19 | #29 |
+| 7 | US-017 | Ralentir les essais de connexion | api | unit | EX-22 EX-23 EX-24 EX-25 | #30 |
+| 8 | US-018 | Ralentir par origine et par fenêtre | api | unit | EX-26 EX-27 EX-28 | #31 |
+| 9 | US-019 | Changer son mot de passe | api | unit int-http | EX-29 EX-30 EX-31 EX-32 EX-33 | #32 |
+| 10 | US-020 | Exiger un compte pour demander une place | api | unit int-http | EX-12 EX-13 EX-20 | #33 |
+| 11 | US-021 | Publier avec un compte, lire sans | api | unit int-http | EX-11 EX-21 | #34 |
 
 ## Dépendances
 

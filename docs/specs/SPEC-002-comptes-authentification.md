@@ -3,7 +3,7 @@ id: SPEC-002
 titre: Comptes et authentification des loueurs et conducteurs
 slug: comptes-authentification
 statut: valide
-revision: 1
+revision: 2
 derive_de: BR-20260919-comptes-authentification@3839b9c
 amont: present
 langue: fr
@@ -218,13 +218,14 @@ Et rien dans la réponse ne distingue une adresse inconnue d'un mot de passe fau
 
 <!-- jp-way:ex {"id":"EX-18","regle":"RG-03","origine":"mapping","barreau":"unit","empreinte":"c93f0dcb"} -->
 
-#### EX-19 · le changement d'heure ne raccourcit pas la validité
+#### EX-19 · sept jours se comptent en heures, pas en dates locales
 
-Étant donné un jeton délivré le `25/10/2026 à 09:00`, veille du passage à l'heure d'hiver
-Quand il est présenté le `01/11/2026 à 08:30`
-Alors il est accepté, la validité étant comptée en heures et non en dates locales
+Étant donné un jeton délivré le `23/10/2026 à 09:00`, avant le passage à l'heure d'hiver
+Quand il est présenté le `30/10/2026 à 08:30`, après ce passage
+Alors la vérification renvoie `null`, `168 h 30` s'étant écoulées depuis la délivrance
+Et l'heure locale, qui affiche encore une demi-heure avant `J+7`, ne le prolonge pas
 
-<!-- jp-way:ex {"id":"EX-19","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"f8b7fc3b"} -->
+<!-- jp-way:ex {"id":"EX-19","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"55b7ef5d"} -->
 
 ### RG-04 · un même compte publie et demande sans changer d'état ni de rôle
 
@@ -471,7 +472,7 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 - **Conformité RGPD.** L'adresse e-mail est une donnée personnelle (`quality.compliance.dataClasses: pii`). Sa conservation suit celle du compte ; l'effacement est porté par SPEC-003, pas ici.
 - **Sous-traitants.** Aucun envoi d'e-mail en v1, donc aucun destinataire tiers de données personnelles à déclarer pour ce périmètre.
 - **Limitation de débit.** Aucune limitation de débit générale n'existe dans le dépôt (constat repris de SPEC-001, AUTO-30). Le ralentissement de RG-05 est le premier mécanisme du genre et ne couvre que la connexion : ni l'inscription, ni le changement de mot de passe, ni les routes de SPEC-001.
-- **Temps.** La validité d'un jeton se compte en heures depuis son dernier usage, jamais en dates locales, de sorte qu'un changement d'heure ne la raccourcit ni ne l'allonge (EX-19).
+- **Temps.** La validité d'un jeton se compte en heures depuis son dernier usage, jamais en dates locales : un changement d'heure décale donc l'échéance sur l'horloge locale, et un jeton peut expirer alors que l'heure locale affiche encore moins de sept jours (EX-19).
 - **Langue.** Tout ce qu'un loueur ou un conducteur lit est en français.
 
 ## 9. Impacts par app
@@ -505,3 +506,4 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 | Révision | Date | Ce qui a changé |
 |---|---|---|
 | 1 | 20/09/2026 | Création. Issue de la séance d'example mapping ouverte le 19/09/2026 sur BR-20260919-comptes-authentification : sept règles, quarante exemples, aucun écran, une question héritée de la phase 1 et résolue en séance. La suppression de compte, présente dans le périmètre du distillat, est sortie en SPEC-003 par décision de séance. |
+| 2 | 20/09/2026 | EX-19 réécrit. Les deux instants de la version 1 (`25/10/2026 09:00` et `01/11/2026 08:30`) étaient tous deux en heure d'hiver : aucun changement d'heure n'était traversé, et la règle « en heures » comme la règle « en dates locales » donnaient la même limite, de sorte que l'exemple ne pouvait pas échouer. Remplacé par `23/10/2026 09:00` → `30/10/2026 08:30`, qui encadre le passage du 25/10 : l'issue devient un refus. La contrainte temporelle du §8 est reformulée en conséquence. Défaut relevé à la porte de phase 3, corrigé sur demande. |

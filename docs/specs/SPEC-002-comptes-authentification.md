@@ -2,11 +2,13 @@
 id: SPEC-002
 titre: Comptes et authentification des loueurs et conducteurs
 slug: comptes-authentification
-statut: brouillon
+statut: valide
 revision: 1
 derive_de: BR-20260919-comptes-authentification@3839b9c
 amont: present
 langue: fr
+valide_le: 2026-09-20
+valide_par: JP
 apps: [api]
 code_sha: { api: f7900eb }
 ux: absent

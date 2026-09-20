@@ -1,7 +1,9 @@
 ---
 spec: SPEC-002
-statut: brouillon
+statut: valide
 revision: 1
+valide_le: 2026-09-20
+valide_par: JP
 derive_de: SPEC-002@888477ceb0d57a8c77cd6836d0ad5cdfaa8152c9
 apps: [api]
 cas: 40

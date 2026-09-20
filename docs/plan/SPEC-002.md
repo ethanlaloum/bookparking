@@ -1,10 +1,10 @@
 ---
 spec: SPEC-002
 statut: valide
-revision: 1
+revision: 2
 valide_le: 2026-09-20
 valide_par: JP
-derive_de: SPEC-002@888477ceb0d57a8c77cd6836d0ad5cdfaa8152c9
+derive_de: SPEC-002@5fd7d23532b4790b3b05a6e3a5dbfc66651b3f05
 apps: [api]
 cas: 40
 stories: 11
@@ -70,7 +70,7 @@ déplacent aucun exemple.
 | EX-18 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | refuses an unknown address with the same error as a wrong password |
 | EX-15 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | extends the token when it is used before it expires |
 | EX-16 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | refuses a token left unused for seven days |
-| EX-19 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | counts the seven days in hours across a daylight saving change |
+| EX-19 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | refuses a token 168 hours old though the local clock shows less than seven days |
 | EX-22 | unit | api | US-017 | `apps/api/src/user-management/domain/services/signInThrottle.unit.spec.ts` | delays the third consecutive failure by one second |
 | EX-23 | unit | api | US-017 | `apps/api/src/user-management/domain/services/signInThrottle.unit.spec.ts` | caps the delay at thirty seconds |
 | EX-24 | unit | api | US-017 | `apps/api/src/user-management/domain/services/signInThrottle.unit.spec.ts` | resets the failure counter after a successful sign-in |
@@ -111,7 +111,7 @@ déplacent aucun exemple.
 <!-- jp-way:cas {"ex":"EX-18","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"refuses an unknown address with the same error as a wrong password","empreinte":"c93f0dcb"} -->
 <!-- jp-way:cas {"ex":"EX-15","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"extends the token when it is used before it expires","empreinte":"b140c8eb"} -->
 <!-- jp-way:cas {"ex":"EX-16","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"refuses a token left unused for seven days","empreinte":"6ca2359a"} -->
-<!-- jp-way:cas {"ex":"EX-19","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"counts the seven days in hours across a daylight saving change","empreinte":"f8b7fc3b"} -->
+<!-- jp-way:cas {"ex":"EX-19","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"refuses a token 168 hours old though the local clock shows less than seven days","empreinte":"55b7ef5d"} -->
 <!-- jp-way:cas {"ex":"EX-22","barreau":"unit","app":"api","story":"US-017","chemin":"apps/api/src/user-management/domain/services/signInThrottle.unit.spec.ts","titre":"delays the third consecutive failure by one second","empreinte":"6a649579"} -->
 <!-- jp-way:cas {"ex":"EX-23","barreau":"unit","app":"api","story":"US-017","chemin":"apps/api/src/user-management/domain/services/signInThrottle.unit.spec.ts","titre":"caps the delay at thirty seconds","empreinte":"1fd21004"} -->
 <!-- jp-way:cas {"ex":"EX-24","barreau":"unit","app":"api","story":"US-017","chemin":"apps/api/src/user-management/domain/services/signInThrottle.unit.spec.ts","titre":"resets the failure counter after a successful sign-in","empreinte":"2597ce70"} -->

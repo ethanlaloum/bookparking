@@ -1,9 +1,10 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-19 19:11 — ne pas éditer à la main._
+_Généré le 2026-09-20 14:36 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|
 | SPEC-001 Publier une place de parking en location | ✅ 16/09 | ✅ 17/09 | ✅ 17/09 | 🔄 9/12 stories · 📝 registre à relire | 45 exemples |
+| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | — | — | 40 exemples |
 
 ## Builds autonomes
 
@@ -29,3 +30,4 @@ _Généré le 2026-09-19 19:11 — ne pas éditer à la main._
 ## Reprises possibles
 
 - `/jp-way:build SPEC-001` — 3 story(ies) restante(s)
+- `/jp-way:plan SPEC-002` — spec validée, plan absent

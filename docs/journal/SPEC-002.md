@@ -27,7 +27,7 @@ pour créer ton compte.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-002","story":"US-012","ex":["EX-02","EX-04","EX-07","EX-39"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-012","ex":["EX-02","EX-04","EX-07","EX-39"],"pr":38} -->
 
 ## Créer un compte avec une adresse e-mail et un mot de passe
 

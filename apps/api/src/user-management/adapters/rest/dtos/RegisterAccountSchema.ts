@@ -7,4 +7,6 @@ export const RegisterAccountSchema = Schema.Struct({
   password: Schema.String.annotations({
     message: () => 'Mot de passe invalide',
   }),
+}).annotations({
+  message: () => 'Corps de requête invalide pour une inscription',
 });

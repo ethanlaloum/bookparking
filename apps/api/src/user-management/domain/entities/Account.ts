@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
+const normalizeEmail = (email: string): string =>
+  email.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
+
 interface Props {
   id: string;
   email: string;
@@ -18,12 +21,20 @@ export class Account {
     return new Account(state);
   }
 
+  public static normalizeEmail(email: string): string {
+    return normalizeEmail(email);
+  }
+
   public static register(params: {
     email: string;
     passwordHash: string;
     registeredAt: Date;
   }): Account {
-    return new Account({ ...params, id: randomUUID() });
+    return new Account({
+      ...params,
+      email: normalizeEmail(params.email),
+      id: randomUUID(),
+    });
   }
 
   public get id(): string {
@@ -39,6 +50,6 @@ export class Account {
   }
 
   public isIdentifiedBy(email: string): boolean {
-    return this.props.email === email;
+    return this.props.email === normalizeEmail(email);
   }
 }

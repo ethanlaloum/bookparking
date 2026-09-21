@@ -14,7 +14,7 @@
 - `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur (`InMemoryPhotoStorage`).
 - `domain/builders/<Entité>Builder.ts` — un bâtisseur d'entité partagé entre plusieurs `.sut.ts` d'un même agrégat (`ListingBuilder` est utilisé à la fois par `PublishListing.sut.ts` et par `KnexListingRepository.sut.ts`) : il construit l'entité via `fromState()`, jamais par un constructeur public, pour donner à toute fixture d'annonce active un seul point de vérité entre les barreaux `unit` et `int-repo`.
 
-`src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route. `domain/entities/Account` est la première entité du contexte, construite uniquement par `register()` (nouveau compte) ou par `fromState()`, jamais par un constructeur public — même discipline que `Listing`. `domain/ports/AccountRepository` et `domain/ports/PasswordHasher` sont ses deux premiers ports propres ; `adapters/repositories/account/` porte leur première implémentation (`InMemoryAccountRepository`, `KnexAccountRepository`, son `SchemaAccountRepository`), et `adapters/services/password-hasher/ScryptPasswordHasher` implémente `PasswordHasher` — un adaptateur de service, sous `adapters/`, jamais sous `domain/ports/`. `domain/usecases/register-account/` porte le premier cas d'usage du contexte, `RegisterAccount`.
+`src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route. `domain/entities/Account` est la première entité du contexte, construite uniquement par `register()` (nouveau compte) ou par `fromState()`, jamais par un constructeur public — même discipline que `Listing`. `domain/ports/AccountRepository` et `domain/ports/PasswordHasher` sont ses deux premiers ports propres ; `adapters/repositories/account/` porte leur première implémentation (`InMemoryAccountRepository`, `KnexAccountRepository`, son `SchemaAccountRepository`), et `adapters/services/password-hasher/ScryptPasswordHasher` implémente `PasswordHasher` — un adaptateur de service, sous `adapters/`, jamais sous `domain/ports/`. `domain/usecases/register-account/` porte le premier cas d'usage du contexte, `RegisterAccount`. `adapters/rest/controllers/account/` porte `AccountController`, premier contrôleur du contexte, et sa route `POST /account` ; `adapters/mappers/AccountMapper` la convertit vers `RegisterAccountResponseDto`, qui n'expose que l'identifiant et l'adresse.
 
 `src/rental` porte le second contexte métier, avec son propre `domain/ports/` (`PublishedListingReader`, `RentalRepository`) et leurs doublures en mémoire sous `adapters/repositories/` : le cas d'usage `domain/usecases/request-rental/` (`RequestRental.ts`, son `.sut.ts`, son sous-dossier `errors/`) ne dépend d'aucune classe de `listing/`, même pour lire la grille d'une annonce publiée — l'issue de US-006 interdisait cet import (`docs/autonomous/SPEC-001.md`, AUTO-16). Les entités `domain/entities/RentalPlace`, `RentalRequest` et `ConfirmedRental` sont construites par `fromState()` ou par `RentalRequest.request()`, jamais par un constructeur public. `domain/services/computeRentalPrice.ts` reste la seule fonction pure du contexte ; `RequestRental` l'appelle désormais au moment de la demande (voir « Things that will bite you »). Les deux ports ont désormais une implémentation Knex, sous le même schéma que `listing/` : `adapters/repositories/rental-request/` (`KnexRentalRequestRepository`, sa migration, son `Schema...`) et `adapters/repositories/published-listing/` (`KnexPublishedListingReader`, qui lit la table `listings` sans importer aucune classe de `listing/` — voir « Things that will bite you »).
 
@@ -31,8 +31,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**36 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-21) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
-| int-repo + int-http (**4 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-21 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
+| unit (**39 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-21) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| int-repo + int-http (**5 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-21 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
 ## Things that will bite you
@@ -171,13 +171,22 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   la même `ListingNotFoundError` qu'une annonce absente (AUTO-29, `docs/autonomous/SPEC-001.md`) ; EX-45 fige cette égalité de réponse.
   Toute nouvelle route qui prend un identifiant de domaine en paramètre de chemin doit le décoder de la même façon avant de l'utiliser.
 
-- **`RegisterAccount` avale toute erreur du dépôt dans `UnknownError` — `EmailAlreadyUsedError` n'apparaît
-  nulle part dans son union `Either`, alors que les deux implémentations du dépôt la lèvent.**
-  `RegisterAccount.execute` (`RegisterAccount.ts:29-36`) enveloppe tout ce que `catch` reçoit dans
-  `new UnknownError(...)`, y compris l'`EmailAlreadyUsedError` que lèvent `InMemoryAccountRepository.create`
-  et `KnexAccountRepository.create` sur une adresse déjà prise (EX-02, prévu par US-012).
-  Distinguer `EmailAlreadyUsedError` avant l'enveloppe générique, sans changer le comportement d'EX-01,
-  EX-08 et EX-10.
+- **`accounts.email` ne porte aucune garantie de normalisation côté base — seul `Account.register()` la fait.**
+  La migration `20260920120000_create_accounts.ts:6-11` indexe la colonne `email` telle quelle (commentaire :
+  « stored as given and never normalized here ») ; `normalizeEmail` (`Account.ts:3-4`) — NFKC, espaces
+  réduits, `trim`, minuscule — ne s'exécute que dans `Account.register()` et `Account.isIdentifiedBy()`,
+  sans copie figée en SQL comme `place_key` pour `listings` (voir `ADR-007`).
+  Toute écriture qui contourne `Account.register()` peut insérer une adresse non normalisée
+  qu'`accounts_email_unique` ne rapprochera jamais d'un compte existant équivalent.
+
+- **Un `Schema.Struct` `effect` sans annotation `message` fait fuiter la valeur soumise dans la réponse `400`.**
+  `parseSchemaError` (`shared/error/parseSchemaError.ts`) retombe sur le message par défaut d'`effect`, qui
+  compose le texte avec la valeur reçue — un mot de passe envoyé en nombre JSON, ou un corps racine qui
+  n'est pas un objet, repartaient en clair dans le `400` avant `3af4eda` et `04fb79b`. `RegisterAccountSchema.ts`
+  est aujourd'hui le seul schéma du dépôt annoté à la fois sur ses champs et sur le `Struct` englobant ;
+  `PublishListingSchema.ts` n'a aucune annotation.
+  Annoter `.annotations({ message: () => '...' })` sur chaque champ **et** sur le `Struct` englobant de
+  tout nouveau schéma de décodage — jamais seulement les champs.
 
 - **`KnexAccountRepository` ne traduit en `EmailAlreadyUsedError` que la violation de l'index unique
   `accounts_email_unique` (code Postgres `23505`) — toute autre erreur d'insertion remonte telle quelle.**

@@ -25,4 +25,4 @@ coup avec la même adresse, une seule crée un compte : la seconde est refusée.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-002","story":"US-011","ex":["EX-01","EX-08","EX-10","EX-03"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-011","ex":["EX-01","EX-08","EX-10","EX-03"],"pr":36} -->

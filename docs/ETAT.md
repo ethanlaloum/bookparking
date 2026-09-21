@@ -1,10 +1,10 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-21 17:52 — ne pas éditer à la main._
+_Généré le 2026-09-21 18:37 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|
 | SPEC-001 Publier une place de parking en location | ✅ 16/09 | ✅ 17/09 | ✅ 17/09 | 🔄 9/12 stories · 📝 registre à relire | 45 exemples |
-| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 1/12 stories | 40 exemples |
+| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 2/13 stories | 42 exemples |
 
 ## Builds autonomes
 
@@ -16,6 +16,7 @@ _Généré le 2026-09-21 17:52 — ne pas éditer à la main._
 
 | Story | App | État | Lien |
 |---|---|---|---|
+| #39 [US-022] Ne jamais renvoyer la valeur soumise dans un refus de validation | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/39 |
 | #34 [US-021] Publier avec un compte, lire sans | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/34 |
 | #33 [US-020] Exiger un compte pour demander une place | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/33 |
 | #32 [US-019] Changer son mot de passe | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/32 |
@@ -24,7 +25,6 @@ _Généré le 2026-09-21 17:52 — ne pas éditer à la main._
 | #29 [US-016] Prolonger et expirer le jeton | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/29 |
 | #28 [US-015] Se connecter et obtenir un jeton | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/28 |
 | #27 [US-014] Borner et assainir l'adresse | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/27 |
-| #26 [US-012] Refuser une adresse déjà utilisée | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/26 |
 | #24 [US-013] Valider l'adresse et le mot de passe à l'inscription | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/24 |
 | #23 [SPEC-002] Comptes et authentification des loueurs et conducteurs | — | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/23 |
 | #18 [DETTE] Purger les données personnelles : annonces dépubliées et demandes sans suite | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/18 |

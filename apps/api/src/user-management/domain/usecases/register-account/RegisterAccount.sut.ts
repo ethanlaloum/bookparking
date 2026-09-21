@@ -114,5 +114,26 @@ export const createRegisterAccountSUT = () => {
     thenNoAccountCreated() {
       expect(context.accountRepository.accountList).toHaveLength(0);
     },
+
+    async givenAccountFor(email: string, password: string): Promise<Account> {
+      const result = await context.registerAccount.execute({
+        email,
+        password,
+        registeredAt: context.testConstants.registeredAtForTest,
+      });
+      if (Either.isLeft(result)) {
+        throw new Error('failed to arrange an existing account');
+      }
+      return result.right;
+    },
+
+    thenAccountIsUnchanged(existing: Account) {
+      const stored = storedAccountFor(existing.email);
+      expect(stored.toState()).toEqual(existing.toState());
+    },
+
+    thenOnlyOneAccountExistsFor(email: string) {
+      storedAccountFor(email);
+    },
   };
 };

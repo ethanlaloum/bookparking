@@ -1,13 +1,13 @@
 ---
 spec: SPEC-002
 statut: valide
-revision: 2
+revision: 3
 valide_le: 2026-09-20
 valide_par: JP
-derive_de: SPEC-002@5fd7d23532b4790b3b05a6e3a5dbfc66651b3f05
+derive_de: SPEC-002@cd56f5e83c7e23e4008c5bd864b63789988566e2
 apps: [api]
-cas: 40
-stories: 11
+cas: 42
+stories: 12
 ---
 
 # SPEC-002 · Plan
@@ -65,6 +65,8 @@ déplacent aucun exemple.
 | EX-36 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address of 255 characters |
 | EX-37 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | accepts an address of 254 characters |
 | EX-40 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address carrying a quote and a comment marker |
+| EX-41 | int-http | api | US-022 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | keeps a mistyped password out of the validation response |
+| EX-42 | int-http | api | US-022 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | keeps a non-object request body out of the validation response |
 | EX-14 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | issues a token valid for seven days |
 | EX-17 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | refuses a wrong password without saying the account exists |
 | EX-18 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | refuses an unknown address with the same error as a wrong password |
@@ -106,6 +108,8 @@ déplacent aucun exemple.
 <!-- jp-way:cas {"ex":"EX-36","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address of 255 characters","empreinte":"0dcb1c44"} -->
 <!-- jp-way:cas {"ex":"EX-37","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"accepts an address of 254 characters","empreinte":"f1ed5a6d"} -->
 <!-- jp-way:cas {"ex":"EX-40","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address carrying a quote and a comment marker","empreinte":"60a9b317"} -->
+<!-- jp-way:cas {"ex": "EX-41", "barreau": "int-http", "app": "api", "story": "US-022", "chemin": "apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts", "titre": "keeps a mistyped password out of the validation response", "empreinte": "248d6a55"} -->
+<!-- jp-way:cas {"ex": "EX-42", "barreau": "int-http", "app": "api", "story": "US-022", "chemin": "apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts", "titre": "keeps a non-object request body out of the validation response", "empreinte": "3bde4c88"} -->
 <!-- jp-way:cas {"ex":"EX-14","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"issues a token valid for seven days","empreinte":"e62194d6"} -->
 <!-- jp-way:cas {"ex":"EX-17","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"refuses a wrong password without saying the account exists","empreinte":"2377fa7e"} -->
 <!-- jp-way:cas {"ex":"EX-18","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"refuses an unknown address with the same error as a wrong password","empreinte":"c93f0dcb"} -->
@@ -145,6 +149,7 @@ déplacent aucun exemple.
 | 9 | US-019 | Changer son mot de passe | api | unit int-http | EX-29 EX-30 EX-31 EX-32 EX-33 | #32 |
 | 10 | US-020 | Exiger un compte pour demander une place | api | unit int-http | EX-12 EX-13 EX-20 | #33 |
 | 11 | US-021 | Publier avec un compte, lire sans | api | unit int-http | EX-11 EX-21 | #34 |
+| 12 | US-022 | Ne jamais renvoyer la valeur soumise dans un refus de validation | api | int-http | EX-41 EX-42 | #39 |
 
 ## Dépendances
 

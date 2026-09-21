@@ -44,10 +44,7 @@ export class AccountController {
       if (Either.isLeft(result)) {
         const error = result.left;
         if (error instanceof EmailAlreadyUsedError) {
-          throw new HttpException(
-            'Cette adresse e-mail est déjà utilisée',
-            HttpStatus.CONFLICT,
-          );
+          throw new HttpException(error.message, HttpStatus.CONFLICT);
         }
         if (error instanceof UnknownError) {
           throw new HttpException(

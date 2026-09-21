@@ -14,7 +14,7 @@
 - `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur (`InMemoryPhotoStorage`).
 - `domain/builders/<Entité>Builder.ts` — un bâtisseur d'entité partagé entre plusieurs `.sut.ts` d'un même agrégat (`ListingBuilder` est utilisé à la fois par `PublishListing.sut.ts` et par `KnexListingRepository.sut.ts`) : il construit l'entité via `fromState()`, jamais par un constructeur public, pour donner à toute fixture d'annonce active un seul point de vérité entre les barreaux `unit` et `int-repo`.
 
-`src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route.
+`src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route. `domain/entities/Account` est la première entité du contexte, construite uniquement par `register()` (nouveau compte) ou par `fromState()`, jamais par un constructeur public — même discipline que `Listing`. `domain/ports/AccountRepository` et `domain/ports/PasswordHasher` sont ses deux premiers ports propres ; `adapters/repositories/account/` porte leur première implémentation (`InMemoryAccountRepository`, `KnexAccountRepository`, son `SchemaAccountRepository`), et `adapters/services/password-hasher/ScryptPasswordHasher` implémente `PasswordHasher` — un adaptateur de service, sous `adapters/`, jamais sous `domain/ports/`. `domain/usecases/register-account/` porte le premier cas d'usage du contexte, `RegisterAccount`.
 
 `src/rental` porte le second contexte métier, avec son propre `domain/ports/` (`PublishedListingReader`, `RentalRepository`) et leurs doublures en mémoire sous `adapters/repositories/` : le cas d'usage `domain/usecases/request-rental/` (`RequestRental.ts`, son `.sut.ts`, son sous-dossier `errors/`) ne dépend d'aucune classe de `listing/`, même pour lire la grille d'une annonce publiée — l'issue de US-006 interdisait cet import (`docs/autonomous/SPEC-001.md`, AUTO-16). Les entités `domain/entities/RentalPlace`, `RentalRequest` et `ConfirmedRental` sont construites par `fromState()` ou par `RentalRequest.request()`, jamais par un constructeur public. `domain/services/computeRentalPrice.ts` reste la seule fonction pure du contexte ; `RequestRental` l'appelle désormais au moment de la demande (voir « Things that will bite you »). Les deux ports ont désormais une implémentation Knex, sous le même schéma que `listing/` : `adapters/repositories/rental-request/` (`KnexRentalRequestRepository`, sa migration, son `Schema...`) et `adapters/repositories/published-listing/` (`KnexPublishedListingReader`, qui lit la table `listings` sans importer aucune classe de `listing/` — voir « Things that will bite you »).
 
@@ -31,8 +31,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**33 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-18) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
-| int-repo + int-http (**3 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-18 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
+| unit (**36 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-21) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| int-repo + int-http (**4 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-21 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
 ## Things that will bite you
@@ -170,6 +170,37 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   `listing.controller.ts:108` appelle `Schema.decodeUnknownEither(Schema.UUID)(id)` et lève, sur un échec de décodage,
   la même `ListingNotFoundError` qu'une annonce absente (AUTO-29, `docs/autonomous/SPEC-001.md`) ; EX-45 fige cette égalité de réponse.
   Toute nouvelle route qui prend un identifiant de domaine en paramètre de chemin doit le décoder de la même façon avant de l'utiliser.
+
+- **`RegisterAccount` avale toute erreur du dépôt dans `UnknownError` — `EmailAlreadyUsedError` n'apparaît
+  nulle part dans son union `Either`, alors que les deux implémentations du dépôt la lèvent.**
+  `RegisterAccount.execute` (`RegisterAccount.ts:29-36`) enveloppe tout ce que `catch` reçoit dans
+  `new UnknownError(...)`, y compris l'`EmailAlreadyUsedError` que lèvent `InMemoryAccountRepository.create`
+  et `KnexAccountRepository.create` sur une adresse déjà prise (EX-02, prévu par US-012).
+  Distinguer `EmailAlreadyUsedError` avant l'enveloppe générique, sans changer le comportement d'EX-01,
+  EX-08 et EX-10.
+
+- **`KnexAccountRepository` ne traduit en `EmailAlreadyUsedError` que la violation de l'index unique
+  `accounts_email_unique` (code Postgres `23505`) — toute autre erreur d'insertion remonte telle quelle.**
+  `isEmailUniqueViolation` (`KnexAccountRepository.ts:9-13`) teste `error.code === '23505'` *et*
+  `error.constraint === 'accounts_email_unique'` — même discipline que la contrainte d'exclusion de
+  `rental_requests`, voir `ADR-004`.
+  Renommer cet index dans une future migration sans mettre à jour cette chaîne romprait EX-03 en silence :
+  l'erreur deviendrait brute, plus `EmailAlreadyUsedError`.
+
+- **`ScryptPasswordHasher` normalise le mot de passe en NFC avant de le hacher, à la fois dans `hash()` et
+  dans `verify()` — les deux doivent rester appariés.**
+  `deriveKey` (`ScryptPasswordHasher.ts:9-10`) appelle `plainTextPassword.normalize('NFC')` avant
+  `scryptSync` ; EX-10 prouve qu'un mot de passe de 200 caractères avec `é`, `ü` et `🚗` est accepté et se
+  revérifie correctement grâce à cette normalisation partagée.
+  Ne jamais appeler `scryptSync` sur `plainTextPassword` sans le même `.normalize('NFC')` ailleurs dans le
+  contexte — un mot de passe composé différemment (NFD) ne se revérifierait plus.
+
+- **`registered_at` est écrit par `Account.register()`/`toState()` et par la migration des comptes, mais
+  rien ne le lit encore — ce n'est pas du code mort.**
+  `Account` (`Account.ts`) ne porte même pas de *getter* public pour ce champ ; EX-01 nomme l'instant
+  d'inscription (`01/10/2026 à 09:00`), et la revue de conformité de US-011 accepte cette colonne non lue
+  comme un écart mineur, en anticipation d'une future période de rétention.
+  Ne pas retirer `registered_at` ni le champ correspondant sans relire cet écart.
 
 ## Frozen versions — do not bump without reading the reason
 

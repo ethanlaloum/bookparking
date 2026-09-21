@@ -3,7 +3,7 @@ id: SPEC-002
 titre: Comptes et authentification des loueurs et conducteurs
 slug: comptes-authentification
 statut: valide
-revision: 2
+revision: 3
 derive_de: BR-20260919-comptes-authentification@3839b9c
 amont: present
 langue: fr
@@ -13,7 +13,7 @@ apps: [api]
 code_sha: { api: f7900eb }
 ux: absent
 regles: 7
-exemples: 40
+exemples: 42
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -143,6 +143,24 @@ Alors le compte est créé
 Et la connexion avec ce même mot de passe réussit
 
 <!-- jp-way:ex {"id":"EX-10","regle":"RG-01","origine":"sonde","barreau":"unit","empreinte":"aa12f003"} -->
+
+#### EX-41 · un mot de passe mal typé ne repart pas dans la réponse
+
+Quand `POST /account` porte `lea.t@example.com` et `12345678` envoyé comme un nombre JSON, pas comme une chaîne
+Alors la réponse est `400`
+Et le corps de la réponse ne contient pas `12345678`
+Et aucun compte n'est créé
+
+<!-- jp-way:ex {"id":"EX-41","regle":"RG-01","origine":"bug","barreau":"int-http","empreinte":"248d6a55"} -->
+
+#### EX-42 · un corps qui n'est pas un objet ne repart pas dans la réponse
+
+Quand `POST /account` porte le corps `["lea.t@example.com","Promenade06!"]`, un tableau et non un objet
+Alors la réponse est `400`
+Et le corps de la réponse ne contient pas `Promenade06!`
+Et aucun compte n'est créé
+
+<!-- jp-way:ex {"id":"EX-42","regle":"RG-01","origine":"bug","barreau":"int-http","empreinte":"3bde4c88"} -->
 
 ### RG-02 · lire une annonce ne demande aucun compte ; publier et demander en demandent un, et l'identité vient du jeton, jamais du corps de la requête
 
@@ -420,7 +438,7 @@ Sept règles croisées avec les dix dimensions : 70 intersections, toutes résol
 
 | Règle | Limites | Vide | Temps | Concurrence | Autorisation | État | Argent | Volume | Panne | Données |
 |---|---|---|---|---|---|---|---|---|---|---|
-| RG-01 | EX-05 EX-06 | EX-09 | écarté¹ | filet² | écarté³ | EX-02 | écarté⁴ | écarté⁵ | EX-08 | EX-10 |
+| RG-01 | EX-05 EX-06 | EX-09 | écarté¹ | filet² | écarté³ | EX-02 | écarté⁴ | écarté⁵ | EX-08 | EX-10 EX-41 EX-42 |
 | RG-02 | écarté⁶ | EX-12 | filet⁷ | écarté⁸ | EX-13 | EX-11 | écarté⁴ | écarté⁵ | écarté⁹ | filet¹⁰ |
 | RG-03 | EX-15 | filet¹¹ | EX-19 | écarté¹² | EX-17 EX-18 | EX-16 | écarté⁴ | écarté⁵ | écarté⁹ | filet¹³ |
 | RG-04 | écarté⁶ | EX-21 | écarté¹ | écarté¹⁴ | filet¹⁵ | EX-20 | écarté⁴ | écarté⁵ | écarté⁹ | écarté¹⁶ |
@@ -507,3 +525,4 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 |---|---|---|
 | 1 | 20/09/2026 | Création. Issue de la séance d'example mapping ouverte le 19/09/2026 sur BR-20260919-comptes-authentification : sept règles, quarante exemples, aucun écran, une question héritée de la phase 1 et résolue en séance. La suppression de compte, présente dans le périmètre du distillat, est sortie en SPEC-003 par décision de séance. |
 | 2 | 20/09/2026 | EX-19 réécrit. Les deux instants de la version 1 (`25/10/2026 09:00` et `01/11/2026 08:30`) étaient tous deux en heure d'hiver : aucun changement d'heure n'était traversé, et la règle « en heures » comme la règle « en dates locales » donnaient la même limite, de sorte que l'exemple ne pouvait pas échouer. Remplacé par `23/10/2026 09:00` → `30/10/2026 08:30`, qui encadre le passage du 25/10 : l'issue devient un refus. La contrainte temporelle du §8 est reformulée en conséquence. Défaut relevé à la porte de phase 3, corrigé sur demande. Rejoué par `/jp-way:sync SPEC-002` sur `sync/spec-002-rev-2` : 0 nouveau · 1 modifié (EX-19) · 0 supprimé · 39 inchangés. Aucun test réécrit ni exécuté — aucun fichier du dépôt ne porte `@SPEC-002`, le build n'a jamais tourné pour cette spec ; le rejeu s'est limité au plan (ré-empreinte `f8b7fc3b` → `55b7ef5d`, `derive_de` → `SPEC-002@5fd7d23`, révision 1 → 2), au titre anglais du cas, devenu un verdict de refus, et au cadre rouge de l'issue #29. |
+| 3 | 21/09/2026 | EX-41 et EX-42 ajoutés sous RG-01, `origine: bug`. La revue de sécurité de US-012 a trouvé deux chemins par lesquels le corps d'une réponse `400` renvoyait la valeur soumise — un mot de passe envoyé comme nombre JSON, puis un corps racine qui n'est pas un objet — contre la contrainte « Secret » du §8. Les deux sont corrigés (`3af4eda`, `04fb79b`), mais aucun test ne les gardait : ces deux exemples les figent. La case `RG-01 × Données` de la sonde les porte. |

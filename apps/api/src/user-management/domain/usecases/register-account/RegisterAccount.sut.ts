@@ -2,7 +2,7 @@ import { Either } from 'effect/index';
 
 import { InMemoryAccountRepository } from '../../../adapters/repositories/account/InMemoryAccountRepository';
 import { Account } from '../../entities/Account';
-import { ScryptPasswordHasher } from '../../services/ScryptPasswordHasher';
+import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
 import { RegisterAccount } from './RegisterAccount';
 
 interface RegistrationInput {

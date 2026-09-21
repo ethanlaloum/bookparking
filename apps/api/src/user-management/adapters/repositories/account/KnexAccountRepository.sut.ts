@@ -1,6 +1,6 @@
 import { getTestDbConnection } from '../../../../infra/testcontainers-setup';
 import { Account } from '../../../domain/entities/Account';
-import { ScryptPasswordHasher } from '../../../domain/services/ScryptPasswordHasher';
+import { ScryptPasswordHasher } from '../../services/password-hasher/ScryptPasswordHasher';
 import { KnexAccountRepository } from './KnexAccountRepository';
 import { SchemaAccountRepository } from './SchemaAccountRepository';
 

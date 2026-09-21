@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
-import { PasswordHasher } from '../ports/PasswordHasher';
+import { PasswordHasher } from '../../../domain/ports/PasswordHasher';
 
 const ALGORITHM = 'scrypt';
 const FIELD_SEPARATOR = '$';

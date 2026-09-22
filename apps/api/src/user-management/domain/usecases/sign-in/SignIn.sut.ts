@@ -119,7 +119,7 @@ export const createSignInSUT = () => {
       const firstError = first.left as Error;
       const secondError = second.left as Error;
 
-      expect(firstError.constructor).toBe(secondError.constructor);
+      expect(firstError.constructor).toEqual(secondError.constructor);
       expect(firstError.message).toEqual(secondError.message);
       expect(Object.keys(firstError)).toEqual(Object.keys(secondError));
       expect(JSON.stringify(firstError)).toEqual(JSON.stringify(secondError));

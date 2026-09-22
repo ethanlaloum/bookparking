@@ -185,4 +185,52 @@ describe('ListingController @SPEC-001', () => {
       expect(response.body.pricing).not.toEqual(undefined);
     });
   });
+  describe('GET /listing', () => {
+    it('lists the active listings to a visitor with no account', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListings([
+        { id: LISTING_ID, address: '12 rue Barla, 06300 Nice', box: '12' },
+        {
+          id: '9c2e4f5a-1b3d-4e6f-8a9b-0c1d2e3f4a5b',
+          address: '3 avenue Malausséna, 06000 Nice',
+          box: '4',
+        },
+      ]);
+
+      const response = await http().get('/listing');
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toHaveLength(2);
+      expect(response.body[0].address).toEqual('12 rue Barla, 06300 Nice');
+      expect(response.body[1].box).toEqual('4');
+    });
+
+    it('never exposes the access description in the list', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListings([
+        {
+          id: LISTING_ID,
+          address: '12 rue Barla, 06300 Nice',
+          box: '12',
+          accessDescription: 'portail bleu, code 1234',
+        },
+      ]);
+
+      const response = await http().get('/listing');
+
+      expect(response.status).toEqual(200);
+      expect(JSON.stringify(response.body)).not.toContain('accessDescription');
+      expect(JSON.stringify(response.body)).not.toContain('1234');
+    });
+
+    it('rends an empty list when nothing is published', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListings([]);
+
+      const response = await http().get('/listing');
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual([]);
+    });
+  });
 });

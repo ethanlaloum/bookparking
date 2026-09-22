@@ -8,6 +8,7 @@ export interface ListingRepository {
     listingId: string,
     trx?: GenericTransaction,
   ): Promise<Listing | null>;
+  findAllActive(trx?: GenericTransaction): Promise<Listing[]>;
   findActiveByPlaceKey(
     placeKey: string,
     trx?: GenericTransaction,

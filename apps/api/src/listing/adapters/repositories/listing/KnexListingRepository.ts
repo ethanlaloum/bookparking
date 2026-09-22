@@ -80,6 +80,15 @@ export class KnexListingRepository implements ListingRepository {
     return KnexListingRepository.toEntity(row);
   }
 
+  public async findAllActive(trx?: GenericTransaction): Promise<Listing[]> {
+    const query = this.connection(this.tableName)
+      .where({ status: ListingStatus.ACTIVE })
+      .orderBy('published_at', 'desc');
+    if (trx) query.transacting(trx);
+    const rows = await query;
+    return rows.map((row) => KnexListingRepository.toEntity(row));
+  }
+
   private static toRow(listing: Listing): ListingRow {
     const state = listing.toState();
     return {

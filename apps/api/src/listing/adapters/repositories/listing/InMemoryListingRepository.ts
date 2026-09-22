@@ -38,4 +38,10 @@ export class InMemoryListingRepository implements ListingRepository {
       ) ?? null
     );
   }
+
+  public async findAllActive(): Promise<Listing[]> {
+    return this.listingList.filter(
+      (listing) => listing.toState().status === ListingStatus.ACTIVE,
+    );
+  }
 }

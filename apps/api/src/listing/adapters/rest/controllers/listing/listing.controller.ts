@@ -17,6 +17,7 @@ import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
 import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
+import { ListActiveListings } from '../../../../domain/usecases/list-active-listings/ListActiveListings';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
@@ -32,6 +33,7 @@ export class ListingController {
   constructor(
     private readonly publishListingUseCase: PublishListing,
     private readonly getListingUseCase: GetListing,
+    private readonly listActiveListingsUseCase: ListActiveListings,
   ) {}
 
   @UseGuards(AuthGuard)
@@ -98,6 +100,21 @@ export class ListingController {
         userId: req.user.id,
       });
     }
+  }
+
+  @Get()
+  public async listListings(): Promise<GetListingResponseDto[]> {
+    const result = await this.listActiveListingsUseCase.execute();
+
+    if (Either.isLeft(result))
+      throw new HttpException(
+        'La liste des annonces est indisponible',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+
+    return result.right.map((listing) =>
+      ListingMapper.toGetListingDto(listing),
+    );
   }
 
   @Get(':id')

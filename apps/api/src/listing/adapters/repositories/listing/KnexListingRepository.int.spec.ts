@@ -87,4 +87,29 @@ describe('KnexListingRepository @SPEC-001', () => {
       box: '12',
     });
   });
+  it('lists only the active listings, most recent first', async () => {
+    const sut = createKnexListingRepositorySUT();
+    await sut.givenActiveListingRow({
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+      publishedAt: '2026-09-10',
+    });
+    await sut.givenActiveListingRow({
+      address: '3 avenue Malausséna, 06000 Nice',
+      box: '4',
+      publishedAt: '2026-09-20',
+    });
+    await sut.givenUnpublishedListingRow({
+      address: '7 rue de France, 06000 Nice',
+      box: '1',
+      publishedAt: '2026-09-15',
+    });
+
+    const listed = await sut.whenListingAllActive();
+
+    sut.thenListedPlacesAre(listed, [
+      { address: '3 avenue Malausséna, 06000 Nice', box: '4' },
+      { address: '12 rue Barla, 06300 Nice', box: '12' },
+    ]);
+  });
 });

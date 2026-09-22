@@ -80,6 +80,54 @@ export const createKnexListingRepositorySUT = () => {
       });
     },
 
+    async givenActiveListingRow(input: {
+      address: string;
+      box: string;
+      publishedAt: string;
+    }): Promise<void> {
+      await context.listingRepository.create(
+        new ListingBuilder()
+          .withOwnerId(toAccountId('Marc D.'))
+          .withAddress(input.address)
+          .withBox(input.box)
+          .withStatus(ListingStatus.ACTIVE)
+          .withPublishedAt(new Date(`${input.publishedAt}T00:00:00.000Z`))
+          .build(),
+      );
+    },
+
+    async givenUnpublishedListingRow(input: {
+      address: string;
+      box: string;
+      publishedAt: string;
+    }): Promise<void> {
+      await context.listingRepository.create(
+        new ListingBuilder()
+          .withOwnerId(toAccountId('Marc D.'))
+          .withAddress(input.address)
+          .withBox(input.box)
+          .withStatus(ListingStatus.UNPUBLISHED)
+          .withPublishedAt(new Date(`${input.publishedAt}T00:00:00.000Z`))
+          .build(),
+      );
+    },
+
+    async whenListingAllActive() {
+      return context.listingRepository.findAllActive();
+    },
+
+    thenListedPlacesAre(
+      listed: { toState(): { address: string; box: string } }[],
+      expected: { address: string; box: string }[],
+    ) {
+      expect(
+        listed.map((listing) => ({
+          address: listing.toState().address,
+          box: listing.toState().box,
+        })),
+      ).toEqual(expected);
+    },
+
     async whenCreatingActiveListing(input: {
       owner: string;
       address: string;

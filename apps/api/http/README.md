@@ -39,15 +39,15 @@ POST /account            créer un compte
 POST /account/password   changer son mot de passe
 POST /session            se connecter
 POST /listing            publier une annonce
+GET  /listing            lister toutes les annonces actives
 GET  /listing/:id        lire UNE annonce, par son identifiant
 POST /rental-request     demander une place
 ```
 
 Conséquences concrètes en testant :
 
-- **On ne peut pas chercher une place.** Pas de `GET /listing`, pas de recherche par adresse ou par
-  ville. Un conducteur devrait déjà connaître l'identifiant de l'annonce — ce qui n'a aucun sens dans
-  un vrai usage.
+- **Aucune recherche.** `GET /listing` rend *toutes* les annonces actives, sans filtre : ni par ville,
+  ni par adresse, ni par dates. Sans pagination non plus — la liste grossit sans limite.
 - **`POST /listing` ne rend pas l'identifiant** de l'annonce créée : il répond `201` sans corps. Pour
   relire ce qu'on vient de publier, il faut aller le chercher en base :
 
@@ -59,10 +59,12 @@ Conséquences concrètes en testant :
 - **On ne peut pas dépublier par l'API.** `UnpublishListing` existe et est testé, mais aucune route
   ne le monte.
 
-Ce n'est pas un oubli d'implémentation : **aucun exemple de SPEC-001 ni de SPEC-002 ne décrit une
-recherche, une liste, ou un retour d'identifiant**. Les deux specs couvrent publier, lire une annonce
-connue, et demander. Chercher une place n'a jamais été spécifié — c'est un vrai trou produit, à
-ouvrir en phase 1 avant d'être construit.
+`GET /listing` a été ajoutée **hors spec**, à la demande, parce que c'est la première chose que le
+site affichera. Elle est testée (4 unit, 1 int-repo, 3 int-http) mais aucun exemple de SPEC-001 ni de
+SPEC-002 ne la décrit : le filtrage, le tri et la pagination restent à spécifier.
+
+Le reste des manques est dans le même cas — rien dans les deux specs ne décrit une recherche, un
+retour d'identifiant à la publication, ou une route de dépublication.
 
 ## Un détail qui surprend
 Les requêtes d'inscription créent de vraies lignes. Rejouer `parcours` deux fois donne un `409` à

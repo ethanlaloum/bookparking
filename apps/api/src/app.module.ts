@@ -9,6 +9,8 @@ import { ListingController } from './listing/adapters/rest/controllers/listing/l
 import { GetListing } from './listing/domain/usecases/get-listing/GetListing';
 import { ListActiveListings } from './listing/domain/usecases/list-active-listings/ListActiveListings';
 import { PublishListing } from './listing/domain/usecases/publish-listing/PublishListing';
+import { UnpublishListing } from './listing/domain/usecases/unpublish-listing/UnpublishListing';
+import { UpdateListingPricing } from './listing/domain/usecases/update-listing-pricing/UpdateListingPricing';
 import { KnexPublishedListingReader } from './rental/adapters/repositories/published-listing/KnexPublishedListingReader';
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
 import { RentalRequestController } from './rental/adapters/rest/controllers/rental-request/rental-request.controller';
@@ -97,6 +99,20 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       provide: GetListing,
       useFactory: (connection: DatabaseConnection) =>
         new GetListing(new KnexListingRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: UnpublishListing,
+      useFactory: (connection: DatabaseConnection) =>
+        new UnpublishListing(new KnexListingRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: UpdateListingPricing,
+      useFactory: (connection: DatabaseConnection) =>
+        new UpdateListingPricing(
+          new KnexListingRepository(typedAs(connection)),
+        ),
       inject: [DATABASE_CONNECTION],
     },
     {

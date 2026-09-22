@@ -126,4 +126,14 @@ describe('AccountController @SPEC-002', () => {
       sut.thenAccountWasRegisteredFor(ACCENTED_ADDRESS);
     });
   });
+  describe('POST /account/password', () => {
+    it('responds 401 to a password change with no token @EX-002-31', async () => {
+      const response = await http()
+        .post('/account/password')
+        .send({ currentPassword: MARC_PASSWORD, newPassword: 'Barla2027#' });
+
+      expect(response.status).toEqual(401);
+      sut.thenNoPasswordWasChanged();
+    });
+  });
 });

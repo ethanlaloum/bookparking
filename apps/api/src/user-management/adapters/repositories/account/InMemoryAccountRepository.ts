@@ -28,4 +28,21 @@ export class InMemoryAccountRepository implements AccountRepository {
     );
     return account ?? null;
   }
+
+  public async findById(accountId: string): Promise<Account | null> {
+    if (this.failing) throw new Error('accounts repository is unreachable');
+    return this.accountList.find((stored) => stored.id === accountId) ?? null;
+  }
+
+  public async replacePasswordHash(
+    accountId: string,
+    passwordHash: string,
+  ): Promise<void> {
+    if (this.failing) throw new Error('accounts repository is unreachable');
+    this.accountList = this.accountList.map((stored) =>
+      stored.id === accountId
+        ? Account.fromState({ ...stored.toState(), passwordHash })
+        : stored,
+    );
+  }
 }

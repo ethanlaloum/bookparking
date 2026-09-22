@@ -63,6 +63,31 @@ export class KnexAccountRepository implements AccountRepository {
     };
   }
 
+  public async findById(
+    accountId: string,
+    trx?: GenericTransaction,
+  ): Promise<Account | null> {
+    const query = this.connection<SchemaAccountRepository>(this.tableName)
+      .where({ id: accountId })
+      .first();
+    if (trx) query.transacting(trx);
+    const row = await query;
+    if (!row) return null;
+    return KnexAccountRepository.toEntity(row);
+  }
+
+  public async replacePasswordHash(
+    accountId: string,
+    passwordHash: string,
+    trx?: GenericTransaction,
+  ): Promise<void> {
+    const query = this.connection(this.tableName)
+      .where({ id: accountId })
+      .update({ password_hash: passwordHash });
+    if (trx) query.transacting(trx);
+    await query;
+  }
+
   private static toEntity(row: SchemaAccountRepository): Account {
     return Account.fromState({
       id: row.id,

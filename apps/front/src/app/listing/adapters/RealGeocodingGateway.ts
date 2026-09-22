@@ -5,13 +5,14 @@ import {
   NICE,
   NICE_INSEE_CODE,
   precisionOfScore,
+  type AddressSuggestion,
   type LocatedAddress,
 } from '../domain/entities/Coordinates';
 import type { GeocodingGateway } from '../domain/ports/GeocodingGateway';
 
 interface BanFeature {
   geometry: { coordinates: [number, number] };
-  properties: { label: string; score: number };
+  properties: { id?: string; label: string; score: number };
 }
 
 interface BanResponse {
@@ -41,19 +42,7 @@ export class BanGeocodingGateway implements GeocodingGateway {
       `&lat=${String(NICE.latitude)}&lon=${String(NICE.longitude)}` +
       `&limit=1`;
 
-    return new Observable<BanResponse>((subscriber) => {
-      const controller = new AbortController();
-      fetch(url, { signal: controller.signal })
-        .then(async (response) => {
-          if (!response.ok) throw new Error(String(response.status));
-          subscriber.next((await response.json()) as BanResponse);
-          subscriber.complete();
-        })
-        .catch((error: unknown) => {
-          if (!controller.signal.aborted) subscriber.error(error);
-        });
-      return () => controller.abort();
-    }).pipe(
+    return this.fetchJson(url).pipe(
       map((response): LocatedAddress | null => {
         const feature = response.features[0];
         if (feature === undefined || !isPlaceable(feature.properties.score)) return null;
@@ -66,5 +55,47 @@ export class BanGeocodingGateway implements GeocodingGateway {
       }),
       catchError(() => of(null)),
     );
+  }
+
+  // `autocomplete=1` fait chercher sur un préfixe plutôt que sur une adresse
+  // complète, et les suggestions ne sont pas filtrées par score : c'est
+  // l'utilisateur qui choisit, pas un seuil. Le même `citycode` que `locate`,
+  // pour ne jamais proposer une rue d'une autre commune.
+  suggest(query: string): Observable<AddressSuggestion[]> {
+    const url =
+      `${BanGeocodingGateway.ENDPOINT}?q=${encodeURIComponent(query)}` +
+      `&autocomplete=1&citycode=${NICE_INSEE_CODE}` +
+      `&lat=${String(NICE.latitude)}&lon=${String(NICE.longitude)}` +
+      `&limit=5`;
+
+    return this.fetchJson(url).pipe(
+      map((response) =>
+        response.features.map((feature, index) => {
+          const [longitude, latitude] = feature.geometry.coordinates;
+          return {
+            id: feature.properties.id ?? `${feature.properties.label}-${String(index)}`,
+            label: feature.properties.label,
+            coordinates: { latitude, longitude },
+          };
+        }),
+      ),
+      catchError(() => of([])),
+    );
+  }
+
+  private fetchJson(url: string): Observable<BanResponse> {
+    return new Observable<BanResponse>((subscriber) => {
+      const controller = new AbortController();
+      fetch(url, { signal: controller.signal })
+        .then(async (response) => {
+          if (!response.ok) throw new Error(String(response.status));
+          subscriber.next((await response.json()) as BanResponse);
+          subscriber.complete();
+        })
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) subscriber.error(error);
+        });
+      return () => controller.abort();
+    });
   }
 }

@@ -3,7 +3,12 @@ import { createReducer } from '@reduxjs/toolkit';
 import { logoutSucceeded } from '../../auth/domain/use-cases/sign-out/signOutEpic';
 import { initialCommonState, type CommonState } from '../../../store/CommonState';
 import type { Listing } from '../domain/entities/Listing';
-import type { LocatedAddress } from '../domain/entities/Coordinates';
+import type { AddressSuggestion, Coordinates, LocatedAddress } from '../domain/entities/Coordinates';
+import {
+  addressSearchCleared,
+  addressSelected,
+  addressSuggestionsReceived,
+} from '../domain/use-cases/search-address/searchAddressEpic';
 import type { OwnerListing } from '../domain/ports/ListingGateway';
 import {
   locateListingsRequested,
@@ -48,6 +53,9 @@ export interface ListingState {
   listings: Listing[];
   ownerListings: OwnerListing[];
   locations: Record<string, LocatedAddress>;
+  suggestions: AddressSuggestion[];
+  searchPoint: Coordinates | null;
+  searchLabel: string | null;
   selected: Listing | null;
   list: CommonState;
   listOwner: CommonState;
@@ -62,6 +70,9 @@ const initialState: ListingState = {
   listings: [],
   ownerListings: [],
   locations: {},
+  suggestions: [],
+  searchPoint: null,
+  searchLabel: null,
   selected: null,
   list: initialCommonState,
   listOwner: initialCommonState,
@@ -100,6 +111,19 @@ export const listingReducer = createReducer(initialState, (builder) => {
     .addCase(locateListingsSucceeded, (state, action) => {
       state.locate = { state: 'succeeded' };
       for (const { listingId, located } of action.payload) state.locations[listingId] = located;
+    })
+    .addCase(addressSuggestionsReceived, (state, action) => {
+      state.suggestions = action.payload;
+    })
+    .addCase(addressSelected, (state, action) => {
+      state.searchPoint = action.payload.coordinates;
+      state.searchLabel = action.payload.label;
+      state.suggestions = [];
+    })
+    .addCase(addressSearchCleared, (state) => {
+      state.suggestions = [];
+      state.searchPoint = null;
+      state.searchLabel = null;
     })
     .addCase(getListingRequested, (state) => {
       state.get = { state: 'pending' };

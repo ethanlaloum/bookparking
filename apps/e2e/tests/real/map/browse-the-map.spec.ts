@@ -36,4 +36,24 @@ test.describe('Map', () => {
     await map.followListingFromPopup();
     await expect(page).toHaveURL(new RegExp(`/place/${listing.id}$`));
   });
+
+  test('searches an address, centres on it and ranks the places by distance', async ({
+    page,
+    seed,
+  }) => {
+    const owner = await seed.user('map-search-owner');
+    const listing = await seed.listing(owner, { address: '4 place Masséna, 06000 Nice' });
+
+    const map = new MapPage(page);
+    await map.open();
+    await expect(map.marker(listing.address)).toBeVisible();
+
+    await map.searchAddress('place mass', 'Place Masséna 06000 Nice');
+
+    await map.expectSearchSummary(/Autour de Place Masséna/);
+    await map.expectSearchSummary(/à moins d.un kilomètre/);
+
+    await map.clearSearch();
+    await expect(page.getByText(/Autour de/)).toHaveCount(0);
+  });
 });

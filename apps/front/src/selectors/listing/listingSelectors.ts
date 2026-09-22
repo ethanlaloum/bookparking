@@ -7,8 +7,12 @@ import {
 } from '../../app/listing/domain/entities/Listing';
 import {
   centerOf,
+  CITY_ZOOM,
+  distanceInKilometers,
+  isWithinWalkingDistance,
   spanInKilometers,
   zoomForSpan,
+  type AddressSuggestion,
   type Coordinates,
   type LocatedAddress,
 } from '../../app/listing/domain/entities/Coordinates';
@@ -152,4 +156,57 @@ export const selectMapZoom = createSelector([selectMappedListings], (mapped): nu
 export const selectApproximateCount = createSelector(
   [selectMappedListings],
   (mapped) => mapped.filter((entry) => entry.located.precision === 'approximate').length,
+);
+
+export const selectAddressSuggestions = (state: AppState): AddressSuggestion[] =>
+  state.core.listing.suggestions;
+
+export const selectSearchPoint = (state: AppState): Coordinates | null =>
+  state.core.listing.searchPoint;
+
+export const selectSearchLabel = (state: AppState): string | null =>
+  state.core.listing.searchLabel;
+
+export interface MappedListingWithDistance extends MappedListing {
+  distanceKm: number | null;
+  nearby: boolean;
+}
+
+/**
+ * Les places restent toutes présentes, classées par distance quand une adresse
+ * est cherchée : on met en avant, on ne masque pas. Une carte qui cacherait des
+ * places un peu éloignées ferait croire qu'il n'y en a pas.
+ */
+export const selectMappedListingsFromSearch = createSelector(
+  [selectMappedListings, selectSearchPoint],
+  (mapped, point): MappedListingWithDistance[] => {
+    if (point === null)
+      return mapped.map((entry) => ({ ...entry, distanceKm: null, nearby: false }));
+
+    return mapped
+      .map((entry) => ({
+        ...entry,
+        distanceKm: distanceInKilometers(point, entry.located.coordinates),
+        nearby: isWithinWalkingDistance(point, entry.located.coordinates),
+      }))
+      .sort((left, right) => left.distanceKm - right.distanceKm);
+  },
+);
+
+export const selectNearbyCount = createSelector(
+  [selectMappedListingsFromSearch],
+  (mapped) => mapped.filter((entry) => entry.nearby).length,
+);
+
+// Une adresse cherchée commande le cadrage : la carte va voir ce qu'on lui
+// demande, et non plus le barycentre de toutes les annonces.
+export const selectMapFocus = createSelector(
+  [selectMappedListings, selectSearchPoint],
+  (mapped, point): { center: Coordinates; zoom: number } =>
+    point === null
+      ? {
+          center: centerOf(mapped.map((entry) => entry.located.coordinates)),
+          zoom: zoomForSpan(spanInKilometers(mapped.map((entry) => entry.located.coordinates))),
+        }
+      : { center: point, zoom: CITY_ZOOM + 2 },
 );

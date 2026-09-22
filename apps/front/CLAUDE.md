@@ -98,6 +98,30 @@ change côté api casse la compilation du front plutôt que sa production.
 - **Le marqueur est un SVG en ligne, pas l'icône par défaut de Leaflet.**
   Celle-ci arrive par une URL que le bundler réécrit, et qui casse silencieusement en production.
 
+- **`searchAddressEpic` est le seul `switchMap` de l'application, et c'est sa place.**
+  Sur une frappe, la dernière requête gagne et la précédente ne vaut plus rien : l'annuler est
+  exactement ce qu'on veut. `exhaustMap` — le défaut ailleurs — laisserait s'afficher les suggestions
+  d'un préfixe déjà effacé. `debounceTime` vient **avant** `distinctUntilChanged` : on ne compare que
+  les frappes qui ont survécu au silence, sinon un aller-retour sur la même chaîne relancerait une
+  requête identique.
+
+- **La recherche met en avant, elle ne masque jamais.** `selectMappedListingsFromSearch` classe par
+  distance et marque celles à moins d'un kilomètre ; toutes restent sur la carte. Filtrer ferait croire
+  qu'il n'y a pas de place là où il y en a une à 1,2 km.
+
+- **La molette ne zoome pas la carte.** Elle occupe les deux tiers de la hauteur : un utilisateur qui
+  fait défiler la page verrait son geste détourné dès que le curseur passe dessus — constaté en
+  s'en servant. Les commandes `+`/`−` et le double-clic restent explicites.
+
+- **Le combobox suit le motif ARIA à la lettre**, et pas seulement pour la forme : `aria-activedescendant`
+  désigne l'option parcourue **sans** lui donner le focus, ce qui laisse la frappe continuer. C'est aussi
+  ce qui permet au barreau `e2e` de désigner une suggestion par `getByRole('option')`, et un marqueur
+  Leaflet par `getByRole('button')` — son `title` devient son nom accessible.
+
+- **Ne jamais réinitialiser le surlignage dans un `useEffect` sur les suggestions.**
+  Un `setState` synchrone dans un effet déclenche des rendus en cascade, et le linter React le refuse.
+  Les suggestions ne changent qu'à la suite d'une frappe : la remise à zéro appartient au `onChange`.
+
 ## Commandes (formes sûres pour un agent)
 
 | Intention | Commande |

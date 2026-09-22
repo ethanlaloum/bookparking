@@ -99,5 +99,18 @@
     "approx": "Approximate position",
     "listTab": "List",
     "mapTab": "Map"
+  },
+  "mapSearch": {
+    "label": "Search an address in Nice",
+    "placeholder": "Start typing a street in Nice…",
+    "hint": "At least 3 characters. Only addresses in Nice are offered.",
+    "clear": "Clear the search",
+    "noResult": "No address matches.",
+    "suggestions": "Address suggestions",
+    "around": "Around {{address}}",
+    "nearby_one": "{{count}} space within one kilometre",
+    "nearby_other": "{{count}} spaces within one kilometre",
+    "noneNearby": "No space within one kilometre. The closest ones are listed first.",
+    "distance": "{{distance}} away"
   }
 }

@@ -5,6 +5,20 @@ export interface Coordinates {
 
 export type LocationPrecision = 'exact' | 'approximate';
 
+export interface AddressSuggestion {
+  id: string;
+  label: string;
+  coordinates: Coordinates;
+}
+
+/**
+ * Une place à plus d'un kilomètre d'une adresse cherchée n'est plus « à côté » :
+ * à pied, c'est un quart d'heure. Le rayon sert à mettre en avant, jamais à
+ * masquer — une carte qui cacherait des places parce qu'elles sont un peu loin
+ * ferait croire qu'il n'y en a pas.
+ */
+export const WALKING_RADIUS_KM = 1;
+
 export interface LocatedAddress {
   coordinates: Coordinates;
   precision: LocationPrecision;
@@ -93,3 +107,11 @@ export const zoomForSpan = (spanKm: number): number => {
   if (spanKm < 15) return 11;
   return 10;
 };
+
+export const isWithinWalkingDistance = (from: Coordinates, to: Coordinates): boolean =>
+  distanceInKilometers(from, to) <= WALKING_RADIUS_KM;
+
+export const formatDistance = (kilometers: number): string =>
+  kilometers < 1
+    ? `${String(Math.round(kilometers * 1000))} m`
+    : `${kilometers.toFixed(1).replace('.', ',')} km`;

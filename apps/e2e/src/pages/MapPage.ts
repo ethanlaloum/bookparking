@@ -7,10 +7,32 @@ export class MapPage {
     return this.page.locator('.leaflet-container');
   }
 
+  // Leaflet expose un marqueur comme un bouton dont le `title` devient le nom
+  // accessible : « <adresse> — <box> ». On le désigne donc par son rôle, comme
+  // tout le reste, sans descendre au sélecteur CSS.
   marker(address: string): Locator {
-    // Le titre du marqueur porte l'adresse : c'est aussi l'infobulle que voit
-    // un utilisateur au survol, donc un vrai nom et non un crochet de test.
-    return this.map().locator(`[title^="${address}"]`);
+    return this.page.getByRole('button', { name: new RegExp(`^${address}`) });
+  }
+
+  searchField(): Locator {
+    return this.page.getByRole('combobox', { name: 'Rechercher une adresse à Nice' });
+  }
+
+  suggestion(label: string): Locator {
+    return this.page.getByRole('option', { name: label });
+  }
+
+  async searchAddress(query: string, pick: string): Promise<void> {
+    await this.searchField().fill(query);
+    await this.suggestion(pick).click();
+  }
+
+  async expectSearchSummary(text: string | RegExp): Promise<void> {
+    await expect(this.page.getByText(text)).toBeVisible();
+  }
+
+  async clearSearch(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Effacer la recherche' }).click();
   }
 
   async open(): Promise<void> {

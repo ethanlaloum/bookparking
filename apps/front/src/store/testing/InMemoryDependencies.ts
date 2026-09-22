@@ -9,7 +9,10 @@ import type { Account } from '../../app/account/domain/entities/Account';
 import type { Session } from '../../app/auth/domain/entities/Session';
 import type { Credentials, SessionGateway } from '../../app/auth/domain/ports/SessionGateway';
 import type { SessionStore } from '../../app/auth/domain/ports/SessionStore';
-import type { LocatedAddress } from '../../app/listing/domain/entities/Coordinates';
+import type {
+  AddressSuggestion,
+  LocatedAddress,
+} from '../../app/listing/domain/entities/Coordinates';
 import type { Listing } from '../../app/listing/domain/entities/Listing';
 import type { GeocodingGateway } from '../../app/listing/domain/ports/GeocodingGateway';
 import type {
@@ -154,9 +157,17 @@ export class InMemoryGeocodingGateway implements GeocodingGateway {
   public readonly locatedByAddress = new Map<string, LocatedAddress>();
   public readonly asked: string[] = [];
 
+  public readonly suggestionsByQuery = new Map<string, AddressSuggestion[]>();
+  public readonly queried: string[] = [];
+
   locate(address: string): Observable<LocatedAddress | null> {
     this.asked.push(address);
     return of(this.locatedByAddress.get(address) ?? null);
+  }
+
+  suggest(query: string): Observable<AddressSuggestion[]> {
+    this.queried.push(query);
+    return of(this.suggestionsByQuery.get(query) ?? []);
   }
 }
 

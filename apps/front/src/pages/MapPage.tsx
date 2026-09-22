@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import { listListingsRequested } from '../app/listing/domain/use-cases/list-listings/listListingsEpic';
 import { locateListingsRequested } from '../app/listing/domain/use-cases/locate-listings/locateListingsEpic';
+import { AddressSearch } from '../components/AddressSearch';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
 import { Notice } from '../components/Notice';
@@ -15,9 +16,12 @@ import {
   selectListingsLoaded,
   selectListingsLoading,
   selectLocating,
-  selectMapCenter,
-  selectMapZoom,
+  selectMapFocus,
   selectMappedListings,
+  selectMappedListingsFromSearch,
+  selectNearbyCount,
+  selectSearchLabel,
+  selectSearchPoint,
   selectUnmappableCount,
 } from '../selectors/listing/listingSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
@@ -36,8 +40,11 @@ export const MapPage = () => {
   const listingsLoaded = useAppSelector(selectListingsLoaded);
   const listingsLoading = useAppSelector(selectListingsLoading);
   const mapped = useAppSelector(selectMappedListings);
-  const center = useAppSelector(selectMapCenter);
-  const zoom = useAppSelector(selectMapZoom);
+  const focus = useAppSelector(selectMapFocus);
+  const fromSearch = useAppSelector(selectMappedListingsFromSearch);
+  const searchPoint = useAppSelector(selectSearchPoint);
+  const searchLabel = useAppSelector(selectSearchLabel);
+  const nearby = useAppSelector(selectNearbyCount);
   const locating = useAppSelector(selectLocating);
   const approximate = useAppSelector(selectApproximateCount);
   const unplaced = useAppSelector(selectUnmappableCount);
@@ -64,6 +71,22 @@ export const MapPage = () => {
           {t('listing:map.listTab')}
         </Link>
       </div>
+
+      <div className="mt-7 max-w-xl">
+        <AddressSearch />
+      </div>
+
+      {searchPoint !== null && (
+        <Notice tone={nearby > 0 ? 'success' : 'info'} className="mt-5">
+          <span className="font-medium">
+            {t('listing:mapSearch.around', { address: searchLabel ?? '' })}
+          </span>
+          {' — '}
+          {nearby > 0
+            ? t('listing:mapSearch.nearby', { count: nearby })
+            : t('listing:mapSearch.noneNearby')}
+        </Notice>
+      )}
 
       <div className="tabular mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-fg-muted">
         <span className="font-medium text-fg">
@@ -113,7 +136,13 @@ export const MapPage = () => {
 
         {listings.length > 0 && (
           <Suspense fallback={<Loader />}>
-            <ListingsMap mapped={mapped} center={center} zoom={zoom} />
+            <ListingsMap
+              mapped={fromSearch}
+              center={focus.center}
+              zoom={focus.zoom}
+              searchPoint={searchPoint}
+              searchLabel={searchLabel}
+            />
           </Suspense>
         )}
       </div>

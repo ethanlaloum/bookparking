@@ -99,5 +99,18 @@
     "approx": "Position approximative",
     "listTab": "Liste",
     "mapTab": "Carte"
+  },
+  "mapSearch": {
+    "label": "Rechercher une adresse à Nice",
+    "placeholder": "Commencez à taper une rue niçoise…",
+    "hint": "Au moins 3 caractères. Seules les adresses de Nice sont proposées.",
+    "clear": "Effacer la recherche",
+    "noResult": "Aucune adresse ne correspond.",
+    "suggestions": "Suggestions d'adresses",
+    "around": "Autour de {{address}}",
+    "nearby_one": "{{count}} place à moins d'un kilomètre",
+    "nearby_other": "{{count}} places à moins d'un kilomètre",
+    "noneNearby": "Aucune place à moins d'un kilomètre. Les plus proches sont classées d'abord.",
+    "distance": "à {{distance}}"
   }
 }

@@ -73,8 +73,19 @@ export const createListingControllerSUT = () => {
             : builder
         ).build();
       });
-      listActiveListings.willResolve(Either.right(listings));
+      listActiveListings.willResolve(
+        Either.right({ listings, total: listings.length, page: 1, size: 20 }),
+      );
       return { listings };
+    },
+
+    thenListingsWereListedWith(criteria: Record<string, unknown>) {
+      expect(listActiveListings.calls).toHaveLength(1);
+      expect(listActiveListings.lastCall).toEqual(criteria);
+    },
+
+    thenNoListingWasListed() {
+      expect(listActiveListings.calls).toHaveLength(0);
     },
 
     givenNoListing() {

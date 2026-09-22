@@ -4,6 +4,7 @@ import { InMemoryAccountRepository } from '../../../adapters/repositories/accoun
 import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
 import { slidingAccessToken } from '../../services/slidingAccessToken';
 import { RegisterAccount } from '../register-account/RegisterAccount';
+import { ACCESS_TOKEN_SECRET_FOR_TEST } from '../sign-in/SignIn.sut';
 import { SignIn } from '../sign-in/SignIn';
 import { ChangePassword } from './ChangePassword';
 
@@ -14,7 +15,11 @@ export const createChangePasswordSUT = () => {
     accountRepository,
     passwordHasher,
   );
-  const signIn = new SignIn(accountRepository, passwordHasher);
+  const signIn = new SignIn(
+    accountRepository,
+    passwordHasher,
+    ACCESS_TOKEN_SECRET_FOR_TEST,
+  );
   const changePassword = new ChangePassword(accountRepository, passwordHasher);
 
   const context = { accountRepository, passwordHasher, signIn, changePassword };
@@ -84,7 +89,9 @@ export const createChangePasswordSUT = () => {
     },
 
     thenTokenIsStillAccepted(token: string, presentedAt: Date) {
-      expect(slidingAccessToken(token, presentedAt)).not.toEqual(null);
+      expect(
+        slidingAccessToken(token, presentedAt, ACCESS_TOKEN_SECRET_FOR_TEST),
+      ).not.toEqual(null);
     },
   };
 };

@@ -31,6 +31,7 @@ export class SignIn implements UseCase<
   constructor(
     private readonly accountRepository: AccountRepository,
     private readonly passwordHasher: PasswordHasher,
+    private readonly accessTokenSecret: string,
   ) {
     this.unknownAccountDecoyHash = this.passwordHasher.hash(
       randomBytes(DECOY_SECRET_BYTE_LENGTH).toString('hex'),
@@ -55,7 +56,9 @@ export class SignIn implements UseCase<
       if (!this.passwordHasher.verify(props.password, account.passwordHash))
         return Either.left(new InvalidCredentialsError());
 
-      return Either.right(issueAccessToken(account.id, props.at));
+      return Either.right(
+        issueAccessToken(account.id, props.at, this.accessTokenSecret),
+      );
     } catch (error: unknown) {
       return Either.left(
         new UnknownError(

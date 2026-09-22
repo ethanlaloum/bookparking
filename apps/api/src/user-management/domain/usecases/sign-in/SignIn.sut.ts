@@ -23,6 +23,9 @@ type SignInEither = Either.Either<
   InvalidCredentialsError | UnknownError
 >;
 
+export const ACCESS_TOKEN_SECRET_FOR_TEST =
+  'secret-de-test-suffisamment-long-pour-signer';
+
 export const createSignInSUT = () => {
   const accountRepository = new InMemoryAccountRepository();
   const passwordHasher = new ScryptPasswordHasher();
@@ -37,6 +40,7 @@ export const createSignInSUT = () => {
   const signIn = new SignIn(
     outboundPorts.accountRepository,
     outboundPorts.passwordHasher,
+    ACCESS_TOKEN_SECRET_FOR_TEST,
   );
 
   const context = {

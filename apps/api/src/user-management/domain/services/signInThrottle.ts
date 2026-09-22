@@ -31,6 +31,13 @@ export function countRecentFailures(
   ).length;
 }
 
+export function forgetStaleFailures(
+  failures: readonly SignInFailure[],
+  now: Date,
+): SignInFailure[] {
+  return failures.filter((failure) => isRecent(failure, now));
+}
+
 export function forgetFailuresFor(
   failures: readonly SignInFailure[],
   accountKey: string,

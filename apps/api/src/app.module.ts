@@ -17,7 +17,9 @@ import { KnexAccountRepository } from './user-management/adapters/repositories/a
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
 import { SessionController } from './user-management/adapters/rest/controllers/session/session.controller';
 import { SlidingAccessTokenVerifier } from './user-management/adapters/services/access-token/SlidingAccessTokenVerifier';
+import { TimerDelay } from './user-management/adapters/services/delay/TimerDelay';
 import { ScryptPasswordHasher } from './user-management/adapters/services/password-hasher/ScryptPasswordHasher';
+import { InMemorySignInFailureLog } from './user-management/adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { ChangePassword } from './user-management/domain/usecases/change-password/ChangePassword';
 import { RegisterAccount } from './user-management/domain/usecases/register-account/RegisterAccount';
 import { SignIn } from './user-management/domain/usecases/sign-in/SignIn';
@@ -53,12 +55,16 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       inject: [DATABASE_CONNECTION],
     },
     {
+      // Le journal d'échecs vit en mémoire, dans ce seul fournisseur singleton :
+      // le ralentissement ne couvre donc qu'un processus, pas une flotte.
       provide: SignIn,
       useFactory: (connection: DatabaseConnection) =>
         new SignIn(
           new KnexAccountRepository(typedAs(connection)),
           new ScryptPasswordHasher(),
           environment.accessTokenSecret(),
+          new InMemorySignInFailureLog(),
+          new TimerDelay(),
         ),
       inject: [DATABASE_CONNECTION],
     },

@@ -91,3 +91,27 @@ coup avec la même adresse, une seule crée un compte : la seconde est refusée.
 l'instant.
 
 <!-- jp-way:journal {"spec":"SPEC-002","story":"US-011","ex":["EX-01","EX-08","EX-10","EX-03"],"pr":36} -->
+
+## Une série d'essais de connexion ratés ralentit les suivants
+
+**Ce qui change** — Après deux connexions refusées, la troisième met une seconde à répondre, puis
+chaque nouvel échec double l'attente, jusqu'à trente secondes au plus. Ton compte n'est jamais bloqué :
+le bon mot de passe te connecte toujours, même après vingt erreurs.
+
+**Pour qui** — Toute personne qui se connecte, et surtout celles dont l'adresse est la cible d'essais
+automatisés.
+
+**Ce que tu vois maintenant** — Si tu te trompes deux fois de mot de passe, la réponse suivante arrive
+avec un léger retard. Dès que tu te connectes correctement, le compteur repart de zéro et la connexion
+d'après est de nouveau immédiate. Si tu ne réessaies pas pendant quinze minutes, le compteur retombe
+aussi. Le ralentissement est le même que ton adresse existe ou non : le délai ne dit jamais à personne
+si un compte est enregistré chez nous. Enfin, quelqu'un qui essaie beaucoup de comptes différents
+depuis un même point d'accès est ralenti lui aussi, même si aucun de ces comptes n'a accumulé d'échecs.
+
+**Ce qu'il faut faire différemment** — Rien. Si tu as oublié ton mot de passe, mieux vaut attendre
+quelques instants que multiplier les essais : chacun allonge l'attente suivante.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-017","ex":["EX-44","EX-45","EX-46"]} -->

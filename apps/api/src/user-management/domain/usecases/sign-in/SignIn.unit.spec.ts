@@ -51,4 +51,35 @@ describe('SignIn @SPEC-002', () => {
     sut.thenBothRefusalsAreIndistinguishable(wrongPassword, unknownAddress);
     sut.thenNoTokenWasIssued();
   });
+  it('delays a third attempt after two refusals', async () => {
+    const sut = createSignInSUT();
+    await sut.givenAccountFor(MARC_EMAIL, MARC_PASSWORD);
+
+    await sut.whenSigningIn({ email: MARC_EMAIL, password: WRONG_PASSWORD });
+    await sut.whenSigningIn({ email: MARC_EMAIL, password: WRONG_PASSWORD });
+    const third = await sut.whenSigningIn({
+      email: MARC_EMAIL,
+      password: WRONG_PASSWORD,
+    });
+
+    sut.thenLastAttemptWasDelayedBy(1000);
+    sut.thenResultIsLeftWithError(third, InvalidCredentialsError);
+    sut.thenNoTokenWasIssued();
+  });
+
+  it('clears the counter of an account that signs in', async () => {
+    const sut = createSignInSUT();
+    await sut.givenAccountFor(MARC_EMAIL, MARC_PASSWORD);
+
+    await sut.whenSigningIn({ email: MARC_EMAIL, password: WRONG_PASSWORD });
+    await sut.whenSigningIn({ email: MARC_EMAIL, password: WRONG_PASSWORD });
+    const success = await sut.whenSigningIn({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+    });
+    await sut.whenSigningIn({ email: MARC_EMAIL, password: WRONG_PASSWORD });
+
+    sut.thenResultIsRight(success);
+    sut.thenLastAttemptWasDelayedBy(0);
+  });
 });

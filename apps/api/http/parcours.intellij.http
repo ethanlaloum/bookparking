@@ -1,0 +1,106 @@
+### Parcours complet — IntelliJ HTTP Client
+# Sélectionne l'environnement « local » en haut à droite, puis lance les requêtes dans l'ordre.
+# Le jeton est capturé automatiquement : rien à copier à la main.
+
+### 1 · S'inscrire · attendu 201
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.test("le compte est créé", function() {
+        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+        client.assert(response.body.id !== undefined, "aucun identifiant rendu");
+    });
+    client.global.set("accountId", response.body.id);
+%}
+
+### 2 · Se connecter · attendu 200 + un jeton signé
+POST {{baseUrl}}/session
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.test("un jeton est délivré", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(response.body.token !== undefined, "aucun jeton");
+    });
+    client.global.set("token", response.body.token);
+%}
+
+### 3 · Publier une annonce · attendu 201
+POST {{baseUrl}}/listing
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "12",
+  "accessDescription": "portail bleu à gauche du 12, le box est au fond du premier sous-sol",
+  "photos": ["photo-1.jpg"],
+  "pricing": { "dayInCents": 1200, "weekInCents": 6000, "monthInCents": 18000 },
+  "availability": { "from": "2026-10-01", "to": "2026-10-31" }
+}
+
+> {%
+    client.test("l'annonce est publiée", function() {
+        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+    });
+%}
+
+### 4 · Demander la place · attendu 201
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "12",
+  "fromDay": "2026-10-05",
+  "toDay": "2026-10-07"
+}
+
+> {%
+    client.test("la demande est enregistrée", function() {
+        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+    });
+%}
+
+### 5 · Changer son mot de passe · attendu 204
+POST {{baseUrl}}/account/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "Barla2027#"
+}
+
+> {%
+    client.test("le mot de passe est changé", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 6 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
+POST {{baseUrl}}/session
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.test("l'ancien mot de passe est refusé", function() {
+        client.assert(response.status === 401, "attendu 401, reçu " + response.status);
+    });
+%}

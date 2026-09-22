@@ -1,0 +1,159 @@
+### Les refus — identique sous IntelliJ et sous VS Code
+# Aucune capture de variable ici : chaque requête se suffit à elle-même.
+# Sous IntelliJ, sélectionne l'environnement « local ».
+# Sous VS Code, les deux lignes ci-dessous servent de variables.
+
+@baseUrl = http://localhost:3000
+
+### A · Adresse déjà utilisée · attendu 409 · EX-04
+# À lancer après avoir inscrit marc.d@example.com.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "marc.d@example.com",
+  "password": "UnAutre2026!"
+}
+
+### B · Mot de passe de 7 caractères · attendu 400 · EX-05
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "sept@example.com",
+  "password": "Prom06!"
+}
+
+### C · Mot de passe de 8 caractères · attendu 201 · EX-06
+# La borne exacte : un caractère de plus et ça passe.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "huit@example.com",
+  "password": "Prom06!!"
+}
+
+### D · Mot de passe vide · attendu 400 · EX-09
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "vide@example.com",
+  "password": ""
+}
+
+### E · Adresse sans arobase · attendu 400 · EX-34
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "marc.d",
+  "password": "Barla2026!"
+}
+
+### F · Adresse portant une apostrophe · attendu 400 · EX-40
+# Décision assumée : o'brien@example.com ne peut pas s'inscrire non plus.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "marc'--@example.com",
+  "password": "Barla2026!"
+}
+
+### G · Adresse accentuée · attendu 201 · EX-39
+# Les accents passent, et l'adresse est stockée normalisée.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "Léa.T@Exemple.fr",
+  "password": "Promenade06!"
+}
+
+### H · La même, en minuscules · attendu 409 · EX-39
+# Prouve que la normalisation a bien eu lieu : c'est le même compte.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "léa.t@exemple.fr",
+  "password": "Promenade06!"
+}
+
+### I · Mot de passe mal typé · attendu 400 · EX-41
+# ⚠ Le point qui compte : la réponse ne doit PAS contenir 12345678.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "email": "type@example.com",
+  "password": 12345678
+}
+
+### J · Corps qui n'est pas un objet · attendu 400 · EX-42
+# ⚠ La réponse ne doit PAS contenir Promenade06!.
+POST {{baseUrl}}/account
+Content-Type: application/json
+
+["lea.t@example.com", "Promenade06!"]
+
+### K · Mauvais mot de passe à la connexion · attendu 401 · EX-17
+POST {{baseUrl}}/session
+Content-Type: application/json
+
+{
+  "email": "marc.d@example.com",
+  "password": "Mauvais2026!"
+}
+
+### L · Adresse inconnue · attendu 401, le MÊME refus que K · EX-18
+# Ni le message ni le délai ne doivent distinguer les deux cas.
+POST {{baseUrl}}/session
+Content-Type: application/json
+
+{
+  "email": "inconnu@example.com",
+  "password": "Barla2026!"
+}
+
+### M · Publier sans jeton · attendu 401 · EX-36
+POST {{baseUrl}}/listing
+Content-Type: application/json
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "12"
+}
+
+### N · Publier avec un jeton FORGÉ · attendu 401
+# Charge fabriquée à la main, signature inventée. C'est ce qui passait avant la signature HMAC.
+POST {{baseUrl}}/listing
+Content-Type: application/json
+Authorization: Bearer eyJhY2NvdW50SWQiOiJuaW1wb3J0ZS1xdWkiLCJpc3N1ZWRBdCI6IjIwMjYtMDEtMDFUMDA6MDA6MDAuMDAwWiIsInZhbGlkVW50aWwiOiIyMDk5LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ.signature-inventee
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "12"
+}
+
+### O · Demander une place sans jeton · attendu 401 · EX-12
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "12",
+  "fromDay": "2026-10-05",
+  "toDay": "2026-10-07"
+}
+
+### P · Changer son mot de passe sans jeton · attendu 401 · EX-31
+POST {{baseUrl}}/account/password
+Content-Type: application/json
+
+{
+  "currentPassword": "Barla2026!",
+  "newPassword": "Barla2027#"
+}

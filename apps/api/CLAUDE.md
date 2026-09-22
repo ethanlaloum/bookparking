@@ -31,7 +31,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**39 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-21) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| unit (**40 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-22) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
 | int-repo + int-http (**5 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-21 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
@@ -220,6 +220,20 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   d'inscription (`01/10/2026 à 09:00`), et la revue de conformité de US-011 accepte cette colonne non lue
   comme un écart mineur, en anticipation d'une future période de rétention.
   Ne pas retirer `registered_at` ni le champ correspondant sans relire cet écart.
+
+- **Dans un raffinement `.pipe(...)` `effect`, l'ordre est porteur de sens : le raffinement composé en
+  premier devient l'intérieur du décodage, donc celui qui s'exécute en premier.**
+  `Schema.pattern` composé avant `Schema.maxLength` faisait tourner la regex sur la chaîne brute, non
+  bornée, avant tout rejet par longueur — sur `POST /account`, une route publique sans limitation de
+  débit (`RegisterAccountSchema.ts:9-16`, ordre actuel : `maxLength` puis `pattern`).
+  Composer la borne bon marché avant le contrôle coûteux dans tout nouveau raffinement `.pipe(...)`.
+
+- **Un exemple `unit` d'une règle de validation ne protège pas la frontière HTTP qui l'implémente —
+  EX-39 (adresse accentuée acceptée) n'était prouvée qu'en `unit` avant cette story.**
+  Le cas `unit` d'EX-39 (US-012) appelle `RegisterAccount` directement et ne traverse jamais
+  `RegisterAccountSchema` ; un motif de validation ajouté côté schéma peut donc refuser une adresse que
+  le domaine accepte sans faire échouer ce test-là (`RegisterAccountSchema.ts:3`).
+  Toute règle observable aux deux barreaux a besoin d'un cas aux deux barreaux — voir `docs/plan/SPEC-002.md`, note T7.
 
 ## Frozen versions — do not bump without reading the reason
 

@@ -1,12 +1,12 @@
 ---
 spec: SPEC-002
 statut: valide
-revision: 3
+revision: 4
 valide_le: 2026-09-20
 valide_par: JP
 derive_de: SPEC-002@cd56f5e83c7e23e4008c5bd864b63789988566e2
 apps: [api]
-cas: 42
+cas: 43
 stories: 12
 ---
 
@@ -18,15 +18,28 @@ stories: 12
 |---|---|---|---|
 | unit | 26 | 26 | 26 |
 | int-repo | 1 | 1 | 1 |
-| int-http | 13 | 13 | 13 |
+| int-http | 16 | 16 | 15 |
 | journey | 0 | 0 | 0 |
-| **total** | **40** | **40** | 40 exemples, 0 sans cas |
+| **total** | **43** | **43** | 42 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 
-Aucun. Les 40 barreaux planifiés reprennent, exemple par exemple, la suggestion `barreau` du
-bloc `jp-way:ex` de la spec — la table de décision (`plan.md` §2) et les sept tie-breakers ne
-déplacent aucun exemple.
+Aucun déplacement. Les 42 exemples gardent, chacun, le barreau que suggère son bloc `jp-way:ex` :
+la table de décision (`plan.md` §2) et les sept tie-breakers n'en déplacent aucun.
+
+**Redondance assumée — EX-39 porte deux cas** (T7)
+
+`EX-39` est le seul exemple à porter un cas à deux barreaux, et c'est une décision, pas un
+accident de `sync` :
+
+- son cas `unit` (US-012) prouve que **le domaine normalise** — `Léa.T@Exemple.fr` et
+  `léa.t@exemple.fr` désignent un seul compte ;
+- son cas `int-http` (US-014) prouve que **la frontière ne refuse pas** cette même adresse.
+
+Les deux sont nécessaires parce qu'ils peuvent diverger, et l'ont fait : le motif de validation
+introduit par US-014 refusait `Léa.T@Exemple.fr` à la frontière pendant que le cas `unit`
+restait vert, l'exemple `unit` appelant le cas d'usage sans jamais traverser le schéma de la
+requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nominal l'est.
 
 **Découpage — 3,6 exemples/story, deux stories courtes irréductibles**
 
@@ -65,6 +78,7 @@ déplacent aucun exemple.
 | EX-36 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address of 255 characters |
 | EX-37 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | accepts an address of 254 characters |
 | EX-40 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address carrying a quote and a comment marker |
+| EX-39 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | accepts an accented address at the HTTP boundary |
 | EX-41 | int-http | api | US-022 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | keeps a mistyped password out of the validation response |
 | EX-42 | int-http | api | US-022 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | keeps a non-object request body out of the validation response |
 | EX-14 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | issues a token valid for seven days |
@@ -108,6 +122,7 @@ déplacent aucun exemple.
 <!-- jp-way:cas {"ex":"EX-36","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address of 255 characters","empreinte":"0dcb1c44"} -->
 <!-- jp-way:cas {"ex":"EX-37","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"accepts an address of 254 characters","empreinte":"f1ed5a6d"} -->
 <!-- jp-way:cas {"ex":"EX-40","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address carrying a quote and a comment marker","empreinte":"60a9b317"} -->
+<!-- jp-way:cas {"ex": "EX-39", "barreau": "int-http", "app": "api", "story": "US-014", "chemin": "apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts", "titre": "accepts an accented address at the HTTP boundary", "empreinte": "4930b02c"} -->
 <!-- jp-way:cas {"ex": "EX-41", "barreau": "int-http", "app": "api", "story": "US-022", "chemin": "apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts", "titre": "keeps a mistyped password out of the validation response", "empreinte": "248d6a55"} -->
 <!-- jp-way:cas {"ex": "EX-42", "barreau": "int-http", "app": "api", "story": "US-022", "chemin": "apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts", "titre": "keeps a non-object request body out of the validation response", "empreinte": "3bde4c88"} -->
 <!-- jp-way:cas {"ex":"EX-14","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"issues a token valid for seven days","empreinte":"e62194d6"} -->
@@ -141,7 +156,7 @@ déplacent aucun exemple.
 | 1 | US-011 | Créer un compte | api | unit int-repo | EX-01 EX-03 EX-08 EX-10 | #25 |
 | 2 | US-012 | Refuser une adresse déjà utilisée | api | unit int-http | EX-02 EX-04 EX-07 EX-39 | #26 |
 | 3 | US-013 | Valider l'adresse et le mot de passe à l'inscription | api | int-http | EX-05 EX-06 EX-09 EX-34 EX-38 | #24 |
-| 4 | US-014 | Borner et assainir l'adresse | api | unit int-http | EX-35 EX-36 EX-37 EX-40 | #27 |
+| 4 | US-014 | Borner et assainir l'adresse | api | unit int-http | EX-35 EX-36 EX-37 EX-39 EX-40 | #27 |
 | 5 | US-015 | Se connecter et obtenir un jeton | api | unit | EX-14 EX-17 EX-18 | #28 |
 | 6 | US-016 | Prolonger et expirer le jeton | api | unit | EX-15 EX-16 EX-19 | #29 |
 | 7 | US-017 | Ralentir les essais de connexion | api | unit | EX-22 EX-23 EX-24 EX-25 | #30 |

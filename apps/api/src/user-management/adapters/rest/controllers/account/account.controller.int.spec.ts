@@ -13,6 +13,7 @@ const ADDRESS_WITHOUT_AT_SIGN = 'marc.d';
 const ADDRESS_OF_254_CHARACTERS = `${'a'.repeat(242)}@example.com`;
 const ADDRESS_OF_255_CHARACTERS = `${'a'.repeat(243)}@example.com`;
 const ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER = "marc'--@example.com";
+const ACCENTED_ADDRESS = 'Léa.T@Exemple.fr';
 
 describe('AccountController @SPEC-002', () => {
   let sut: ReturnType<typeof createAccountControllerSUT>;
@@ -113,6 +114,16 @@ describe('AccountController @SPEC-002', () => {
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
+    });
+    it('accepts an accented address at the HTTP boundary @EX-002-39', async () => {
+      sut.givenRegistrationSucceedsFor(ACCENTED_ADDRESS);
+
+      const response = await http()
+        .post('/account')
+        .send({ email: ACCENTED_ADDRESS, password: MARC_PASSWORD });
+
+      expect(response.status).toEqual(201);
+      sut.thenAccountWasRegisteredFor(ACCENTED_ADDRESS);
     });
   });
 });

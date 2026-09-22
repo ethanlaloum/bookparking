@@ -1,6 +1,6 @@
 import { Schema } from 'effect/index';
 
-const EMAIL_PATTERN = /^[A-Za-z0-9._+-]+@[^\s@]+\.[^\s@]+$/u;
+const EMAIL_PATTERN = /^[^\s@'"\\;]+@[^\s@]+\.[^\s@]+$/u;
 const MAX_EMAIL_LENGTH = 254;
 
 export const RegisterAccountSchema = Schema.Struct({

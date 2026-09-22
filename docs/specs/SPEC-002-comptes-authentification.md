@@ -3,7 +3,7 @@ id: SPEC-002
 titre: Comptes et authentification des loueurs et conducteurs
 slug: comptes-authentification
 statut: valide
-revision: 3
+revision: 4
 derive_de: BR-20260919-comptes-authentification@3839b9c
 amont: present
 langue: fr
@@ -13,7 +13,7 @@ apps: [api]
 code_sha: { api: f7900eb }
 ux: absent
 regles: 7
-exemples: 42
+exemples: 43
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -245,6 +245,15 @@ Et l'heure locale, qui affiche encore une demi-heure avant `J+7`, ne le prolonge
 
 <!-- jp-way:ex {"id":"EX-19","regle":"RG-03","origine":"sonde","barreau":"unit","empreinte":"55b7ef5d"} -->
 
+#### EX-43 · un compte se relit par son adresse, quelle que soit sa casse
+
+Étant donné le compte de `Marc D.` inscrit avec `Marc.D@Example.COM`
+Quand on relit un compte par l'adresse ` marc.d@example.com `
+Alors c'est le compte de `Marc D.` qui est rendu, avec le même identifiant
+Et relire par `inconnu@example.com` ne rend aucun compte
+
+<!-- jp-way:ex {"id":"EX-43","regle":"RG-03","origine":"bug","barreau":"int-repo","empreinte":"2cf28dbb"} -->
+
 ### RG-04 · un même compte publie et demande sans changer d'état ni de rôle
 
 #### EX-20 · le même compte publie puis demande
@@ -440,7 +449,7 @@ Sept règles croisées avec les dix dimensions : 70 intersections, toutes résol
 |---|---|---|---|---|---|---|---|---|---|---|
 | RG-01 | EX-05 EX-06 | EX-09 | écarté¹ | filet² | écarté³ | EX-02 | écarté⁴ | écarté⁵ | EX-08 | EX-10 EX-41 EX-42 |
 | RG-02 | écarté⁶ | EX-12 | filet⁷ | écarté⁸ | EX-13 | EX-11 | écarté⁴ | écarté⁵ | écarté⁹ | filet¹⁰ |
-| RG-03 | EX-15 | filet¹¹ | EX-19 | écarté¹² | EX-17 EX-18 | EX-16 | écarté⁴ | écarté⁵ | écarté⁹ | filet¹³ |
+| RG-03 | EX-15 | filet¹¹ EX-43 | EX-19 | écarté¹² | EX-17 EX-18 | EX-16 | écarté⁴ | écarté⁵ | écarté⁹ | filet¹³ |
 | RG-04 | écarté⁶ | EX-21 | écarté¹ | écarté¹⁴ | filet¹⁵ | EX-20 | écarté⁴ | écarté⁵ | écarté⁹ | écarté¹⁶ |
 | RG-05 | EX-22 EX-23 | écarté¹⁷ | EX-27 | EX-28 | écarté¹⁸ | EX-24 EX-25 | écarté⁴ | EX-26 | écarté⁹ | écarté¹⁶ |
 | RG-06 | EX-32 | écarté¹⁹ | écarté¹ | écarté²⁰ | EX-30 EX-31 | EX-29 EX-33 | écarté⁴ | écarté⁵ | écarté⁹ | filet²¹ |
@@ -490,6 +499,7 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 - **Conformité RGPD.** L'adresse e-mail est une donnée personnelle (`quality.compliance.dataClasses: pii`). Sa conservation suit celle du compte ; l'effacement est porté par SPEC-003, pas ici.
 - **Sous-traitants.** Aucun envoi d'e-mail en v1, donc aucun destinataire tiers de données personnelles à déclarer pour ce périmètre.
 - **Limitation de débit.** Aucune limitation de débit générale n'existe dans le dépôt (constat repris de SPEC-001, AUTO-30). Le ralentissement de RG-05 est le premier mécanisme du genre et ne couvre que la connexion : ni l'inscription, ni le changement de mot de passe, ni les routes de SPEC-001.
+- **Infalsifiabilité du jeton.** Un jeton doit porter une signature que seul le serveur peut produire, et la clé de signature doit faire échouer le démarrage si elle est absente — jamais de valeur de repli. Tant que cette condition n'est pas tenue, **aucune route qui délivre ou consomme un jeton ne peut être montée dans un module** : un jeton non signé est un jeton que n'importe qui fabrique pour n'importe quel compte, sans avoir jamais présenté de mot de passe. Constat relevé en revue de sécurité de US-015, où le jeton est délivré sans signature ; la condition est portée par US-016, qui implémente `AccessTokenVerifier`.
 - **Temps.** La validité d'un jeton se compte en heures depuis son dernier usage, jamais en dates locales : un changement d'heure décale donc l'échéance sur l'horloge locale, et un jeton peut expirer alors que l'heure locale affiche encore moins de sept jours (EX-19).
 - **Langue.** Tout ce qu'un loueur ou un conducteur lit est en français.
 
@@ -526,3 +536,4 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 | 1 | 20/09/2026 | Création. Issue de la séance d'example mapping ouverte le 19/09/2026 sur BR-20260919-comptes-authentification : sept règles, quarante exemples, aucun écran, une question héritée de la phase 1 et résolue en séance. La suppression de compte, présente dans le périmètre du distillat, est sortie en SPEC-003 par décision de séance. |
 | 2 | 20/09/2026 | EX-19 réécrit. Les deux instants de la version 1 (`25/10/2026 09:00` et `01/11/2026 08:30`) étaient tous deux en heure d'hiver : aucun changement d'heure n'était traversé, et la règle « en heures » comme la règle « en dates locales » donnaient la même limite, de sorte que l'exemple ne pouvait pas échouer. Remplacé par `23/10/2026 09:00` → `30/10/2026 08:30`, qui encadre le passage du 25/10 : l'issue devient un refus. La contrainte temporelle du §8 est reformulée en conséquence. Défaut relevé à la porte de phase 3, corrigé sur demande. Rejoué par `/jp-way:sync SPEC-002` sur `sync/spec-002-rev-2` : 0 nouveau · 1 modifié (EX-19) · 0 supprimé · 39 inchangés. Aucun test réécrit ni exécuté — aucun fichier du dépôt ne porte `@SPEC-002`, le build n'a jamais tourné pour cette spec ; le rejeu s'est limité au plan (ré-empreinte `f8b7fc3b` → `55b7ef5d`, `derive_de` → `SPEC-002@5fd7d23`, révision 1 → 2), au titre anglais du cas, devenu un verdict de refus, et au cadre rouge de l'issue #29. |
 | 3 | 21/09/2026 | EX-41 et EX-42 ajoutés sous RG-01, `origine: bug`. La revue de sécurité de US-012 a trouvé deux chemins par lesquels le corps d'une réponse `400` renvoyait la valeur soumise — un mot de passe envoyé comme nombre JSON, puis un corps racine qui n'est pas un objet — contre la contrainte « Secret » du §8. Les deux sont corrigés (`3af4eda`, `04fb79b`), mais aucun test ne les gardait : ces deux exemples les figent. La case `RG-01 × Données` de la sonde les porte. |
+| 4 | 22/09/2026 | Deux ajouts nés de la revue de sécurité de US-015. Le §8 gagne une contrainte d'infalsifiabilité : le jeton doit être signé, la clé doit faire échouer le démarrage si elle manque, et aucune route qui délivre ou consomme un jeton ne peut être montée tant que ce n'est pas tenu — le jeton livré par US-015 est du base64 non signé, que quiconque fabrique pour n'importe quel compte. RG-03 gagne EX-43, `origine: bug`, au barreau `int-repo` : `KnexAccountRepository.findByEmail`, écrit en US-015 pour réparer le build, n'avait de test à aucun barreau, et `SignIn` confondant « compte introuvable » et « mot de passe faux », une erreur de mappage de colonne n'aurait produit aucun symptôme. |

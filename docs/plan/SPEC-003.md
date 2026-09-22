@@ -1,10 +1,10 @@
 ---
 spec: SPEC-003
 statut: valide
-revision: 1
+revision: 2
 valide_le: 2026-09-22
 valide_par: JP
-derive_de: SPEC-003@0000000000000000000000000000000000000000
+derive_de: SPEC-003@7174c5cc602d31eb1d64846354c845cae2b096b7
 apps: [api]
 cas: 10
 stories: 3
@@ -60,16 +60,16 @@ réponse qu'US-023 installe, et US-023 + US-024 feraient sept exemples.
 | 9 | EX-09 | unit | api | US-025 | idem | rends the five remaining listings on the second page |
 | 10 | EX-10 | unit | api | US-025 | idem | caps an oversized page size at one hundred |
 
-<!-- jp-way:cas {"ex":"EX-01","barreau":"unit","app":"api","story":"US-023","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"matches an address in capitals from a lowercase place","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-02","barreau":"unit","app":"api","story":"US-023","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"matches an accented address from an unaccented place","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-03","barreau":"unit","app":"api","story":"US-023","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"leaves out every listing when no address carries the place","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-04","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"keeps a listing whose availability covers the requested period","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-05","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"leaves out a listing whose availability starts after the requested period","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-06","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"leaves out a listing whose availability ends before the requested period","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-07","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"keeps a listing whose availability matches the requested period exactly","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-08","barreau":"unit","app":"api","story":"US-025","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"rends twenty listings out of twenty-five on the first page","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-09","barreau":"unit","app":"api","story":"US-025","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"rends the five remaining listings on the second page","empreinte":""} -->
-<!-- jp-way:cas {"ex":"EX-10","barreau":"unit","app":"api","story":"US-025","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"caps an oversized page size at one hundred","empreinte":""} -->
+<!-- jp-way:cas {"ex":"EX-01","barreau":"unit","app":"api","story":"US-023","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"matches an address in capitals from a lowercase place","empreinte":"9aa45344"} -->
+<!-- jp-way:cas {"ex":"EX-02","barreau":"unit","app":"api","story":"US-023","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"matches an accented address from an unaccented place","empreinte":"768be14f"} -->
+<!-- jp-way:cas {"ex":"EX-03","barreau":"unit","app":"api","story":"US-023","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"leaves out every listing when no address carries the place","empreinte":"56d47521"} -->
+<!-- jp-way:cas {"ex":"EX-04","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"keeps a listing whose availability covers the requested period","empreinte":"f10d7a8c"} -->
+<!-- jp-way:cas {"ex":"EX-05","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"leaves out a listing whose availability starts after the requested period","empreinte":"02f1189f"} -->
+<!-- jp-way:cas {"ex":"EX-06","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"leaves out a listing whose availability ends before the requested period","empreinte":"65a205a5"} -->
+<!-- jp-way:cas {"ex":"EX-07","barreau":"unit","app":"api","story":"US-024","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"keeps a listing whose availability matches the requested period exactly","empreinte":"ef6337c8"} -->
+<!-- jp-way:cas {"ex":"EX-08","barreau":"unit","app":"api","story":"US-025","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"rends twenty listings out of twenty-five on the first page","empreinte":"fffef5a9"} -->
+<!-- jp-way:cas {"ex":"EX-09","barreau":"unit","app":"api","story":"US-025","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"rends the five remaining listings on the second page","empreinte":"9516221d"} -->
+<!-- jp-way:cas {"ex":"EX-10","barreau":"unit","app":"api","story":"US-025","chemin":"apps/api/src/listing/domain/usecases/list-active-listings/ListActiveListings.unit.spec.ts","titre":"caps an oversized page size at one hundred","empreinte":"1d3d1a57"} -->
 
 ## Stories
 

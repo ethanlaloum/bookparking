@@ -2,11 +2,32 @@
 spec: SPEC-002
 langue: fr
 entrees:
+  - { us: US-013, date: null, titre: "Ton mot de passe et ton adresse sont vérifiés avant la création de ton compte" }
   - { us: US-012, date: null, titre: "Une adresse déjà utilisée est refusée à l'inscription" }
   - { us: US-011, date: null, titre: "Créer un compte avec une adresse e-mail et un mot de passe" }
 ---
 
 # Comptes et authentification — ce qui change pour toi
+
+## Ton mot de passe et ton adresse sont vérifiés avant la création de ton compte
+
+**Ce qui change** — Pour créer un compte, ton mot de passe doit désormais compter au moins 8 caractères,
+et ton adresse e-mail doit être écrite sous une forme valide.
+
+**Pour qui** — Les loueurs et les conducteurs qui créent un compte.
+
+**Ce que tu vois maintenant** — Si tu proposes un mot de passe de 7 caractères ou moins, ou si tu le
+laisses vide, ton inscription est refusée et aucun compte n'est créé ; à partir de 8 caractères, elle
+passe normalement. Si ton adresse ne contient pas de `@`, ou si tu la laisses vide, ton inscription est
+refusée de la même façon et aucun compte n'est créé.
+
+**Ce qu'il faut faire différemment** — Choisis un mot de passe d'au moins 8 caractères, et une adresse
+e-mail complète avec un `@` et un domaine.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-013","ex":["EX-05","EX-06","EX-09","EX-34","EX-38"],"pr":null} -->
 
 ## Une adresse déjà utilisée est refusée à l'inscription
 

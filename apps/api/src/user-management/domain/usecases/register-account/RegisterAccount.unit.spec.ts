@@ -101,4 +101,17 @@ describe('RegisterAccount @SPEC-002', () => {
     sut.thenResultIsLeftWithError(second, EmailAlreadyUsedError);
     sut.thenOnlyOneAccountExistsFor(LEA_ACCENTED_EMAIL_LOWERCASED);
   });
+  it('makes the account usable without sending any email @EX-002-35', async () => {
+    const sut = createRegisterAccountSUT();
+
+    const result = await sut.whenRegistering({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+    });
+
+    sut.thenResultIsRight(result);
+    sut.thenAccountIsImmediatelyUsableAsOwner(MARC_EMAIL);
+    sut.thenNoEmailSent();
+    sut.thenNoVerificationTokenWritten();
+  });
 });

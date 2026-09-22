@@ -135,5 +135,24 @@ export const createRegisterAccountSUT = () => {
     thenOnlyOneAccountExistsFor(email: string) {
       storedAccountFor(email);
     },
+
+    thenAccountIsImmediatelyUsableAsOwner(email: string) {
+      const stored = storedAccountFor(email);
+      expect(stored.id).toBeDefined();
+      expect(stored.id).not.toEqual('');
+      expect(Object.keys(stored.toState())).toEqual([
+        'email',
+        'passwordHash',
+        'registeredAt',
+        'id',
+      ]);
+    },
+
+    thenNoVerificationTokenWritten() {
+      expect(Object.keys(context.outboundPorts)).toEqual([
+        'accountRepository',
+        'passwordHasher',
+      ]);
+    },
   };
 };

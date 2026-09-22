@@ -74,7 +74,23 @@ Authorization: Bearer {{token}}
     });
 %}
 
-### 5 · Changer son mot de passe · attendu 204
+### 5 · Relire l'annonce, sans compte · attendu 200 · EX-11
+# ⚠ Il faut l'identifiant de l'annonce, et `POST /listing` ne le rend pas (il répond 201 sans corps).
+# Aucune route ne liste les annonces : va le chercher en base, puis remplace la valeur ci-dessous.
+#
+#   docker exec bp psql -U bp -d bookparking -tAc "select id from listings limit 1"
+#
+GET {{baseUrl}}/listing/colle-ici-l-identifiant
+
+> {%
+    client.test("l'annonce est lisible sans compte", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(response.body.accessDescription === undefined,
+            "la description d'accès ne doit jamais être publique");
+    });
+%}
+
+### 6 · Changer son mot de passe · attendu 204
 POST {{baseUrl}}/account/password
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -90,7 +106,7 @@ Authorization: Bearer {{token}}
     });
 %}
 
-### 6 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
+### 7 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
 POST {{baseUrl}}/session
 Content-Type: application/json
 

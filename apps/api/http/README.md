@@ -30,6 +30,40 @@ PORT=3000 pnpm start
 Chaque requête porte en commentaire le code attendu et, quand il y en a un, l'exemple de la spec
 qu'elle exerce.
 
+## ⚠ Ce que l'API ne sait pas faire
+
+Il n'existe que **six routes**, et aucune ne liste quoi que ce soit :
+
+```
+POST /account            créer un compte
+POST /account/password   changer son mot de passe
+POST /session            se connecter
+POST /listing            publier une annonce
+GET  /listing/:id        lire UNE annonce, par son identifiant
+POST /rental-request     demander une place
+```
+
+Conséquences concrètes en testant :
+
+- **On ne peut pas chercher une place.** Pas de `GET /listing`, pas de recherche par adresse ou par
+  ville. Un conducteur devrait déjà connaître l'identifiant de l'annonce — ce qui n'a aucun sens dans
+  un vrai usage.
+- **`POST /listing` ne rend pas l'identifiant** de l'annonce créée : il répond `201` sans corps. Pour
+  relire ce qu'on vient de publier, il faut aller le chercher en base :
+
+  ```bash
+  docker exec bp psql -U bp -d bookparking -tAc "select id from listings limit 1"
+  ```
+- **On ne peut pas lister ses propres annonces ni ses demandes.** Rien ne permet à un loueur de voir
+  ce qu'il a publié, ni à un conducteur de voir ce qu'il a demandé.
+- **On ne peut pas dépublier par l'API.** `UnpublishListing` existe et est testé, mais aucune route
+  ne le monte.
+
+Ce n'est pas un oubli d'implémentation : **aucun exemple de SPEC-001 ni de SPEC-002 ne décrit une
+recherche, une liste, ou un retour d'identifiant**. Les deux specs couvrent publier, lire une annonce
+connue, et demander. Chercher une place n'a jamais été spécifié — c'est un vrai trou produit, à
+ouvrir en phase 1 avant d'être construit.
+
 ## Un détail qui surprend
 Les requêtes d'inscription créent de vraies lignes. Rejouer `parcours` deux fois donne un `409` à
 la deuxième inscription — c'est le comportement correct. Pour repartir de zéro :

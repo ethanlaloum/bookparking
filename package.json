@@ -8,6 +8,8 @@
   "scripts": {
     "build:all": "pnpm -r build",
     "lint:all": "pnpm -r lint:check",
-    "api": "pnpm --filter bookparking-api"
+    "api": "pnpm --filter bookparking-api",
+    "front": "pnpm --filter bookparking-front",
+    "e2e": "pnpm --filter bookparking-e2e"
   }
 }

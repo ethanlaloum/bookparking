@@ -18,15 +18,28 @@ stories: 12
 |---|---|---|---|
 | unit | 26 | 26 | 26 |
 | int-repo | 1 | 1 | 1 |
-| int-http | 13 | 13 | 13 |
+| int-http | 16 | 16 | 15 |
 | journey | 0 | 0 | 0 |
-| **total** | **40** | **40** | 40 exemples, 0 sans cas |
+| **total** | **43** | **43** | 42 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 
-Aucun. Les 40 barreaux planifiés reprennent, exemple par exemple, la suggestion `barreau` du
-bloc `jp-way:ex` de la spec — la table de décision (`plan.md` §2) et les sept tie-breakers ne
-déplacent aucun exemple.
+Aucun déplacement. Les 42 exemples gardent, chacun, le barreau que suggère son bloc `jp-way:ex` :
+la table de décision (`plan.md` §2) et les sept tie-breakers n'en déplacent aucun.
+
+**Redondance assumée — EX-39 porte deux cas** (T7)
+
+`EX-39` est le seul exemple à porter un cas à deux barreaux, et c'est une décision, pas un
+accident de `sync` :
+
+- son cas `unit` (US-012) prouve que **le domaine normalise** — `Léa.T@Exemple.fr` et
+  `léa.t@exemple.fr` désignent un seul compte ;
+- son cas `int-http` (US-014) prouve que **la frontière ne refuse pas** cette même adresse.
+
+Les deux sont nécessaires parce qu'ils peuvent diverger, et l'ont fait : le motif de validation
+introduit par US-014 refusait `Léa.T@Exemple.fr` à la frontière pendant que le cas `unit`
+restait vert, l'exemple `unit` appelant le cas d'usage sans jamais traverser le schéma de la
+requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nominal l'est.
 
 **Découpage — 3,6 exemples/story, deux stories courtes irréductibles**
 

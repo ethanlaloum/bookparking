@@ -77,11 +77,14 @@ export const createPublishListingSUT = () => {
   const toAccountId = (ownerName: string): string =>
     accountIdsByOwnerName[ownerName] ?? `account-${ownerName}`;
 
+  const outboundPorts = { listingRepository, photoStorage };
+
   const context = {
     listingRepository,
     photoStorage,
     publishListing,
     testConstants,
+    outboundPorts,
     owner: null as OwnerForTest | null,
   };
 
@@ -243,6 +246,13 @@ export const createPublishListingSUT = () => {
         (listing) => listing.isActiveFor(place),
       );
       expect(activeListings).toHaveLength(1);
+    },
+
+    thenNoAccountActivationWasNeeded() {
+      expect(Object.keys(context.outboundPorts)).toEqual([
+        'listingRepository',
+        'photoStorage',
+      ]);
     },
 
     thenNoIdentityDocumentOrIbanWasRequired() {

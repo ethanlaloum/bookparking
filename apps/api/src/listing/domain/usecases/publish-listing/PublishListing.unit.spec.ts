@@ -299,3 +299,25 @@ describe('PublishListing @SPEC-001', () => {
     sut.thenIsOnlyActiveListingFor(PLACE);
   });
 });
+
+describe('PublishListing @SPEC-002', () => {
+  it('publishes a listing for an account that never published @EX-002-21', async () => {
+    const sut = createPublishListingSUT();
+    const LEA_PLACE = { address: '3 avenue Malausséna, 06000 Nice', box: '4' };
+    sut.givenNoActiveListingFor(LEA_PLACE);
+
+    const result = await sut.whenPublishing({
+      owner: 'Léa T.',
+      ...LEA_PLACE,
+      accessDescription: 'portail vitré, le box 4 est au premier sous-sol',
+      photos: ['photo-1'],
+      pricing: { day: 1200, week: 6000, month: 18000 },
+      availability: { from: '2026-10-01', to: '2026-10-31' },
+      publishedAt: '2026-09-25',
+    });
+
+    sut.thenListingIsActive(result);
+    sut.thenActiveListingOf('Léa T.', LEA_PLACE);
+    sut.thenNoAccountActivationWasNeeded();
+  });
+});

@@ -5,6 +5,7 @@ import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { ListingBuilder } from '../../../../domain/builders/ListingBuilder';
 import { ListingStatus } from '../../../../domain/entities/Listing';
+import { ListActiveListings } from '../../../../domain/usecases/list-active-listings/ListActiveListings';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { ListingNotFoundError } from '../../../../domain/usecases/get-listing/errors/ListingNotFoundError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
@@ -22,6 +23,7 @@ interface ListingFixture {
 export const createListingControllerSUT = () => {
   const publishListing = new UseCaseDouble();
   const getListing = new UseCaseDouble();
+  const listActiveListings = new UseCaseDouble();
   const authState: TestAuthState = { user: { id: MARC_ACCOUNT_ID } };
 
   const metadata: ModuleMetadata = {
@@ -29,6 +31,7 @@ export const createListingControllerSUT = () => {
     providers: [
       { provide: PublishListing, useValue: publishListing },
       { provide: GetListing, useValue: getListing },
+      { provide: ListActiveListings, useValue: listActiveListings },
     ],
   };
 
@@ -54,6 +57,24 @@ export const createListingControllerSUT = () => {
 
       getListing.willResolve(Either.right(listing));
       return { listing };
+    },
+
+    givenActiveListings(fixtures: ListingFixture[]) {
+      const listings = fixtures.map((fixture) => {
+        const builder = new ListingBuilder()
+          .withId(fixture.id)
+          .withOwnerId(MARC_ACCOUNT_ID)
+          .withAddress(fixture.address)
+          .withBox(fixture.box)
+          .withStatus(ListingStatus.ACTIVE);
+        return (
+          fixture.accessDescription
+            ? builder.withAccessDescription(fixture.accessDescription)
+            : builder
+        ).build();
+      });
+      listActiveListings.willResolve(Either.right(listings));
+      return { listings };
     },
 
     givenNoListing() {

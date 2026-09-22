@@ -74,7 +74,23 @@ Authorization: Bearer {{token}}
     });
 %}
 
-### 5 · Relire l'annonce, sans compte · attendu 200 · EX-11
+### 5 · Lister toutes les places disponibles, sans compte · attendu 200
+# C'est la route de la page d'accueil du site : toutes les annonces actives.
+# Une annonce dépubliée en disparaît. La description d'accès n'y est jamais.
+GET {{baseUrl}}/listing
+
+> {%
+    client.test("la liste est publique et ne fuit rien", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(Array.isArray(response.body), "un tableau est attendu");
+        response.body.forEach(function(annonce) {
+            client.assert(annonce.accessDescription === undefined,
+                "la description d'accès ne doit jamais être publique");
+        });
+    });
+%}
+
+### 6 · Relire l'annonce, sans compte · attendu 200 · EX-11
 # ⚠ Il faut l'identifiant de l'annonce, et `POST /listing` ne le rend pas (il répond 201 sans corps).
 # Aucune route ne liste les annonces : va le chercher en base, puis remplace la valeur ci-dessous.
 #
@@ -90,7 +106,7 @@ GET {{baseUrl}}/listing/colle-ici-l-identifiant
     });
 %}
 
-### 6 · Changer son mot de passe · attendu 204
+### 7 · Changer son mot de passe · attendu 204
 POST {{baseUrl}}/account/password
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -106,7 +122,7 @@ Authorization: Bearer {{token}}
     });
 %}
 
-### 7 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
+### 8 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
 POST {{baseUrl}}/session
 Content-Type: application/json
 

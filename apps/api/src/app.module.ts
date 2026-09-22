@@ -7,6 +7,7 @@ import { KnexListingRepository } from './listing/adapters/repositories/listing/K
 import { InMemoryPhotoStorage } from './listing/adapters/services/photo-storage/InMemoryPhotoStorage';
 import { ListingController } from './listing/adapters/rest/controllers/listing/listing.controller';
 import { GetListing } from './listing/domain/usecases/get-listing/GetListing';
+import { ListActiveListings } from './listing/domain/usecases/list-active-listings/ListActiveListings';
 import { PublishListing } from './listing/domain/usecases/publish-listing/PublishListing';
 import { KnexPublishedListingReader } from './rental/adapters/repositories/published-listing/KnexPublishedListingReader';
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
@@ -77,6 +78,12 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
           new KnexListingRepository(typedAs(connection)),
           new InMemoryPhotoStorage(),
         ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ListActiveListings,
+      useFactory: (connection: DatabaseConnection) =>
+        new ListActiveListings(new KnexListingRepository(typedAs(connection))),
       inject: [DATABASE_CONNECTION],
     },
     {

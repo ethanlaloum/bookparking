@@ -1,19 +1,6 @@
 {
   "list": {
-    "title": "Places disponibles",
-    "count_one": "{{count}} place",
-    "count_other": "{{count}} places",
-    "empty": "Aucune place ne correspond à votre recherche.",
-    "emptyAll": "Aucune place n’est publiée pour le moment.",
-    "emptyAction": "Publiez la première."
-  },
-  "search": {
-    "label": "Rechercher une adresse ou un box",
-    "placeholder": "Rue, ville, numéro de box…",
-    "from": "Du",
-    "to": "Au",
-    "clear": "Effacer les filtres",
-    "panel": "Filtrer les places"
+    "title": "Places disponibles"
   },
   "card": {
     "box": "Box {{box}}",
@@ -139,6 +126,23 @@
     "reset": "Réinitialiser"
   },
   "home": {
-    "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte."
+    "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte.",
+    "available_one": "{{count}} place disponible",
+    "available_other": "{{count}} places disponibles",
+    "seeAll": "Voir toutes les places sur la carte",
+    "argument": {
+      "local": {
+        "title": "Uniquement à Nice",
+        "body": "Chaque place est dans la ville, publiée par quelqu'un qui y habite. Pas de résultat à trois cents kilomètres."
+      },
+      "price": {
+        "title": "Le prix annoncé est le prix payé",
+        "body": "L'estimation affichée avant l'envoi est celle que le propriétaire facturera. Aucun frais n'apparaît ensuite."
+      },
+      "trust": {
+        "title": "Le propriétaire confirme",
+        "body": "Une demande n'engage rien tant qu'elle n'est pas acceptée. Sans réponse, elle expire d'elle-même."
+      }
+    }
   }
 }

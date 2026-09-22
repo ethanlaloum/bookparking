@@ -4,8 +4,8 @@ import { Route, Routes as RouterRoutes } from 'react-router-dom';
 import { Loader } from '../components/Loader';
 import { RequireAuth } from './RequireAuth';
 
-const ListingsPage = lazy(async () => ({
-  default: (await import('../pages/ListingsPage')).ListingsPage,
+const HomePage = lazy(async () => ({
+  default: (await import('../pages/HomePage')).HomePage,
 }));
 const ListingDetailPage = lazy(async () => ({
   default: (await import('../pages/ListingDetailPage')).ListingDetailPage,
@@ -35,7 +35,7 @@ const NotFoundPage = lazy(async () => ({
 export const Routes = () => (
   <Suspense fallback={<Loader />}>
     <RouterRoutes>
-      <Route path="/" element={<ListingsPage />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/recherche" element={<SearchPage />} />
       <Route path="/place/:id" element={<ListingDetailPage />} />
       <Route path="/connexion" element={<SignInPage />} />

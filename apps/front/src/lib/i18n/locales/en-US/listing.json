@@ -1,19 +1,6 @@
 {
   "list": {
-    "title": "Available spaces",
-    "count_one": "{{count}} space",
-    "count_other": "{{count}} spaces",
-    "empty": "No space matches your search.",
-    "emptyAll": "No space is listed yet.",
-    "emptyAction": "List the first one."
-  },
-  "search": {
-    "label": "Search an address or a box",
-    "placeholder": "Street, city, box number…",
-    "from": "From",
-    "to": "To",
-    "clear": "Clear filters",
-    "panel": "Filter spaces"
+    "title": "Available spaces"
   },
   "card": {
     "box": "Box {{box}}",
@@ -139,6 +126,23 @@
     "reset": "Reset"
   },
   "home": {
-    "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map."
+    "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map.",
+    "available_one": "{{count}} space available",
+    "available_other": "{{count}} spaces available",
+    "seeAll": "See every space on the map",
+    "argument": {
+      "local": {
+        "title": "Nice only",
+        "body": "Every space is in the city, listed by someone who lives there. No result three hundred kilometres away."
+      },
+      "price": {
+        "title": "The quoted price is the price paid",
+        "body": "The estimate shown before you send is what the owner will charge. No fee appears afterwards."
+      },
+      "trust": {
+        "title": "The owner confirms",
+        "body": "A request commits to nothing until it is accepted. Without an answer, it expires on its own."
+      }
+    }
   }
 }

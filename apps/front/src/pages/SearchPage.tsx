@@ -1,26 +1,29 @@
 import { CircleAlert, MapPin, TriangleAlert } from 'lucide-react';
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 
+import { offersTier } from '../app/listing/domain/entities/SearchCriteria';
 import { listListingsRequested } from '../app/listing/domain/use-cases/list-listings/listListingsEpic';
 import { locateListingsRequested } from '../app/listing/domain/use-cases/locate-listings/locateListingsEpic';
-import { SearchBar } from '../components/SearchBar';
-import { useSearchCriteria } from '../hooks/useSearchCriteria';
-import { offersTier } from '../app/listing/domain/entities/SearchCriteria';
-import { addressSearchCleared, addressSelected } from '../app/listing/domain/use-cases/search-address/searchAddressEpic';
+import {
+  addressSearchCleared,
+  addressSelected,
+} from '../app/listing/domain/use-cases/search-address/searchAddressEpic';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
 import { Notice } from '../components/Notice';
-import { buttonVariants } from '../components/ui/buttonVariants';
+import { SearchBar } from '../components/SearchBar';
+import { SearchResultCard } from '../components/SearchResultCard';
+import { Skeleton } from '../components/ui/skeleton';
+import { useSearchCriteria } from '../hooks/useSearchCriteria';
 import {
   selectApproximateCount,
   selectListings,
+  selectListingsError,
   selectListingsLoaded,
   selectListingsLoading,
   selectLocating,
   selectMapFocus,
-  selectMappedListings,
   selectMappedListingsFromSearch,
   selectNearbyCount,
   selectSearchLabel,
@@ -29,8 +32,6 @@ import {
 } from '../selectors/listing/listingSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 
-// Leaflet pèse lourd et n'a de sens que sur cet écran : il arrive dans son
-// propre morceau, pas dans le paquet que charge la page d'accueil.
 const ListingsMap = lazy(async () => ({
   default: (await import('../components/ListingsMap')).ListingsMap,
 }));
@@ -42,27 +43,27 @@ export const SearchPage = () => {
   const listings = useAppSelector(selectListings);
   const listingsLoaded = useAppSelector(selectListingsLoaded);
   const listingsLoading = useAppSelector(selectListingsLoading);
-  const mapped = useAppSelector(selectMappedListings);
+  const listingsError = useAppSelector(selectListingsError);
+
+  const results = useAppSelector(selectMappedListingsFromSearch);
   const focus = useAppSelector(selectMapFocus);
-  const fromSearch = useAppSelector(selectMappedListingsFromSearch);
   const searchPoint = useAppSelector(selectSearchPoint);
   const searchLabel = useAppSelector(selectSearchLabel);
   const nearby = useAppSelector(selectNearbyCount);
+  const locating = useAppSelector(selectLocating);
+  const approximate = useAppSelector(selectApproximateCount);
+  const unplaced = useAppSelector(selectUnmappableCount);
 
   const { criteria, replaceCriteria } = useSearchCriteria();
+  const [focusedId, setFocusedId] = useState<string | null>(null);
 
-  // Remonter la barre quand l'URL change : elle tient son propre état de
-  // saisie, et une nouvelle recherche arrivée par l'historique doit s'y voir.
-  const searchParamsKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}`;
+  const barKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}`;
 
   const chosenTier = criteria.tier;
   const tierCount =
     chosenTier === null
       ? 0
       : listings.filter((listing) => offersTier(listing.pricing, chosenTier)).length;
-  const locating = useAppSelector(selectLocating);
-  const approximate = useAppSelector(selectApproximateCount);
-  const unplaced = useAppSelector(selectUnmappableCount);
 
   useEffect(() => {
     if (!listingsLoaded && !listingsLoading) dispatch(listListingsRequested());
@@ -89,35 +90,31 @@ export const SearchPage = () => {
   }, [criteria.address, dispatch]);
 
   return (
-    <div className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2.5 font-display text-[clamp(1.75rem,4vw,2.5rem)] font-bold text-fg">
-            <MapPin className="size-7 shrink-0 text-accent" aria-hidden="true" />
-            {t('listing:map.title')}
-          </h1>
-          <p className="mt-2 text-fg-muted">{t('listing:map.subtitle')}</p>
-        </div>
-        <Link to="/" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-          {t('listing:map.listTab')}
-        </Link>
-      </div>
+    <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
+      <h1 className="flex items-center gap-2.5 font-display text-[clamp(1.5rem,3.5vw,2.25rem)] font-bold text-fg">
+        <MapPin className="size-6 shrink-0 text-accent" aria-hidden="true" />
+        {t('listing:map.title')}
+      </h1>
 
-      <div className="mt-7 rounded-[2px] border border-line bg-bg-raised p-5">
+      <div className="mt-5 rounded-[2px] border border-line bg-bg-raised p-5">
         <SearchBar
-          key={searchParamsKey}
+          key={barKey}
           initial={criteria}
           submitLabel={t('listing:criteria.search')}
           onSubmit={replaceCriteria}
         />
       </div>
 
+      {listingsError !== null && (
+        <Notice tone="error" title={t('common:error.title')} className="mt-4">
+          {listingsError}
+        </Notice>
+      )}
       {criteria.vehicle !== null && (
         <Notice tone="info" className="mt-4">
           {t('listing:criteria.vehicleNotFiltered')}
         </Notice>
       )}
-
       {criteria.tier !== null && (
         <Notice tone={tierCount > 0 ? 'success' : 'info'} className="mt-3">
           {tierCount > 0
@@ -125,9 +122,8 @@ export const SearchPage = () => {
             : t('listing:criteria.noTier')}
         </Notice>
       )}
-
       {searchPoint !== null && (
-        <Notice tone={nearby > 0 ? 'success' : 'info'} className="mt-5">
+        <Notice tone={nearby > 0 ? 'success' : 'info'} className="mt-3">
           <span className="font-medium">
             {t('listing:mapSearch.around', { address: searchLabel ?? '' })}
           </span>
@@ -138,66 +134,80 @@ export const SearchPage = () => {
         </Notice>
       )}
 
-      <div className="tabular mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-fg-muted">
-        <span className="font-medium text-fg">
-          {t('listing:map.located', { count: mapped.length })}
-        </span>
-        {approximate > 0 && (
-          <span className="flex items-center gap-1.5 text-warn">
-            <TriangleAlert className="size-4" aria-hidden="true" />
-            {t('listing:map.approximate', { count: approximate })}
-          </span>
-        )}
-        {unplaced > 0 && (
-          <span className="flex items-center gap-1.5 text-fg-subtle">
-            <CircleAlert className="size-4" aria-hidden="true" />
-            {t('listing:map.unplaced', { count: unplaced })}
-          </span>
-        )}
+      {/*
+       * La liste porte les faits, la carte porte l'espace. Elles partagent la
+       * même donnée déjà classée par distance : ce que l'œil lit à gauche est
+       * dans le même ordre que ce que la main atteint à droite.
+       */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start">
+        <section aria-label={t('listing:list.title')} className="min-w-0">
+          <div className="tabular flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <span className="font-medium text-fg">
+              {t('listing:map.located', { count: results.length })}
+            </span>
+            {approximate > 0 && (
+              <span className="flex items-center gap-1.5 text-warn">
+                <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
+                {t('listing:map.approximate', { count: approximate })}
+              </span>
+            )}
+            {unplaced > 0 && (
+              <span className="flex items-center gap-1.5 text-fg-subtle">
+                <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
+                {t('listing:map.unplaced', { count: unplaced })}
+              </span>
+            )}
+          </div>
+
+          {(listingsLoading || locating) && results.length === 0 && (
+            <div className="mt-4 flex flex-col gap-3">
+              {[0, 1, 2].map((slot) => (
+                <Skeleton key={slot} className="h-32" />
+              ))}
+            </div>
+          )}
+
+          {listingsLoaded && listings.length === 0 && (
+            <div className="mt-4">
+              <EmptyState title={t('listing:map.empty')} />
+            </div>
+          )}
+
+          {results.length > 0 && (
+            <ul className="mt-4 flex max-h-[62vh] flex-col gap-3 overflow-y-auto pr-1 lg:max-h-[calc(100vh-14rem)]">
+              {results.map(({ listing, located, distanceKm }) => (
+                <SearchResultCard
+                  key={listing.id}
+                  listing={listing}
+                  distanceKm={distanceKm}
+                  precision={located.precision}
+                  tier={criteria.tier}
+                  focused={focusedId === listing.id}
+                  onFocus={() => setFocusedId(listing.id)}
+                />
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section aria-label={t('listing:map.nav')} className="min-w-0 lg:sticky lg:top-24">
+          {listings.length > 0 ? (
+            <Suspense fallback={<Loader />}>
+              <ListingsMap
+                mapped={results}
+                center={focus.center}
+                zoom={focus.zoom}
+                searchPoint={searchPoint}
+                searchLabel={searchLabel}
+                focusedListingId={focusedId}
+              />
+            </Suspense>
+          ) : (
+            <EmptyState title={t('listing:map.empty')} />
+          )}
+          <p className="mt-3 text-xs text-fg-subtle">{t('listing:map.attribution')}</p>
+        </section>
       </div>
-
-      {locating && (
-        <Notice tone="info" className="mt-4">
-          {t('listing:map.locating')}
-        </Notice>
-      )}
-      {!locating && listings.length > 0 && mapped.length === 0 && (
-        <Notice tone="info" className="mt-4">
-          {t('listing:map.emptyLocated')}
-        </Notice>
-      )}
-      {approximate > 0 && (
-        <Notice tone="info" className="mt-4">
-          {t('listing:map.approximateHint')}
-        </Notice>
-      )}
-      {unplaced > 0 && (
-        <Notice tone="info" className="mt-3">
-          {t('listing:map.unplacedHint')}
-        </Notice>
-      )}
-
-      <div className="mt-6">
-        {listingsLoading && <Loader />}
-
-        {listingsLoaded && listings.length === 0 && (
-          <EmptyState title={t('listing:map.empty')} />
-        )}
-
-        {listings.length > 0 && (
-          <Suspense fallback={<Loader />}>
-            <ListingsMap
-              mapped={fromSearch}
-              center={focus.center}
-              zoom={focus.zoom}
-              searchPoint={searchPoint}
-              searchLabel={searchLabel}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      <p className="mt-4 text-xs text-fg-subtle">{t('listing:map.attribution')}</p>
     </div>
   );
 };

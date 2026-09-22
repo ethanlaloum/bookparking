@@ -12,7 +12,7 @@
 //   cette pile, donc l'exemple n'est pas un exemple e2e.
 import { test } from '../../../src/fixtures/test';
 import { HeaderNav } from '../../../src/pages/HeaderNav';
-import { ListingsPage } from '../../../src/pages/ListingsPage';
+import { SearchPage } from '../../../src/pages/SearchPage';
 import { PublishPage } from '../../../src/pages/PublishPage';
 import { dayInDays, uniqueAddress } from '../../../src/seed/Seeder';
 
@@ -37,8 +37,8 @@ test.describe('Listings', () => {
     await publish.submit();
     await publish.expectPublished();
 
-    const listings = new ListingsPage(page);
-    await listings.open();
-    await listings.expectListed(address);
+    const search = new SearchPage(page);
+    await search.open();
+    await search.expectListed(address);
   });
 });

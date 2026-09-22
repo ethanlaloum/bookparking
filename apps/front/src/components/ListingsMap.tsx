@@ -18,15 +18,15 @@ const SEARCH = '#15803d';
 // Le marqueur est le panneau de stationnement, dessiné plutôt que téléchargé :
 // les icônes par défaut de Leaflet arrivent par une URL que le bundler réécrit,
 // et qui casse silencieusement en production.
-const pin = (approximate: boolean): L.DivIcon =>
+const pin = (approximate: boolean, focused: boolean): L.DivIcon =>
   L.divIcon({
     className: '',
-    iconSize: [30, 38],
-    iconAnchor: [15, 38],
-    popupAnchor: [0, -34],
-    html: `<svg width="30" height="38" viewBox="0 0 30 38" xmlns="http://www.w3.org/2000/svg">
+    iconSize: focused ? [38, 48] : [30, 38],
+    iconAnchor: focused ? [19, 48] : [15, 38],
+    popupAnchor: [0, focused ? -44 : -34],
+    html: `<svg width="${focused ? 38 : 30}" height="${focused ? 48 : 38}" viewBox="0 0 30 38" xmlns="http://www.w3.org/2000/svg">
       <path d="M15 37C15 37 28 23.5 28 14A13 13 0 1 0 2 14C2 23.5 15 37 15 37Z"
-        fill="${approximate ? MARKING : ACCENT}" stroke="#fff" stroke-width="2"/>
+        fill="${approximate ? MARKING : ACCENT}" stroke="#fff" stroke-width="${focused ? 2.6 : 2}"/>
       <path d="M11 21V8h5.2c2.9 0 4.6 1.7 4.6 4.2s-1.7 4.3-4.6 4.3h-2.1V21H11zm3.1-7h1.8c1.3 0 2.1-.7 2.1-1.9s-.8-1.8-2.1-1.8h-1.8V14z"
         fill="#fff"/>
     </svg>`,
@@ -66,12 +66,14 @@ export const ListingsMap = ({
   zoom,
   searchPoint,
   searchLabel,
+  focusedListingId,
 }: {
   mapped: MappedListingWithDistance[];
   center: Coordinates;
   zoom: number;
   searchPoint: Coordinates | null;
   searchLabel: string | null;
+  focusedListingId: string | null;
 }) => {
   const { t } = useTranslation(['listing', 'common']);
   const [dark, setDark] = useState(prefersDark);
@@ -127,7 +129,8 @@ export const ListingsMap = ({
           <Marker
             key={listing.id}
             position={[located.coordinates.latitude, located.coordinates.longitude]}
-            icon={pin(approximate)}
+            icon={pin(approximate, listing.id === focusedListingId)}
+            zIndexOffset={listing.id === focusedListingId ? 600 : 0}
             title={`${listing.address} — ${listing.box}`}
           >
             <Popup>

@@ -21,19 +21,6 @@ export const Header = () => {
 
         <nav aria-label={t('common:nav.browse')} className="ml-auto flex items-center gap-1 sm:gap-2">
           <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              cn(
-                buttonVariants({ variant: 'ghost', size: 'sm' }),
-                isActive && 'text-fg font-semibold',
-              )
-            }
-          >
-            {t('common:nav.browse')}
-          </NavLink>
-
-          <NavLink
             to="/recherche"
             className={({ isActive }) =>
               cn(

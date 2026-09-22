@@ -10,6 +10,25 @@ export class SearchPage {
   // Leaflet expose un marqueur comme un bouton dont le `title` devient le nom
   // accessible : « <adresse> — <box> ». On le désigne donc par son rôle, comme
   // tout le reste, sans descendre au sélecteur CSS.
+  // La liste des places occupe la colonne gauche de cette même page : c'est
+  // la page recherche qui la porte depuis que l'accueil est une page
+  // d'atterrissage.
+  resultCard(address: string): Locator {
+    return this.page.getByRole('listitem').filter({ hasText: address });
+  }
+
+  async expectListed(address: string): Promise<void> {
+    await expect(this.resultCard(address)).toBeVisible();
+  }
+
+  async expectNotListed(address: string): Promise<void> {
+    await expect(this.resultCard(address)).toHaveCount(0);
+  }
+
+  async openListingFromList(address: string): Promise<void> {
+    await this.resultCard(address).getByRole('link', { name: "Voir l'annonce" }).click();
+  }
+
   marker(address: string): Locator {
     return this.page.getByRole('button', { name: new RegExp(`^${address}`) });
   }

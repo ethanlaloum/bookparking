@@ -147,6 +147,22 @@ change côté api casse la compilation du front plutôt que sa production.
   recherche, c'est vider puis valider, comme dans n'importe quel formulaire. Un bouton qui promet plus
   que ce qu'il fait est un défaut, pas un raccourci.
 
+- **Trois pages, trois rôles — et l'accueil ne liste plus rien.**
+  `/` est une page d'atterrissage : le hero, la barre de recherche, trois arguments. Elle charge quand
+  même les annonces, mais pour un seul chiffre — le tarif d'appel doit être vrai. `/recherche` porte la
+  liste **et** la carte, côte à côte ; `/place/:id` porte la fiche. Ne pas réintroduire une grille
+  d'annonces sur l'accueil : elle dupliquerait la colonne gauche de la recherche, avec un tri différent.
+
+- **La liste et la carte partagent la même donnée déjà classée.**
+  `selectMappedListingsFromSearch` alimente les deux : ce que l'œil lit à gauche est dans le même ordre
+  que ce que la main atteint à droite. Survoler une carte de résultat désigne son marqueur — le
+  `focusedListingId` est un état local de la page, pas du store : il ne survit à rien et n'a pas à le faire.
+
+- **Une clé de traduction orpheline est de la dette qui se propage.**
+  Supprimer le panneau de filtres de l'accueil a laissé onze clés mortes dans les deux locales, que rien
+  ne signalait. Après toute suppression d'écran, confronter les clés au code — et vérifier que `fr` et
+  `en-US` restent à parité exacte, namespace par namespace.
+
 - **Une rangée de champs s'aligne par sa structure, jamais par une marge calibrée.**
   `SearchBar` donne à chaque colonne la même forme — un libellé, puis un contrôle de 44 px — et la
   colonne du bouton porte une étiquette vide qui tient la place du libellé. Mesuré : les quatre

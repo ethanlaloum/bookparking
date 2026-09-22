@@ -9,7 +9,7 @@
 //   `int-http` cote api ; le navigateur ne verrait qu'une page inchangee.
 import { test } from '../../../src/fixtures/test';
 import { ListingDetailPage } from '../../../src/pages/ListingDetailPage';
-import { ListingsPage } from '../../../src/pages/ListingsPage';
+import { SearchPage } from '../../../src/pages/SearchPage';
 
 test.describe('Listings', () => {
   test('unpublishes an owned listing and removes it from the grid', async ({ page, seed, app }) => {
@@ -23,9 +23,9 @@ test.describe('Listings', () => {
     await detail.expectOpen(listing.address);
     await detail.unpublish();
 
-    const listings = new ListingsPage(page);
-    await listings.open();
-    await listings.expectNotListed(listing.address);
+    const search = new SearchPage(page);
+    await search.open();
+    await search.expectNotListed(listing.address);
   });
 
   test('refuses to unpublish a listing owned by someone else', async ({ page, seed, app }) => {

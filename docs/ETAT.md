@@ -1,10 +1,10 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-22 15:52 — ne pas éditer à la main._
+_Généré le 2026-09-22 16:17 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|
 | SPEC-001 Publier une place de parking en location | ✅ 16/09 | ✅ 17/09 | ✅ 17/09 | 🔄 9/12 stories · 📝 registre à relire | 45 exemples |
-| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 6/13 stories | 43 exemples |
+| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 12/13 stories | 43 exemples |
 
 ## Builds autonomes
 
@@ -16,12 +16,6 @@ _Généré le 2026-09-22 15:52 — ne pas éditer à la main._
 
 | Story | App | État | Lien |
 |---|---|---|---|
-| #39 [US-022] Ne jamais renvoyer la valeur soumise dans un refus de validation | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/39 |
-| #34 [US-021] Publier avec un compte, lire sans | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/34 |
-| #33 [US-020] Exiger un compte pour demander une place | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/33 |
-| #32 [US-019] Changer son mot de passe | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/32 |
-| #31 [US-018] Ralentir par origine et par fenêtre | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/31 |
-| #30 [US-017] Ralentir les essais de connexion | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/30 |
 | #23 [SPEC-002] Comptes et authentification des loueurs et conducteurs | — | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/23 |
 | #18 [DETTE] Purger les données personnelles : annonces dépubliées et demandes sans suite | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/18 |
 | #11 [US-010] Parcours de publication d'une place | e2e | 🔴 blocked | https://github.com/ethanlaloum/bookparking/issues/11 |
@@ -37,4 +31,4 @@ _Généré le 2026-09-22 15:52 — ne pas éditer à la main._
 ## Reprises possibles
 
 - `/jp-way:build SPEC-001` — 3 story(ies) restante(s)
-- `/jp-way:build SPEC-002` — 7 story(ies) restante(s)
+- `/jp-way:build SPEC-002` — 1 story(ies) restante(s)

@@ -31,8 +31,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**40 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-22) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
-| int-repo + int-http (**5 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-21 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
+| unit (**78 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-22) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| int-repo + int-http (**7 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-22 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
 ## Things that will bite you
@@ -42,9 +42,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   Lancer `lint` sur un dossier entier modifie des fichiers que cette pull request n'a pas relus.
   Utiliser `lint:check`, ou `eslint` directement sur les fichiers de la story.
 
-- **`POST /listing` n'est monté dans aucune application.**
-  Aucun `AppModule` ni `main.ts` n'existe encore dans `apps/api/src` (`find apps/api/src -iname '*.module.ts' -o -iname main.ts` → aucun résultat, 2026-09-17), et `AuthGuard` dépend du port `AccessTokenVerifier`, qui n'a aucune implémentation.
-  Ne pas relier le contrôleur à un module tant qu'un vrai vérificateur de jeton n'existe pas — la route serait accessible sans authentification réelle.
+- ~~**`POST /listing` n'est monté dans aucune application.**~~ — **périmé depuis #50.**
+  `app.module.ts` et `main.ts` existent, `SlidingAccessTokenVerifier` implémente `AccessTokenVerifier`, et les quatre contrôleurs sont montés. Piège conservé barré parce qu'il a commandé la forme du code pendant deux specs.
 
 - **Le barreau `int` démarre un vrai conteneur Postgres — sans Docker, il n'échoue pas tout de suite, il attend.**
   `testcontainers-setup.ts` appelle `PostgreSqlContainer('postgres:15').start()`, et le `beforeAll` qui l'attend porte un délai explicite de 120 s (`KnexListingRepository.int.spec.ts:9-11`) : sans démon Docker actif, la suite bloque jusqu'à deux minutes avant d'échouer.
@@ -106,6 +105,53 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   l'alternative écartée et son coût. Son `down()` (même fichier, ligne 66) fait
   `DROP EXTENSION IF EXISTS btree_gist` sans condition : avant de rollback cette migration, vérifier
   qu'aucune migration plus récente n'a ajouté un second index `gist`/`EXCLUDE` qui en dépend.
+
+- **La contrainte d'exclusion de `rental_requests` est désormais *partielle* : c'est elle, et non le statut, qui dégèle une place.**
+  `rental_requests_place_period_excl` porte `WHERE (status <> 'EXPIRED')` depuis
+  `20260922130000_expire_stale_rental_requests.ts`. Avant cette migration, marquer une demande `EXPIRED`
+  ne libérait rien du tout : la contrainte ignorait le statut et une ligne périmée continuait de bloquer
+  toute demande chevauchante (AUTO-26). Une `CONFIRMED`, elle, bloque toujours — c'est une réservation.
+  Ne jamais reconstruire cette contrainte sans sa clause `WHERE` : l'expiration redeviendrait décorative.
+  Son `down()` réinstalle la contrainte totale *et* le `CHECK` à deux statuts : les deux échouent si une
+  seule ligne `EXPIRED` subsiste. Décider du sort de ces lignes avant tout rollback — le `down()` ne le
+  fait pas à votre place.
+
+- **L'expiration est paresseuse : `RequestRental` est son seul déclencheur, il n'existe aucun ordonnanceur.**
+  `RequestRental.execute` appelle `expireRequestsPendingSince` avant de lire les locations confirmées, avec
+  `requestedAt - RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 h par défaut, `infra/config/environment.ts`).
+  Conséquence à connaître : une demande périmée que personne ne bouscule reste `PENDING` en base
+  indéfiniment — son statut ment jusqu'à la prochaine demande, sur n'importe quelle place. Le gel, lui,
+  est bien levé, parce qu'il n'y a de gel que face à une demande concurrente.
+  Ne pas lire un `PENDING` en base comme « encore vivante » sans comparer `requested_at` au délai. Le jour
+  où un ordonnanceur existera, il appellera ce même port ; ne pas dupliquer la règle ailleurs.
+
+- **Le délai d'expiration est un réglage, pas une constante du domaine — et la question qui le fixe est ouverte.**
+  `environment.rentalRequestExpiryInHours()` lit `RENTAL_REQUEST_EXPIRY_IN_HOURS`, 48 h par défaut, et le
+  délai descend jusqu'à `RequestRental` par son constructeur. C'est Q-18 du brainstorm du 10/09
+  (`docs/brainstorm/BR-20260910-reserver-et-louer-une-place/BRAINSTORM.md`), marquée « tranché par JP » et
+  « bloque la règle d'expiration » : le brainstorm la range parmi les réglages du back-office, à côté de la
+  marge et du délai d'annulation.
+  Ne pas figer cette valeur dans le domaine — elle attend le back-office.
+
+- **`RentalRequest.request()` engendre son identifiant : le défaut de la colonne `id` ne joue jamais.**
+  `RentalRequest.ts` appelle `randomUUID()` et `insertOnActiveListing` écrit toujours `id: state.id` —
+  même situation que `Listing.publish()` (AUTO-28). Sans cet identifiant, rien ne pouvait nommer une
+  demande pour la confirmer.
+  Ne pas retirer `id: state.id` de l'insertion en comptant sur `defaultTo(knex.fn.uuid())` : plus rien ne
+  relirait jamais l'identifiant que le domaine a rendu à l'appelant.
+
+- **Confirmer une demande qu'on ne possède pas répond `404`, exactement comme une demande inexistante.**
+  `ConfirmRentalRequest.execute` renvoie la même `RentalRequestNotFoundError` quand le résumé est `null`
+  et quand `summary.ownerId !== props.ownerId` ; le contrôleur en fait un `404` dont le corps ne contient
+  pas l'identifiant. Un `403` distinct confirmerait à n'importe qui qu'une demande porte cet identifiant.
+  Une demande *expirée*, elle, répond `409` en le disant : le loueur la possède, rien ne se divulgue.
+  Ne pas séparer les deux premiers cas en deux réponses distinctes.
+
+- **`confirmRequest` filtre sur `status = 'PENDING'` dans son `UPDATE` — c'est là qu'est l'idempotence, pas dans le cas d'usage.**
+  `ConfirmRentalRequest` sort tôt sur un résumé déjà confirmé, mais cette lecture est périmée au moment où
+  l'écriture part : deux confirmations concurrentes passeraient toutes deux la garde applicative.
+  Seul le filtre du `UPDATE` fait qu'une seule écrit, et que `confirmed_at` n'est jamais réécrit.
+  Ne pas retirer ce `where` en le croyant redondant.
 
 - **`KnexPublishedListingReader` lit la table `listings` en dupliquant son nom et le littéral `'ACTIVE'`,
   jamais en important une classe de `listing/`.**
@@ -171,6 +217,37 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   la même `ListingNotFoundError` qu'une annonce absente (AUTO-29, `docs/autonomous/SPEC-001.md`) ; EX-45 fige cette égalité de réponse.
   Toute nouvelle route qui prend un identifiant de domaine en paramètre de chemin doit le décoder de la même façon avant de l'utiliser.
 
+- **`Schema.optional(x)` fait fuiter la valeur soumise dans la `400`, même quand `x` est annoté partout : utiliser `Schema.optionalWith(x, { exact: true })`.**
+  `Schema.optional` compose une union avec `undefined`. Quand le champ est présent mais mal typé, la
+  branche `undefined` échoue elle aussi et porte le message par défaut d'`effect`,
+  `Expected undefined, actual "<valeur>"` — que `parseSchemaError` concatène tel quel. Annoter l'union
+  n'y change rien : `ArrayFormatter` descend dans chaque membre et rend leurs messages. Constaté pendant
+  cette story sur `UpdateListingPricingSchema` : un prix envoyé en chaîne repartait en clair dans la
+  réponse, contre la contrainte « Secret » du §8 de SPEC-002 — la même régression que `3af4eda` et
+  `04fb79b`, par un chemin que les deux annotations de `RegisterAccountSchema` ne couvrent pas.
+  `exact: true` rend le champ facultatif **sans** composer d'union : un palier absent est absent, un
+  palier présent est jugé par le seul schéma annoté.
+  Pour tout champ facultatif d'un schéma de décodage : `optionalWith(..., { exact: true })`, jamais
+  `optional(...)` — et un test `int-http` qui envoie le champ mal typé et vérifie que la réponse ne
+  contient pas la valeur.
+
+- **`DELETE /listing/:id` et `PATCH /listing/:id/pricing` sont clés sur l'identifiant, mais leurs cas d'usage sont clés sur la place — `GetListing` fait la jonction dans le contrôleur.**
+  `UnpublishListing` et `UpdateListingPricing` prennent `address` + `box` et calculent `placeKeyOf` ;
+  les deux routes prennent l'identifiant que `GET /listing` rend aux clients. Le contrôleur appelle donc
+  `GetListing` d'abord, puis le cas d'usage : une lecture de plus par requête, assumée pour ne pas
+  réécrire deux cas d'usage déjà prouvés au barreau `unit`.
+  C'est le seul endroit du dépôt où un contrôleur enchaîne deux cas d'usage. Si un troisième chemin en a
+  besoin, préférer alors donner l'identifiant aux cas d'usage plutôt que répandre ce montage.
+
+- **`DELETE /listing/:id` répond `204` pour un identifiant inconnu, mal formé, ou déjà dépublié — ce n'est pas un trou.**
+  Le domaine fait réussir silencieusement une seconde dépublication (RG-07/EX-33, `UnpublishListing.ts:19-20`) ;
+  la route tient la même promesse, et un `404` sur l'un de ces cas en ferait un oracle d'existence sur une
+  route pourtant gardée. Le seul refus est `403`, quand l'annonce existe et appartient à quelqu'un d'autre.
+  Un `403` — et non un `404` — parce qu'une annonce est publiquement lisible (RG-05) : masquer le refus de
+  propriété ne protégerait rien que `GET /listing/:id` ne donne déjà. Ce raisonnement ne vaut pas pour
+  `POST /rental-request/:id/confirmation`, où l'existence d'une demande, elle, est privée.
+  Ne pas « réparer » ces `204` en `404`.
+
 - **`accounts.email` ne porte aucune garantie de normalisation côté base — seul `Account.register()` la fait.**
   La migration `20260920120000_create_accounts.ts:6-11` indexe la colonne `email` telle quelle (commentaire :
   « stored as given and never normalized here ») ; `normalizeEmail` (`Account.ts:3-4`) — NFKC, espaces
@@ -227,6 +304,25 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   bornée, avant tout rejet par longueur — sur `POST /account`, une route publique sans limitation de
   débit (`RegisterAccountSchema.ts:9-16`, ordre actuel : `maxLength` puis `pattern`).
   Composer la borne bon marché avant le contrôle coûteux dans tout nouveau raffinement `.pipe(...)`.
+
+- **`signInThrottle` n'est appelé que depuis `SignIn` — et son journal d'échecs vit en mémoire, dans un seul fournisseur.**
+  `SignIn.execute` consulte `signInDelayInMilliseconds` puis attend, **avant** `findByEmail` : le délai
+  précède toute authentification pour qu'une adresse inconnue et un mot de passe faux se refusent au même
+  rythme (contrainte « Indistinction du refus », §8 de SPEC-002). `InMemorySignInFailureLog` est instancié
+  une seule fois, dans la `useFactory` de `SignIn` (`app.module.ts`) : le compteur ne survit ni à un
+  redémarrage, ni à une seconde instance de l'api — limite assumée, notée au §8 et au §11 de la spec.
+  Ne pas déplacer l'attente après la lecture du compte, et ne pas instancier un second journal ailleurs :
+  chacun compterait ses propres échecs.
+
+- **L'origine d'une tentative de connexion vient de `@Ip()`, jamais du corps de la requête.**
+  `session.controller.ts` lit l'origine avec le décorateur `@Ip()` de Nest et retombe sur `origine-inconnue`
+  quand elle est vide — une clé commune, de sorte que ces tentatives se ralentissent entre elles plutôt que
+  d'échapper au compteur. `SignInSchema` ne déclare aucun champ d'origine : une valeur envoyée dans le corps
+  est ignorée, ce qu'EX-46 fige.
+  Ne jamais alimenter `originKey` depuis le corps décodé — un attaquant choisirait alors sa propre clé de
+  ralentissement à chaque requête. Derrière un proxy, `@Ip()` ne rendra l'adresse réelle du client que si
+  `trust proxy` est activé sur Express : sans cela, toutes les requêtes partagent l'IP du proxy et se
+  ralentissent mutuellement.
 
 - **Un exemple `unit` d'une règle de validation ne protège pas la frontière HTTP qui l'implémente —
   EX-39 (adresse accentuée acceptée) n'était prouvée qu'en `unit` avant cette story.**

@@ -14,6 +14,7 @@ import {
   zonedTimeToUtc,
 } from '../../../domain/entities/CalendarDay';
 import { placeKeyOf, RentalPlace } from '../../../domain/entities/RentalPlace';
+import { ConfirmRentalRequest } from '../../../domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RequestRental } from '../../../domain/usecases/request-rental/RequestRental';
 import { DatesAlreadyRentedError } from '../../../domain/usecases/request-rental/errors/DatesAlreadyRentedError';
 import { KnexPublishedListingReader } from '../published-listing/KnexPublishedListingReader';
@@ -94,6 +95,8 @@ export const createKnexRentalRequestRepositorySUT = () => {
     otherRenterIdForTest: 'account-karim',
     simultaneousRequestInstant: '2026-10-20T18:30:00.000',
     racingRequestInstant: '2026-10-10T14:00:00.000',
+    confirmationInstant: new Date('2026-10-11T09:00:00.000Z'),
+    requestExpiryInHoursForTest: 48,
     availableFrom: new Date('2026-10-01T00:00:00.000Z'),
     availableTo: new Date('2026-12-31T00:00:00.000Z'),
   };
@@ -123,6 +126,7 @@ export const createKnexRentalRequestRepositorySUT = () => {
     new RequestRental(
       new KnexPublishedListingReader(connection),
       new KnexRentalRequestRepository(connection),
+      testConstants.requestExpiryInHoursForTest,
     ).execute({
       renterId: toAccountId(input.renter),
       address: input.address,
@@ -212,6 +216,62 @@ export const createKnexRentalRequestRepositorySUT = () => {
       } finally {
         await connection.destroy();
       }
+    },
+
+    async whenRequesting(input: RequestInput): Promise<RequestOutcome> {
+      return executeRequest(
+        context.testDbConnection,
+        input,
+        parisInstant(testConstants.racingRequestInstant),
+      );
+    },
+
+    async whenRequestingAt(
+      input: RequestInput,
+      requestedAt: Date,
+    ): Promise<RequestOutcome> {
+      return executeRequest(context.testDbConnection, input, requestedAt);
+    },
+
+    async whenConfirming(input: { requestId: string; owner: string }) {
+      return new ConfirmRentalRequest(
+        new KnexRentalRequestRepository(context.testDbConnection),
+      ).execute({
+        requestId: input.requestId,
+        ownerId: toAccountId(input.owner),
+        confirmedAt: testConstants.confirmationInstant,
+      });
+    },
+
+    async whenReadingSummaryOf(requestId: string) {
+      return new KnexRentalRequestRepository(
+        context.testDbConnection,
+      ).findRequestSummary(requestId);
+    },
+
+    async whenReadingConfirmedRentalsFor(place: RentalPlace) {
+      return new KnexRentalRequestRepository(
+        context.testDbConnection,
+      ).findConfirmedByPlace(place);
+    },
+
+    async thenStoredRequestRowIs(
+      requestId: string,
+      expected: { status: string; confirmedAt: Date | null },
+    ) {
+      const rows = await context
+        .testDbConnection<SchemaRentalRequestRepository>('rental_requests')
+        .where({ id: requestId });
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toEqual(expected.status);
+      if (expected.confirmedAt === null) {
+        expect(rows[0].confirmed_at).toEqual(null);
+        return;
+      }
+      expect(new Date(rows[0].confirmed_at as string | Date)).toEqual(
+        expected.confirmedAt,
+      );
     },
 
     async thenExactlyOneRequestRowExistsFor(period: RequestedPeriodInput) {

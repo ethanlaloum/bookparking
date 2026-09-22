@@ -64,11 +64,13 @@ export const createRequestRentalSUT = () => {
     renterIdForTest: 'account-lea',
     addressForTest: '12 rue Barla, 06300 Nice',
     boxForTest: '12',
+    requestExpiryInHoursForTest: 48,
   };
 
   const requestRental = new RequestRental(
     publishedListingReader,
     rentalRepository,
+    testConstants.requestExpiryInHoursForTest,
   );
 
   const accountIdsByPersonName: Record<string, string> = {
@@ -160,6 +162,25 @@ export const createRequestRentalSUT = () => {
         toDay: input.to,
         requestedAt: new Date(`${input.requestedAt}T00:00:00.000Z`),
       });
+    },
+
+    async whenRequestedAtInstantBy(
+      renterName: string,
+      requestedAt: Date,
+      overrides?: Partial<{ from: CalendarDay; to: CalendarDay }>,
+    ) {
+      return context.requestRental.execute({
+        renterId: toAccountId(renterName),
+        address: context.testConstants.addressForTest,
+        box: context.testConstants.boxForTest,
+        fromDay: overrides?.from ?? '2026-11-05',
+        toDay: overrides?.to ?? '2026-11-12',
+        requestedAt,
+      });
+    },
+
+    thenPendingRequestsExpired(howMany: number) {
+      expect(context.rentalRepository.expiredRequestIds.size).toEqual(howMany);
     },
 
     async whenDayRequestedBy(

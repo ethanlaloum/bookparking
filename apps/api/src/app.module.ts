@@ -12,6 +12,7 @@ import { PublishListing } from './listing/domain/usecases/publish-listing/Publis
 import { KnexPublishedListingReader } from './rental/adapters/repositories/published-listing/KnexPublishedListingReader';
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
 import { RentalRequestController } from './rental/adapters/rest/controllers/rental-request/rental-request.controller';
+import { ConfirmRentalRequest } from './rental/domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RequestRental } from './rental/domain/usecases/request-rental/RequestRental';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
@@ -103,6 +104,15 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       useFactory: (connection: DatabaseConnection) =>
         new RequestRental(
           new KnexPublishedListingReader(typedAs(connection)),
+          new KnexRentalRequestRepository(typedAs(connection)),
+          environment.rentalRequestExpiryInHours(),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ConfirmRentalRequest,
+      useFactory: (connection: DatabaseConnection) =>
+        new ConfirmRentalRequest(
           new KnexRentalRequestRepository(typedAs(connection)),
         ),
       inject: [DATABASE_CONNECTION],

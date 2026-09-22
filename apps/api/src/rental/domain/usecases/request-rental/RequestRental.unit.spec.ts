@@ -194,4 +194,49 @@ describe('RequestRental @SPEC-002', () => {
     sut.thenRequestIsAccepted(result);
     sut.thenRequestIsRecordedFor('Marc D.');
   });
+  describe('expiry of stale pending requests', () => {
+    const PLACE_FOR_EXPIRY = {
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+    };
+    const FIRST_REQUEST_AT = new Date('2026-10-01T08:00:00.000Z');
+    const EXACTLY_FORTY_EIGHT_HOURS_LATER = new Date(
+      '2026-10-03T08:00:00.000Z',
+    );
+    const ONE_MILLISECOND_PAST_FORTY_EIGHT_HOURS = new Date(
+      '2026-10-03T08:00:00.001Z',
+    );
+
+    const arrange = () => {
+      const sut = createRequestRentalSUT();
+      sut.givenListing({ ...PLACE_FOR_EXPIRY, pricing: { day: 1000 } });
+      return sut;
+    };
+
+    it('keeps a request made exactly at the deadline alive', async () => {
+      const sut = arrange();
+      await sut.whenRequestedAtInstantBy('Léa T.', FIRST_REQUEST_AT);
+
+      await sut.whenRequestedAtInstantBy(
+        'Karim B.',
+        EXACTLY_FORTY_EIGHT_HOURS_LATER,
+        { from: '2026-12-01', to: '2026-12-02' },
+      );
+
+      sut.thenPendingRequestsExpired(0);
+    });
+
+    it('expires a request one millisecond past the deadline', async () => {
+      const sut = arrange();
+      await sut.whenRequestedAtInstantBy('Léa T.', FIRST_REQUEST_AT);
+
+      await sut.whenRequestedAtInstantBy(
+        'Karim B.',
+        ONE_MILLISECOND_PAST_FORTY_EIGHT_HOURS,
+        { from: '2026-12-01', to: '2026-12-02' },
+      );
+
+      sut.thenPendingRequestsExpired(1);
+    });
+  });
 });

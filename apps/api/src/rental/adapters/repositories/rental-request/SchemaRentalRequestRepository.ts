@@ -1,6 +1,7 @@
 export enum RentalRequestStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
+  EXPIRED = 'EXPIRED',
 }
 
 export interface SchemaRentalRequestRepository {
@@ -15,6 +16,7 @@ export interface SchemaRentalRequestRepository {
   price_in_cents: number | string;
   status: string;
   requested_at: Date | string;
+  confirmed_at: Date | string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }

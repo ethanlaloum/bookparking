@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Either } from 'effect/index';
 
 import { InvalidRequestedPeriodError } from '../errors/InvalidRequestedPeriodError';
@@ -20,6 +22,7 @@ import { designatesSamePlace, RentalPlace } from './RentalPlace';
 export const MAX_REQUESTED_PERIOD_IN_DAYS = 366;
 
 interface Props {
+  id: string;
   renterId: string;
   address: string;
   box: string;
@@ -68,6 +71,10 @@ export class RentalRequest {
 
     return Either.right(
       new RentalRequest({
+        // L'identifiant naît ici, jamais du défaut de la colonne : une demande
+        // doit pouvoir être nommée — et confirmée — sans relire la ligne
+        // écrite. Même discipline que Listing.publish().
+        id: randomUUID(),
         renterId: params.renterId,
         address: params.address,
         box: params.box,
@@ -77,6 +84,10 @@ export class RentalRequest {
         requestedAt: params.requestedAt,
       }),
     );
+  }
+
+  public get id(): string {
+    return this.props.id;
   }
 
   public get period(): RentalPeriod {

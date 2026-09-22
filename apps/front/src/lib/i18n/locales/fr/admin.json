@@ -1,0 +1,152 @@
+{
+  "group": "Administration du site",
+  "banner": "Vous agissez au nom du site. Chaque action est journalisée avec son motif.",
+  "tab": {
+    "overview": "Aperçu",
+    "accounts": "Comptes",
+    "listings": "Annonces",
+    "requests": "Demandes"
+  },
+  "counts": {
+    "title": "L’état du site",
+    "hint": "Tout ce que la base contient aujourd’hui."
+  },
+  "activity": {
+    "title": "Ce qui bouge",
+    "hint": "Les vingt-quatre dernières heures, comparées aux sept derniers jours.",
+    "accelerating": "Plus vite que la semaine",
+    "window": "{{day}} en 24 h · {{week}} en 7 j"
+  },
+  "attention": {
+    "title": "À surveiller",
+    "hint": "Trois questions qui appellent une décision de votre part.",
+    "calm": "Rien ne demande votre attention en ce moment."
+  },
+  "metric": {
+    "accounts": "Comptes",
+    "accountsHint": "Comptes inscrits, suspendus compris.",
+    "suspended": "Comptes suspendus",
+    "suspendedHint": "Ils ne peuvent plus se connecter.",
+    "activeListings": "Annonces actives",
+    "activeListingsHint": "Visibles par les conducteurs.",
+    "unpublishedListings": "Annonces dépubliées",
+    "unpublishedListingsHint": "Retirées par leur propriétaire ou par l’administration.",
+    "pendingRequests": "Demandes en attente",
+    "pendingRequestsHint": "Le propriétaire n’a pas encore répondu.",
+    "confirmedRequests": "Demandes confirmées",
+    "confirmedRequestsHint": "La place est réservée pour ces dates.",
+    "cancelledRequests": "Demandes annulées",
+    "cancelledRequestsHint": "Annulées par l’administration.",
+    "revenue": "Revenus confirmés",
+    "revenueHint": "Somme des demandes confirmées, au prix figé au moment de la demande.",
+    "newAccounts": "Inscriptions",
+    "newListings": "Publications",
+    "newRequests": "Demandes reçues",
+    "staleRequests": "Demandes sans réponse",
+    "staleRequestsHint": "En attente depuis plus de vingt-quatre heures.",
+    "pricelessListings": "Annonces sans tarif",
+    "pricelessListingsHint": "Actives, mais aucun palier renseigné : personne ne peut réserver.",
+    "idleAccounts": "Comptes sans activité",
+    "idleAccountsHint": "Ni annonce ni demande depuis l’inscription."
+  },
+  "accounts": {
+    "title": "Comptes",
+    "subtitle": "{{total}} compte(s), dont {{suspended}} suspendu(s).",
+    "caption": "Comptes inscrits sur Bookparking",
+    "empty": "Aucun compte inscrit.",
+    "column": {
+      "email": "Adresse e-mail",
+      "registeredAt": "Inscrit le",
+      "listings": "Annonces",
+      "requests": "Demandes",
+      "status": "État",
+      "action": "Action"
+    },
+    "status": {
+      "active": "Actif",
+      "suspended": "Suspendu"
+    },
+    "suspendedSince": "Suspendu le {{date}}",
+    "noActivity": "Sans activité",
+    "suspend": "Suspendre",
+    "lift": "Lever la suspension"
+  },
+  "listings": {
+    "title": "Annonces",
+    "subtitle": "{{total}} annonce(s), dont {{active}} active(s).",
+    "caption": "Annonces publiées sur Bookparking",
+    "empty": "Aucune annonce publiée.",
+    "column": {
+      "place": "Place",
+      "owner": "Propriétaire",
+      "vehicles": "Véhicules",
+      "pricing": "Tarifs",
+      "publishedAt": "Publiée le",
+      "status": "État",
+      "action": "Action"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "UNPUBLISHED": "Dépubliée"
+    },
+    "box": "Emplacement {{box}}",
+    "noPrice": "Sans tarif",
+    "pricing": {
+      "day": "{{price}} / jour",
+      "week": "{{price}} / semaine",
+      "month": "{{price}} / mois"
+    },
+    "unpublish": "Dépublier"
+  },
+  "requests": {
+    "title": "Demandes de location",
+    "subtitle": "{{total}} demande(s), dont {{waiting}} sans réponse depuis plus d’un jour.",
+    "caption": "Demandes de location reçues sur Bookparking",
+    "empty": "Aucune demande de location.",
+    "column": {
+      "place": "Place",
+      "owner": "Propriétaire",
+      "renter": "Conducteur",
+      "dates": "Dates",
+      "price": "Prix",
+      "status": "État",
+      "requestedAt": "Demandée le",
+      "action": "Action"
+    },
+    "status": {
+      "PENDING": "En attente",
+      "CONFIRMED": "Confirmée",
+      "EXPIRED": "Expirée",
+      "CANCELLED": "Annulée"
+    },
+    "range": "du {{from}} au {{to}}",
+    "waiting": "En souffrance",
+    "cancel": "Annuler la demande"
+  },
+  "moderation": {
+    "reason": "Motif",
+    "reasonHint": "Dix caractères au minimum. Ce texte est conservé : c’est lui qui permettra de répondre, dans six mois, à qui demandera pourquoi.",
+    "reasonPlaceholder": "Ce qui motive cette décision…",
+    "confirm": "Confirmer",
+    "target": "Cible : {{target}}",
+    "validation": {
+      "reason": "Le motif doit faire au moins dix caractères."
+    },
+    "unpublish": {
+      "title": "Dépublier cette annonce",
+      "body": "L’annonce disparaît des recherches. Son propriétaire n’est pas prévenu par l’application."
+    },
+    "suspend": {
+      "title": "Suspendre ce compte",
+      "body": "Le compte ne pourra plus se connecter. Ses annonces, elles, restent en ligne."
+    },
+    "lift": {
+      "title": "Lever la suspension",
+      "body": "Le compte pourra se reconnecter immédiatement."
+    },
+    "cancelRequest": {
+      "title": "Annuler cette demande",
+      "body": "Aucun remboursement n’est émis : le site ne sait pas encore encaisser, donc il ne sait pas rendre."
+    }
+  }
+}

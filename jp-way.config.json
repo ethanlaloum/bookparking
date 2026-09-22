@@ -43,18 +43,6 @@
       }
     },
     {
-      "name": "bo",
-      "path": "apps/bo",
-      "role": "frontend",
-      "rungs": [
-        "unit"
-      ],
-      "commands": {},
-      "testGlobs": {
-        "unit": "src/**/*.unit.spec.ts"
-      }
-    },
-    {
       "name": "e2e",
       "path": "apps/e2e",
       "role": "e2e",

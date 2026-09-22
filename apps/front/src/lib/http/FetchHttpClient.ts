@@ -31,8 +31,8 @@ export class FetchHttpClient implements HttpClient {
     return this.request<T>('PATCH', path, body);
   }
 
-  delete<T>(path: string): Observable<HttpResponse<T>> {
-    return this.request<T>('DELETE', path);
+  delete<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
+    return this.request<T>('DELETE', path, body);
   }
 
   private request<T>(method: Method, path: string, body?: unknown): Observable<HttpResponse<T>> {

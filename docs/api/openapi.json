@@ -33,6 +33,10 @@
     {
       "name": "rental-request",
       "description": "Demandes de location"
+    },
+    {
+      "name": "admin",
+      "description": "Back-office. Réservé aux comptes inscrits dans `back_office_admins` — appartenance accordée hors de l'application, par migration ou commande d'exploitation : aucune route ne promeut qui que ce soit."
     }
   ],
   "paths": {
@@ -902,6 +906,418 @@
           }
         }
       }
+    },
+    "/admin/access": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "confirmAdminAccess",
+        "summary": "Savoir si ce compte administre le site",
+        "description": "Ne rend aucun corps : le code suffit. Le site public s'en sert pour decider s'il offre ses onglets d'administration. L'appartenance est relue en base a chaque appel, jamais portee par le jeton, pour qu'une revocation prenne effet immediatement.",
+        "responses": {
+          "204": {
+            "description": "Ce compte administre le site."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/overview": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "readAdminOverview",
+        "summary": "Lire le tableau de bord d'administration",
+        "description": "Cumuls, activité des dernières 24 h et 7 jours, et ce qui demande une attention.",
+        "responses": {
+          "200": {
+            "description": "La liste.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/accounts": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "listAdminAccounts",
+        "summary": "Lister tous les comptes",
+        "description": "Avec leur date d'inscription, leur éventuelle suspension et leur activité.",
+        "responses": {
+          "200": {
+            "description": "La liste.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminAccount"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/listings": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "listAdminListings",
+        "summary": "Lister toutes les annonces",
+        "description": "Y compris dépubliées, avec l'adresse e-mail de leur propriétaire.",
+        "responses": {
+          "200": {
+            "description": "La liste.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminListing"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/rental-requests": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "listAdminRentalRequests",
+        "summary": "Lister toutes les demandes de location",
+        "description": "Tous statuts confondus, avec le propriétaire et le locataire.",
+        "responses": {
+          "200": {
+            "description": "La liste.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminRentalRequest"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/listings/{id}/unpublish": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminUnpublishListing",
+        "summary": "Dépublier l'annonce de quelqu'un d'autre",
+        "description": "Le propriétaire n'en est pas averti par le produit : il le découvre sur son tableau de bord.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Fait. L'action est inscrite au journal de modération."
+          },
+          "400": {
+            "description": "Motif absent ou trop court.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Cible inexistante, ou déjà dans l'état demandé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/accounts/{id}/suspension": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminSuspendAccount",
+        "summary": "Suspendre un compte",
+        "description": "La suspension **bloque la connexion** : `POST /session` répond alors 401, du même refus qu'une adresse inconnue — répondre différemment apprendrait qu'une adresse existe et qu'elle est sanctionnée. Les annonces et locations en cours ne sont pas touchées.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Fait. L'action est inscrite au journal de modération."
+          },
+          "400": {
+            "description": "Motif absent ou trop court.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Cible inexistante, ou déjà dans l'état demandé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminLiftAccountSuspension",
+        "summary": "Lever la suspension d'un compte",
+        "description": "Exige un motif comme la suspension : lever une sanction est une décision autant que la prononcer.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Fait. L'action est inscrite au journal de modération."
+          },
+          "400": {
+            "description": "Motif absent ou trop court.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Cible inexistante, ou déjà dans l'état demandé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/rental-requests/{id}/cancellation": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "adminCancelRentalRequest",
+        "summary": "Annuler une demande de location",
+        "description": "Confirmée ou non. **Aucun remboursement n'est émis** : le produit ne sait pas encaisser, donc il ne sait pas rendre. La place redevient libre — la contrainte d'exclusion ignore les demandes annulées.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Fait. L'action est inscrite au journal de modération."
+          },
+          "400": {
+            "description": "Motif absent ou trop court.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Cible inexistante, ou déjà dans l'état demandé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -956,6 +1372,24 @@
                 "value": {
                   "statusCode": 500,
                   "message": "Une erreur inattendue est survenue"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Le compte n'appartient pas à l'administration du site.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "pasAdmin": {
+                "value": {
+                  "statusCode": 403,
+                  "message": "Cette action est réservée à l'administration du site"
                 }
               }
             }
@@ -1439,6 +1873,273 @@
               "null"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "Overview": {
+        "type": "object",
+        "required": [
+          "counts",
+          "activity",
+          "attention"
+        ],
+        "description": "Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention.",
+        "properties": {
+          "counts": {
+            "type": "object",
+            "required": [
+              "accounts",
+              "suspendedAccounts",
+              "activeListings",
+              "unpublishedListings",
+              "pendingRequests",
+              "confirmedRequests",
+              "cancelledRequests",
+              "confirmedRevenueInCents"
+            ],
+            "properties": {
+              "accounts": {
+                "type": "integer"
+              },
+              "suspendedAccounts": {
+                "type": "integer"
+              },
+              "activeListings": {
+                "type": "integer"
+              },
+              "unpublishedListings": {
+                "type": "integer"
+              },
+              "pendingRequests": {
+                "type": "integer"
+              },
+              "confirmedRequests": {
+                "type": "integer"
+              },
+              "cancelledRequests": {
+                "type": "integer"
+              },
+              "confirmedRevenueInCents": {
+                "type": "integer"
+              }
+            }
+          },
+          "activity": {
+            "type": "object",
+            "required": [
+              "accountsLast24h",
+              "listingsLast24h",
+              "requestsLast24h",
+              "accountsLast7d",
+              "listingsLast7d",
+              "requestsLast7d"
+            ],
+            "properties": {
+              "accountsLast24h": {
+                "type": "integer"
+              },
+              "listingsLast24h": {
+                "type": "integer"
+              },
+              "requestsLast24h": {
+                "type": "integer"
+              },
+              "accountsLast7d": {
+                "type": "integer"
+              },
+              "listingsLast7d": {
+                "type": "integer"
+              },
+              "requestsLast7d": {
+                "type": "integer"
+              }
+            }
+          },
+          "attention": {
+            "type": "object",
+            "required": [
+              "requestsPendingOverADay",
+              "listingsWithoutAnyPrice",
+              "accountsWithoutAnyActivity"
+            ],
+            "properties": {
+              "requestsPendingOverADay": {
+                "type": "integer"
+              },
+              "listingsWithoutAnyPrice": {
+                "type": "integer"
+              },
+              "accountsWithoutAnyActivity": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "AdminAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "registeredAt",
+          "suspendedAt",
+          "listingCount",
+          "requestCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "registeredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "suspendedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "L'instant où la suspension a été prononcée. `null` est le seul état « non suspendu »."
+          },
+          "listingCount": {
+            "type": "integer"
+          },
+          "requestCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminListing": {
+        "type": "object",
+        "required": [
+          "id",
+          "address",
+          "box",
+          "ownerEmail",
+          "status",
+          "acceptedVehicles",
+          "pricing",
+          "publishedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "ownerEmail": {
+            "type": "string",
+            "description": "« compte introuvable » si le propriétaire a disparu."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "UNPUBLISHED"
+            ]
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/Pricing"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminRentalRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "address",
+          "box",
+          "ownerEmail",
+          "renterEmail",
+          "fromDay",
+          "toDay",
+          "priceInCents",
+          "status",
+          "requestedAt",
+          "confirmedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "ownerEmail": {
+            "type": "string"
+          },
+          "renterEmail": {
+            "type": "string"
+          },
+          "fromDay": {
+            "type": "string",
+            "format": "date"
+          },
+          "toDay": {
+            "type": "string",
+            "format": "date"
+          },
+          "priceInCents": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "EXPIRED",
+              "CANCELLED"
+            ]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ModerationRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false,
+        "description": "Toute action de modération exige un motif. Ce n'est pas une formalité : c'est ce qui permet de répondre, six mois plus tard, à un propriétaire qui demande pourquoi son annonce a disparu.",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10
           }
         }
       }

@@ -246,6 +246,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Savoir si ce compte administre le site
+         * @description Ne rend aucun corps : le code suffit. Le site public s'en sert pour decider s'il offre ses onglets d'administration. L'appartenance est relue en base a chaque appel, jamais portee par le jeton, pour qu'une revocation prenne effet immediatement.
+         */
+        get: operations["confirmAdminAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire le tableau de bord d'administration
+         * @description Cumuls, activité des dernières 24 h et 7 jours, et ce qui demande une attention.
+         */
+        get: operations["readAdminOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister tous les comptes
+         * @description Avec leur date d'inscription, leur éventuelle suspension et leur activité.
+         */
+        get: operations["listAdminAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister toutes les annonces
+         * @description Y compris dépubliées, avec l'adresse e-mail de leur propriétaire.
+         */
+        get: operations["listAdminListings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/rental-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister toutes les demandes de location
+         * @description Tous statuts confondus, avec le propriétaire et le locataire.
+         */
+        get: operations["listAdminRentalRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/listings/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dépublier l'annonce de quelqu'un d'autre
+         * @description Le propriétaire n'en est pas averti par le produit : il le découvre sur son tableau de bord.
+         */
+        post: operations["adminUnpublishListing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{id}/suspension": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspendre un compte
+         * @description La suspension **bloque la connexion** : `POST /session` répond alors 401, du même refus qu'une adresse inconnue — répondre différemment apprendrait qu'une adresse existe et qu'elle est sanctionnée. Les annonces et locations en cours ne sont pas touchées.
+         */
+        post: operations["adminSuspendAccount"];
+        /**
+         * Lever la suspension d'un compte
+         * @description Exige un motif comme la suspension : lever une sanction est une décision autant que la prononcer.
+         */
+        delete: operations["adminLiftAccountSuspension"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/rental-requests/{id}/cancellation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annuler une demande de location
+         * @description Confirmée ou non. **Aucun remboursement n'est émis** : le produit ne sait pas encaisser, donc il ne sait pas rendre. La place redevient libre — la contrainte d'exclusion ignore les demandes annulées.
+         */
+        post: operations["adminCancelRentalRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -412,6 +576,84 @@ export interface components {
             /** Format: date-time */
             confirmedAt: string | null;
         };
+        /** @description Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention. */
+        Overview: {
+            counts: {
+                accounts: number;
+                suspendedAccounts: number;
+                activeListings: number;
+                unpublishedListings: number;
+                pendingRequests: number;
+                confirmedRequests: number;
+                cancelledRequests: number;
+                confirmedRevenueInCents: number;
+            };
+            activity: {
+                accountsLast24h: number;
+                listingsLast24h: number;
+                requestsLast24h: number;
+                accountsLast7d: number;
+                listingsLast7d: number;
+                requestsLast7d: number;
+            };
+            attention: {
+                requestsPendingOverADay: number;
+                listingsWithoutAnyPrice: number;
+                accountsWithoutAnyActivity: number;
+            };
+        };
+        AdminAccount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            /** Format: date-time */
+            registeredAt: string;
+            /**
+             * Format: date-time
+             * @description L'instant où la suspension a été prononcée. `null` est le seul état « non suspendu ».
+             */
+            suspendedAt: string | null;
+            listingCount: number;
+            requestCount: number;
+        };
+        AdminListing: {
+            /** Format: uuid */
+            id: string;
+            address: string;
+            box: string;
+            /** @description « compte introuvable » si le propriétaire a disparu. */
+            ownerEmail: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "UNPUBLISHED";
+            acceptedVehicles: string[];
+            pricing: components["schemas"]["Pricing"];
+            /** Format: date-time */
+            publishedAt: string;
+        };
+        AdminRentalRequest: {
+            /** Format: uuid */
+            id: string;
+            address: string;
+            box: string;
+            ownerEmail: string;
+            renterEmail: string;
+            /** Format: date */
+            fromDay: string;
+            /** Format: date */
+            toDay: string;
+            priceInCents: number;
+            /** @enum {string} */
+            status: "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED";
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            confirmedAt: string | null;
+        };
+        /** @description Toute action de modération exige un motif. Ce n'est pas une formalité : c'est ce qui permet de répondre, six mois plus tard, à un propriétaire qui demande pourquoi son annonce a disparu. */
+        ModerationRequest: {
+            reason: string;
+        };
     };
     responses: {
         /** @description Jeton d'accès absent, mal formé ou invalide. */
@@ -425,6 +667,15 @@ export interface components {
         };
         /** @description Erreur inattendue. */
         InternalServerError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Le compte n'appartient pas à l'administration du site. */
+        Forbidden: {
             headers: {
                 [name: string]: unknown;
             };
@@ -925,6 +1176,298 @@ export interface operations {
             };
             /** @description La demande a expiré et ne peut plus être confirmée. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    confirmAdminAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ce compte administre le site. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    readAdminOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description La liste. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Overview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listAdminAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description La liste. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccount"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listAdminListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description La liste. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminListing"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listAdminRentalRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description La liste. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRentalRequest"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminUnpublishListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Fait. L'action est inscrite au journal de modération. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Motif absent ou trop court. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Cible inexistante, ou déjà dans l'état demandé. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminSuspendAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Fait. L'action est inscrite au journal de modération. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Motif absent ou trop court. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Cible inexistante, ou déjà dans l'état demandé. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminLiftAccountSuspension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Fait. L'action est inscrite au journal de modération. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Motif absent ou trop court. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Cible inexistante, ou déjà dans l'état demandé. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    adminCancelRentalRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Fait. L'action est inscrite au journal de modération. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Motif absent ou trop court. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Cible inexistante, ou déjà dans l'état demandé. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

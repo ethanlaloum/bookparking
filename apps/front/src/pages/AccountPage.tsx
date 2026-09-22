@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Clock3, Euro, LogOut, Moon, SquareParking } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -10,12 +10,14 @@ import {
   resetChangePasswordState,
 } from '../app/account/domain/use-cases/change-password/changePasswordEpic';
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
+import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
 import { rentedNightCount } from '../app/rental/domain/entities/RentalRequestView';
 import { confirmRentalRequestRequested } from '../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import { listReceivedRentalRequestsRequested } from '../app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
 import { EmptyState } from '../components/EmptyState';
+import { Loader } from '../components/Loader';
 import { MetricTile } from '../components/MetricTile';
 import { Notice } from '../components/Notice';
 import { OwnerListingRow } from '../components/OwnerListingRow';
@@ -35,6 +37,7 @@ import {
   selectChangePasswordSuccess,
 } from '../selectors/account/accountSelectors';
 import { selectSession } from '../selectors/auth/authSelectors';
+import { selectAdminAccess } from '../selectors/back-office/backOfficeSelectors';
 import {
   selectActiveOwnerListings,
   selectOwnerListings,
@@ -55,15 +58,48 @@ import {
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { changePasswordSchema, type ChangePasswordValues } from './changePasswordSchema';
 
-const TABS = ['overview', 'places', 'received', 'mine', 'settings'] as const;
-type Tab = (typeof TABS)[number];
+const PERSONAL_TABS = ['overview', 'places', 'received', 'mine', 'settings'] as const;
+
+// Les quatre onglets d'administration ne sont montés que pour un compte dont
+// `GET /admin/access` a répondu 204 — et leur code n'est téléchargé qu'à ce
+// moment-là : `lazy` en fait des fragments à part, qui ne pèsent pas sur le
+// chargement du site public.
+const ADMIN_TABS = ['admin-overview', 'admin-accounts', 'admin-listings', 'admin-requests'] as const;
+
+type PersonalTab = (typeof PERSONAL_TABS)[number];
+type AdminTab = (typeof ADMIN_TABS)[number];
+type Tab = PersonalTab | AdminTab;
+
+const ADMIN_TAB_LABEL: Record<AdminTab, string> = {
+  'admin-overview': 'overview',
+  'admin-accounts': 'accounts',
+  'admin-listings': 'listings',
+  'admin-requests': 'requests',
+};
+
+const AdminOverviewPanel = lazy(async () => ({
+  default: (await import('./admin/AdminOverviewPanel')).AdminOverviewPanel,
+}));
+const AdminAccountsPanel = lazy(async () => ({
+  default: (await import('./admin/AdminAccountsPanel')).AdminAccountsPanel,
+}));
+const AdminListingsPanel = lazy(async () => ({
+  default: (await import('./admin/AdminListingsPanel')).AdminListingsPanel,
+}));
+const AdminRequestsPanel = lazy(async () => ({
+  default: (await import('./admin/AdminRequestsPanel')).AdminRequestsPanel,
+}));
+
+const TAB_CLASS =
+  'cursor-pointer rounded-t-[2px] border-b-2 px-4 py-2.5 text-sm font-medium transition-colors duration-150';
 
 export const AccountPage = () => {
-  const { t } = useTranslation(['account', 'common', 'listing']);
+  const { t } = useTranslation(['account', 'common', 'listing', 'admin']);
   const dispatch = useAppDispatch();
   const [tab, setTab] = useState<Tab>('overview');
 
   const session = useAppSelector(selectSession);
+  const isAdmin = useAppSelector(selectAdminAccess) === 'granted';
   const ownerListings = useAppSelector(selectOwnerListings);
   const activeListings = useAppSelector(selectActiveOwnerListings);
   const listingsLoading = useAppSelector(selectOwnerListingsLoading);
@@ -90,6 +126,10 @@ export const AccountPage = () => {
   });
 
   useEffect(() => {
+    // La sonde d'administration part avec les trois lectures du tableau de
+    // bord : un 403 ne coûte rien, et c'est le seul moyen de savoir si ce
+    // compte administre le site.
+    dispatch(confirmAdminAccessRequested());
     dispatch(listOwnerListingsRequested());
     dispatch(listReceivedRentalRequestsRequested());
     dispatch(listMyRentalRequestsRequested());
@@ -114,25 +154,82 @@ export const AccountPage = () => {
       </h1>
       <p className="mt-2 text-fg-muted">{t('account:dashboard.subtitle')}</p>
 
-      <div role="tablist" aria-label={t('account:dashboard.title')} className="mt-8 flex flex-wrap gap-1 border-b border-line">
-        {TABS.map((name) => (
-          <button
-            key={name}
-            role="tab"
-            type="button"
-            aria-selected={tab === name}
-            onClick={() => setTab(name)}
-            className={cn(
-              'cursor-pointer rounded-t-[2px] border-b-2 px-4 py-2.5 text-sm font-medium transition-colors duration-150',
-              tab === name
-                ? 'border-accent text-fg'
-                : 'border-transparent text-fg-subtle hover:text-fg',
-            )}
-          >
-            {t(`account:dashboard.tab.${name}`)}
-          </button>
-        ))}
+      {/* Deux listes d'onglets, et non une seule coupée par une étiquette : un
+          `role="tablist"` n'admet que des onglets pour enfants, et le groupe
+          d'administration mérite son propre nom accessible. */}
+      <div className="mt-8 flex flex-wrap items-end gap-x-2 gap-y-1 border-b border-line">
+        <div
+          role="tablist"
+          aria-label={t('account:dashboard.title')}
+          className="flex flex-wrap gap-1"
+        >
+          {PERSONAL_TABS.map((name) => (
+            <button
+              key={name}
+              role="tab"
+              type="button"
+              aria-selected={tab === name}
+              onClick={() => setTab(name)}
+              className={cn(
+                TAB_CLASS,
+                tab === name
+                  ? 'border-accent text-fg'
+                  : 'border-transparent text-fg-subtle hover:text-fg',
+              )}
+            >
+              {t(`account:dashboard.tab.${name}`)}
+            </button>
+          ))}
+        </div>
+
+        {isAdmin && (
+          <>
+            <span
+              id="groupe-administration"
+              className="mb-2.5 ml-2 rounded-[2px] bg-warn-bg px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-warn uppercase"
+            >
+              {t('admin:group')}
+            </span>
+            <div
+              role="tablist"
+              aria-labelledby="groupe-administration"
+              className="flex flex-wrap gap-1"
+            >
+              {ADMIN_TABS.map((name) => (
+                <button
+                  key={name}
+                  role="tab"
+                  type="button"
+                  aria-selected={tab === name}
+                  onClick={() => setTab(name)}
+                  className={cn(
+                    TAB_CLASS,
+                    tab === name
+                      ? 'border-warn text-fg'
+                      : 'border-transparent text-fg-subtle hover:text-fg',
+                  )}
+                >
+                  {t(`admin:tab.${ADMIN_TAB_LABEL[name]}`)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
+
+      {isAdmin && tab.startsWith('admin-') && (
+        <section className="mt-8">
+          <p className="mb-6 rounded-[2px] border border-warn/30 bg-warn-bg px-3.5 py-2.5 text-center text-xs font-medium text-warn">
+            {t('admin:banner')}
+          </p>
+          <Suspense fallback={<Loader />}>
+            {tab === 'admin-overview' && <AdminOverviewPanel />}
+            {tab === 'admin-accounts' && <AdminAccountsPanel />}
+            {tab === 'admin-listings' && <AdminListingsPanel />}
+            {tab === 'admin-requests' && <AdminRequestsPanel />}
+          </Suspense>
+        </section>
+      )}
 
       {anyError !== null && (
         <Notice tone="error" title={t('common:error.title')} className="mt-6">
@@ -147,7 +244,7 @@ export const AccountPage = () => {
           ) : (
             <>
               <MetricTile
-                accent
+                tone="accent"
                 icon={Euro}
                 label={t('account:metric.revenue')}
                 value={formatCents(revenue)}

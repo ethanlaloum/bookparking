@@ -33,3 +33,20 @@ export const centsFromInput = (value: string): number | undefined => {
 
 export const inputFromCents = (cents: number | null): string =>
   cents === null ? '' : String(cents / 100);
+
+/**
+ * Une console de modération se lit à la minute : « le 20 sept. » ne dit pas si
+ * la demande a dormi une heure ou vingt-trois, et c'est exactement la question
+ * que pose le bloc « à surveiller ».
+ */
+export const formatMoment = (iso: string): string =>
+  new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+
+export const formatCount = (value: number): string =>
+  new Intl.NumberFormat('fr-FR').format(value);

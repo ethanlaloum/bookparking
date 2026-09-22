@@ -200,6 +200,95 @@ change côté api casse la compilation du front plutôt que sa production.
 - **La page `/recherche` s'appelait `/carte`.** Le composant de carte, lui, reste `ListingsMap` : c'est
   la page qui a changé de rôle, pas la carte.
 
+## L'administration du site vit ici, et pas ailleurs
+
+Une `apps/bo` séparée a existé le temps d'une session, puis a été repliée dans cette app :
+les écrans de modération sont quatre onglets de `/compte`, sous une étiquette ambre
+« Administration du site », et l'hexagone `src/app/back-office/` est un contexte comme
+`listing` ou `rental`. Les quatre panneaux sont chargés par `lazy()` : leur code part dans
+quatre fragments à part, qu'un conducteur ordinaire ne télécharge jamais.
+
+- **L'api ne dit nulle part qu'un compte administre le site.**
+  `POST /session` rend un jeton, rien de plus : pas de rôle, pas de drapeau. Le seul signal
+  est `GET /admin/access`, qui répond 204 ou 403 sans corps — `AdminGuard` relit
+  `back_office_admins` à chaque appel, si bien qu'une révocation prend effet immédiatement.
+  `AccountPage` la sonde au montage, `RealBackOfficeGateway` traduit le statut HTTP en
+  `BackOfficeError` porteuse d'un `kind`, et `BackOfficeSlice` fait basculer `access` en
+  `denied` sur `forbidden` — jamais sur une panne réseau, qui laisse `unknown` : un câble
+  débranché ne doit pas conclure qu'un administrateur n'en est pas un.
+  Ne pas mettre ce droit dans le jeton pour économiser un appel : ce serait exactement le
+  sursis que l'api refuse.
+
+- **`DELETE /admin/accounts/:id/suspension` porte un corps.**
+  Lever une suspension est une action de modération comme les trois autres, et l'api lui
+  demande le même motif. C'est la seule raison pour laquelle `HttpClient.delete` prend un
+  `body` : le retirer rendrait 400 sur la seule action qui lève une sanction.
+
+- **Les quatre epics de modération sont en `concatMap`, et c'est délibéré.**
+  `exhaustMap` — le défaut partout ailleurs — laisserait tomber la seconde dépublication sans
+  rien dire, alors qu'elle porte sur une autre annonce. Prouvé par
+  `unpublishListingEpic.unit.spec.ts` (« honore deux dépublications de suite »).
+
+- **Chaque action de modération relit sa liste *et* le tableau de bord d'administration.**
+  L'api répond 204 sans corps : rien ne revient qu'on puisse insérer. Suspendre un compte
+  change `suspendedAccounts` autant que la ligne du tableau. Oublier `readOverviewRequested`
+  donnerait un aperçu qui ment jusqu'au prochain F5.
+
+- **Trois prédicats sont des reports ligne à ligne de `attentionOverview` côté api.**
+  `hasNoActivity` (`AdminAccount.ts`), `hasNoPrice` (`AdminListing.ts`) et `hasWaitedOverADay`
+  (`AdminRentalRequest.ts`) rejouent en TypeScript les trois sous-requêtes de
+  `KnexBackOfficeRepository.attentionOverview`. L'aperçu affiche les compteurs de l'api, les
+  listes marquent les lignes avec ces prédicats : ils doivent dire la même chose. Si le barème
+  gagne un palier, ou si le seuil des vingt-quatre heures bouge, les deux côtés changent
+  ensemble.
+
+- **`hasWaitedOverADay` compare à un instant figé pour le rendu.**
+  L'api compare à l'instant de la requête, l'écran à l'instant du rendu : les deux peuvent
+  différer d'une demande pendant la minute où elle franchit le seuil, et c'est la seule
+  divergence acceptable. `AdminRequestsPanel` gèle `now` dans un `useMemo` — sans cela, chaque
+  ligne lirait une horloge légèrement différente.
+
+- **Un bouton n'est offert que là où l'api accepterait l'action.**
+  `unpublishListing` filtre sur `status = 'ACTIVE'`, `cancelRentalRequest` sur
+  `PENDING | CONFIRMED` : les deux rendent `false` ailleurs, ce que le cas d'usage traduit en
+  404. `isActive` et `isCancellable` reproduisent ces filtres, et les colonnes « Action »
+  restent vides pour les autres lignes.
+
+- **La modale de modération se ferme par dérivation, jamais par un `setState` dans un `useEffect`.**
+  Même règle que le surlignage du combobox, et pour la même raison : `react-hooks/set-state-in-effect`
+  refuse le second. `useModeration` compare le succès du store à l'identifiant de la cible
+  ouverte, et la remise à zéro appartient aux deux gestes de l'utilisateur — ouvrir une autre
+  modale, ou fermer celle-ci.
+
+- **Un 401 déconnecte une fois, pas quatre.**
+  Un onglet d'administration tire plusieurs lectures d'un coup ; un jeton expiré les renvoie
+  toutes en 401. `dropExpiredSessionEpic` écoute le `kind: 'session-expired'` porté par
+  n'importe quelle action d'échec et dispatche `logoutRequested`. Il ne réagit **qu'aux**
+  échecs du back-office : les epics des autres contextes ne portent pas de `kind`.
+
+- **Annuler une demande confirmée n'émet aucun remboursement**, parce que le produit ne sait
+  pas encore encaisser. `admin:moderation.cancelRequest.body` le dit à celui qui annule.
+
+- **`count` est un mot réservé d'i18next.** Passé en interpolation, il déclenche la recherche
+  des clés plurielles `_one` / `_other` et rend la clé brute quand elles n'existent pas. Les
+  sous-titres des trois listes d'administration interpolent donc `total`.
+
+- **Dans `createReducer`, tout `addCase` doit précéder le premier `addMatcher`.**
+  Le builder de RTK le refuse à l'exécution, et l'erreur ne sort qu'au premier dispatch — pas
+  à la compilation. `BackOfficeSlice` groupe ses quatre actions de modération derrière trois
+  `isAnyOf`, placés en dernier.
+
+- **`MetricTile` prend un `tone`, plus un booléen `accent`.**
+  Trois registres (`plain`, `accent`, `warn`) parce que le bloc « à surveiller » n'allume
+  l'ambre que sur un compteur non nul — trois zéros sont une bonne nouvelle, et les peindre
+  en rouge apprendrait à l'œil à ignorer la couleur.
+
+- **`TableShell` est le seul élément autorisé à déborder horizontalement**, et il le fait dans
+  son propre conteneur. Ses cellules sont en `px-3` et non `px-4` : mesuré à l'écran, la table
+  des demandes — huit colonnes — atteignait 1360 px pour 1338 px de conteneur, et son dernier
+  en-tête « Action » sortait du cadre.
+
+
 ## Commandes (formes sûres pour un agent)
 
 | Intention | Commande |

@@ -39,7 +39,6 @@ test.describe('Listings', () => {
 
     const listings = new ListingsPage(page);
     await listings.open();
-    await listings.search(address);
     await listings.expectListed(address);
   });
 });

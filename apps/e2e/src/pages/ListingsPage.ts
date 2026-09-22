@@ -7,17 +7,9 @@ export class ListingsPage {
     return this.page.getByRole('listitem').filter({ hasText: address });
   }
 
-  searchField(): Locator {
-    return this.page.getByLabel('Rechercher une adresse ou un box');
-  }
-
   async open(): Promise<void> {
     await this.page.goto('/');
     await expect(this.page.getByRole('heading', { name: 'Places disponibles' })).toBeVisible();
-  }
-
-  async search(text: string): Promise<void> {
-    await this.searchField().fill(text);
   }
 
   async openListing(address: string): Promise<void> {

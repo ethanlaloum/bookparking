@@ -79,9 +79,9 @@
     "past": "That period is already over."
   },
   "map": {
-    "title": "Map of spaces",
-    "subtitle": "Every published space, placed on the map.",
-    "nav": "Map",
+    "title": "Find a space",
+    "subtitle": "Every space published in Nice, on the map.",
+    "nav": "Search",
     "located_one": "{{count}} space placed",
     "located_other": "{{count}} spaces placed",
     "approximate_one": "{{count}} approximate position",
@@ -104,13 +104,41 @@
     "label": "Search an address in Nice",
     "placeholder": "Start typing a street in Nice…",
     "hint": "At least 3 characters. Only addresses in Nice are offered.",
-    "clear": "Clear the search",
+    "clear": "Clear the address",
     "noResult": "No address matches.",
     "suggestions": "Address suggestions",
-    "around": "Around {{address}}",
+    "around": "Around: {{address}}",
     "nearby_one": "{{count}} space within one kilometre",
     "nearby_other": "{{count}} spaces within one kilometre",
     "noneNearby": "No space within one kilometre. The closest ones are listed first.",
     "distance": "{{distance}} away"
+  },
+  "criteria": {
+    "vehicle": "Vehicle",
+    "anyVehicle": "Any vehicle",
+    "vehicleType": {
+      "moto": "Motorbike or scooter",
+      "citadine": "City car",
+      "berline": "Saloon",
+      "suv": "SUV or 4×4",
+      "utilitaire": "Van"
+    },
+    "duration": "Duration",
+    "anyDuration": "Any duration",
+    "tier": {
+      "day": "By the day",
+      "week": "By the week",
+      "month": "By the month"
+    },
+    "search": "Search",
+    "vehicleNotFiltered": "Listings do not declare the vehicle size they take yet: your choice is kept, but it filters no space.",
+    "tierFiltered_one": "{{count}} space offers this rate.",
+    "tierFiltered_other": "{{count}} spaces offer this rate.",
+    "noTier": "No space offers this rate. All of them stay visible.",
+    "for": "Search: {{criteria}}",
+    "reset": "Reset"
+  },
+  "home": {
+    "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map."
   }
 }

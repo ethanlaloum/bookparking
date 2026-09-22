@@ -2,7 +2,6 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import {
   cheapestNightlyRateInCents,
-  isListingAvailableOn,
   type Listing,
 } from '../../app/listing/domain/entities/Listing';
 import {
@@ -68,26 +67,6 @@ export const selectUpdatePricingError = (state: AppState): string | null =>
 
 export const selectUpdatePricingSuccess = (state: AppState): boolean =>
   state.core.listing.updatePricing.state === 'succeeded';
-
-export interface ListingFilters {
-  query: string;
-  fromDay: string;
-  toDay: string;
-}
-
-export const selectMatchingListings = createSelector(
-  [selectListings, (_state: AppState, filters: ListingFilters) => filters],
-  (listings, filters): Listing[] => {
-    const needle = filters.query.trim().toLocaleLowerCase('fr-FR');
-    return listings.filter((listing) => {
-      const haystack = `${listing.address} ${listing.box}`.toLocaleLowerCase('fr-FR');
-      if (needle !== '' && !haystack.includes(needle)) return false;
-      if (filters.fromDay !== '' && filters.toDay !== '')
-        return isListingAvailableOn(listing, filters.fromDay, filters.toDay);
-      return true;
-    });
-  },
-);
 
 export const selectCheapestRateInCents = createSelector([selectListings], (listings) => {
   const rates = listings

@@ -3,17 +3,13 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { AddressSuggestion } from '../app/listing/domain/entities/Coordinates';
+import type { SearchedAddress } from '../app/listing/domain/entities/SearchCriteria';
 import {
   addressQueryChanged,
-  addressSearchCleared,
-  addressSelected,
   MINIMUM_QUERY_LENGTH,
 } from '../app/listing/domain/use-cases/search-address/searchAddressEpic';
 import { cn } from '../lib/cn';
-import {
-  selectAddressSuggestions,
-  selectSearchLabel,
-} from '../selectors/listing/listingSelectors';
+import { selectAddressSuggestions } from '../selectors/listing/listingSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { Button } from './ui/button';
 
@@ -25,14 +21,18 @@ import { Button } from './ui/button';
  * Sans ce motif, un lecteur d'écran n'annonce jamais qu'une liste s'est
  * ouverte, et aucun test ne peut désigner une option par son nom.
  */
-export const AddressSearch = () => {
+interface AddressSearchProps {
+  value: SearchedAddress | null;
+  onChoose: (address: SearchedAddress | null) => void;
+}
+
+export const AddressSearch = ({ value, onChoose }: AddressSearchProps) => {
   const { t } = useTranslation('listing');
   const dispatch = useAppDispatch();
 
   const suggestions = useAppSelector(selectAddressSuggestions);
-  const searchLabel = useAppSelector(selectSearchLabel);
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(value?.label ?? '');
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
 
@@ -50,14 +50,14 @@ export const AddressSearch = () => {
   }, []);
 
   const choose = (suggestion: AddressSuggestion): void => {
-    dispatch(addressSelected(suggestion));
+    onChoose({ label: suggestion.label, coordinates: suggestion.coordinates });
     setQuery(suggestion.label);
     setOpen(false);
     setHighlighted(-1);
   };
 
   const clear = (): void => {
-    dispatch(addressSearchCleared());
+    onChoose(null);
     setQuery('');
     setOpen(false);
     setHighlighted(-1);
@@ -130,7 +130,7 @@ export const AddressSearch = () => {
           />
         </div>
 
-        {(searchLabel !== null || query !== '') && (
+        {(value !== null || query !== '') && (
           <Button variant="outline" onClick={clear} aria-label={t('mapSearch.clear')}>
             <X className="size-4" aria-hidden="true" />
           </Button>
@@ -138,7 +138,7 @@ export const AddressSearch = () => {
       </div>
 
       <p id={hintId} className="mt-1.5 text-xs text-fg-subtle">
-        {tooShort ? t('mapSearch.hint') : (searchLabel ?? t('mapSearch.hint'))}
+        {tooShort || value === null ? t('mapSearch.hint') : value.label}
       </p>
 
       <ul

@@ -25,7 +25,6 @@ test.describe('Listings', () => {
 
     const listings = new ListingsPage(page);
     await listings.open();
-    await listings.search(listing.address);
     await listings.expectNotListed(listing.address);
   });
 

@@ -122,6 +122,34 @@ change côté api casse la compilation du front plutôt que sa production.
   Un `setState` synchrone dans un effet déclenche des rendus en cascade, et le linter React le refuse.
   Les suggestions ne changent qu'à la suite d'une frappe : la remise à zéro appartient au `onChange`.
 
+- **L'URL est la seule mémoire d'une recherche.**
+  `criteriaFromSearchParams` / `criteriaToSearchParams` sont des fonctions pures : la recherche survit
+  au rechargement, se partage par lien et remonte dans l'historique. Un critère illisible est **ignoré**,
+  jamais rejeté — une URL tronquée doit donner une recherche partielle, pas une page en erreur.
+  Piège attrapé par un test en l'écrivant : `Number(null)` vaut `0` et `Number.isFinite(0)` est vrai,
+  donc convertir avant d'avoir vérifié la présence plaçait une adresse sans coordonnées au point (0, 0),
+  au large du golfe de Guinée, sans qu'aucune erreur ne le signale.
+
+- **Le gabarit de véhicule ne filtre rien, et l'écran le dit.**
+  Aucune annonce ne déclare la contenance qu'elle accepte : le contrat n'a pas ce champ, et la
+  description d'accès n'est pas une donnée qu'on lit au motif. Le critère est retenu, affiché et
+  transmis dans l'URL, avec un bandeau qui annonce qu'il ne filtre aucune place. Le jour où `listings`
+  portera une contenance, `acceptsVehicle` se branche dans `SearchCriteria.ts` et rien d'autre ne bouge.
+  Ne jamais faire semblant de filtrer là-dessus — ce serait mentir sur une disponibilité.
+
+- **La durée, elle, correspond à quelque chose de réel** : les trois paliers tarifaires. `offersTier`
+  répond depuis `pricing`, et l'écran dit combien de places proposent le tarif demandé — sans masquer
+  les autres, même discipline que la proximité.
+
+- **`AddressSearch` est piloté : il ne dispatche rien.**
+  Il reçoit sa valeur et rend son choix, ce qui lui permet de servir l'accueil et la recherche. Le ✕
+  efface le **champ**, pas la recherche — d'où son libellé « Effacer l'adresse ». Abandonner une
+  recherche, c'est vider puis valider, comme dans n'importe quel formulaire. Un bouton qui promet plus
+  que ce qu'il fait est un défaut, pas un raccourci.
+
+- **La page `/recherche` s'appelait `/carte`.** Le composant de carte, lui, reste `ListingsMap` : c'est
+  la page qui a changé de rôle, pas la carte.
+
 ## Commandes (formes sûres pour un agent)
 
 | Intention | Commande |

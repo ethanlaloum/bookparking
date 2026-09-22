@@ -5,7 +5,10 @@ import { Link } from 'react-router-dom';
 
 import { listListingsRequested } from '../app/listing/domain/use-cases/list-listings/listListingsEpic';
 import { locateListingsRequested } from '../app/listing/domain/use-cases/locate-listings/locateListingsEpic';
-import { AddressSearch } from '../components/AddressSearch';
+import { SearchBar } from '../components/SearchBar';
+import { useSearchCriteria } from '../hooks/useSearchCriteria';
+import { offersTier } from '../app/listing/domain/entities/SearchCriteria';
+import { addressSearchCleared, addressSelected } from '../app/listing/domain/use-cases/search-address/searchAddressEpic';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
 import { Notice } from '../components/Notice';
@@ -32,7 +35,7 @@ const ListingsMap = lazy(async () => ({
   default: (await import('../components/ListingsMap')).ListingsMap,
 }));
 
-export const MapPage = () => {
+export const SearchPage = () => {
   const { t } = useTranslation(['listing', 'common']);
   const dispatch = useAppDispatch();
 
@@ -45,6 +48,18 @@ export const MapPage = () => {
   const searchPoint = useAppSelector(selectSearchPoint);
   const searchLabel = useAppSelector(selectSearchLabel);
   const nearby = useAppSelector(selectNearbyCount);
+
+  const { criteria, replaceCriteria } = useSearchCriteria();
+
+  // Remonter la barre quand l'URL change : elle tient son propre état de
+  // saisie, et une nouvelle recherche arrivée par l'historique doit s'y voir.
+  const searchParamsKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}`;
+
+  const chosenTier = criteria.tier;
+  const tierCount =
+    chosenTier === null
+      ? 0
+      : listings.filter((listing) => offersTier(listing.pricing, chosenTier)).length;
   const locating = useAppSelector(selectLocating);
   const approximate = useAppSelector(selectApproximateCount);
   const unplaced = useAppSelector(selectUnmappableCount);
@@ -56,6 +71,22 @@ export const MapPage = () => {
   useEffect(() => {
     if (listingsLoaded && listings.length > 0) dispatch(locateListingsRequested());
   }, [dispatch, listings.length, listingsLoaded]);
+
+  // L'URL commande le point cherché : arriver depuis l'accueil, recharger la
+  // page ou remonter dans l'historique produisent tous le même état.
+  useEffect(() => {
+    if (criteria.address === null) {
+      dispatch(addressSearchCleared());
+      return;
+    }
+    dispatch(
+      addressSelected({
+        id: criteria.address.label,
+        label: criteria.address.label,
+        coordinates: criteria.address.coordinates,
+      }),
+    );
+  }, [criteria.address, dispatch]);
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6">
@@ -72,9 +103,28 @@ export const MapPage = () => {
         </Link>
       </div>
 
-      <div className="mt-7 max-w-xl">
-        <AddressSearch />
+      <div className="mt-7 rounded-[2px] border border-line bg-bg-raised p-5">
+        <SearchBar
+          key={searchParamsKey}
+          initial={criteria}
+          submitLabel={t('listing:criteria.search')}
+          onSubmit={replaceCriteria}
+        />
       </div>
+
+      {criteria.vehicle !== null && (
+        <Notice tone="info" className="mt-4">
+          {t('listing:criteria.vehicleNotFiltered')}
+        </Notice>
+      )}
+
+      {criteria.tier !== null && (
+        <Notice tone={tierCount > 0 ? 'success' : 'info'} className="mt-3">
+          {tierCount > 0
+            ? t('listing:criteria.tierFiltered', { count: tierCount })
+            : t('listing:criteria.noTier')}
+        </Notice>
+      )}
 
       {searchPoint !== null && (
         <Notice tone={nearby > 0 ? 'success' : 'info'} className="mt-5">

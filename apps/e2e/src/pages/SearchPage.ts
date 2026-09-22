@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
-export class MapPage {
+export class SearchPage {
   constructor(private readonly page: Page) {}
 
   private map(): Locator {
@@ -22,22 +22,42 @@ export class MapPage {
     return this.page.getByRole('option', { name: label });
   }
 
+  // Choisir une suggestion renseigne le formulaire ; c'est « Rechercher » qui
+  // lance la recherche. Un utilisateur qui veut chercher fait les trois gestes,
+  // ce parcours aussi.
   async searchAddress(query: string, pick: string): Promise<void> {
     await this.searchField().fill(query);
     await this.suggestion(pick).click();
+    await this.submit();
   }
 
   async expectSearchSummary(text: string | RegExp): Promise<void> {
     await expect(this.page.getByText(text)).toBeVisible();
   }
 
-  async clearSearch(): Promise<void> {
-    await this.page.getByRole('button', { name: 'Effacer la recherche' }).click();
+  vehicleSelect(): Locator {
+    return this.page.getByLabel('Véhicule');
+  }
+
+  durationSelect(): Locator {
+    return this.page.getByLabel('Durée');
+  }
+
+  async submit(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Rechercher', exact: true }).click();
+  }
+
+  // Le ✕ efface le champ ; c'est « Rechercher » qui applique. Abandonner une
+  // recherche, c'est donc vider puis valider — deux gestes, comme dans
+  // n'importe quel formulaire.
+  async abandonSearch(): Promise<void> {
+    await this.page.getByRole('button', { name: "Effacer l'adresse" }).click();
+    await this.submit();
   }
 
   async open(): Promise<void> {
-    await this.page.goto('/carte');
-    await expect(this.page.getByRole('heading', { level: 1, name: 'Carte des places' })).toBeVisible();
+    await this.page.goto('/recherche');
+    await expect(this.page.getByRole('heading', { level: 1, name: 'Rechercher une place' })).toBeVisible();
   }
 
   async expectMapVisible(): Promise<void> {

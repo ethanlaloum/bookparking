@@ -1,4 +1,4 @@
-import { LogOut, Map, Plus, UserRound } from 'lucide-react';
+import { LogOut, Plus, Search, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink } from 'react-router-dom';
 
@@ -34,7 +34,7 @@ export const Header = () => {
           </NavLink>
 
           <NavLink
-            to="/carte"
+            to="/recherche"
             className={({ isActive }) =>
               cn(
                 buttonVariants({ variant: 'ghost', size: 'sm' }),
@@ -42,7 +42,7 @@ export const Header = () => {
               )
             }
           >
-            <Map className="size-4" aria-hidden="true" />
+            <Search className="size-4" aria-hidden="true" />
             <span className="hidden sm:inline">{t('listing:map.nav')}</span>
           </NavLink>
 

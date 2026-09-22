@@ -79,9 +79,9 @@
     "past": "La période est déjà passée."
   },
   "map": {
-    "title": "Carte des places",
-    "subtitle": "Toutes les places publiées, situées sur le territoire.",
-    "nav": "Carte",
+    "title": "Rechercher une place",
+    "subtitle": "Toutes les places publiées à Nice, sur la carte.",
+    "nav": "Rechercher",
     "located_one": "{{count}} place située",
     "located_other": "{{count}} places situées",
     "approximate_one": "{{count}} position approximative",
@@ -104,13 +104,41 @@
     "label": "Rechercher une adresse à Nice",
     "placeholder": "Commencez à taper une rue niçoise…",
     "hint": "Au moins 3 caractères. Seules les adresses de Nice sont proposées.",
-    "clear": "Effacer la recherche",
+    "clear": "Effacer l'adresse",
     "noResult": "Aucune adresse ne correspond.",
     "suggestions": "Suggestions d'adresses",
-    "around": "Autour de {{address}}",
+    "around": "Autour de : {{address}}",
     "nearby_one": "{{count}} place à moins d'un kilomètre",
     "nearby_other": "{{count}} places à moins d'un kilomètre",
     "noneNearby": "Aucune place à moins d'un kilomètre. Les plus proches sont classées d'abord.",
     "distance": "à {{distance}}"
+  },
+  "criteria": {
+    "vehicle": "Véhicule",
+    "anyVehicle": "Tous véhicules",
+    "vehicleType": {
+      "moto": "Moto ou scooter",
+      "citadine": "Citadine",
+      "berline": "Berline",
+      "suv": "SUV ou 4×4",
+      "utilitaire": "Utilitaire"
+    },
+    "duration": "Durée",
+    "anyDuration": "Toutes durées",
+    "tier": {
+      "day": "À la journée",
+      "week": "À la semaine",
+      "month": "Au mois"
+    },
+    "search": "Rechercher",
+    "vehicleNotFiltered": "Le gabarit du véhicule n'est pas encore déclaré par les annonces : il est retenu pour votre recherche, mais ne filtre aucune place.",
+    "tierFiltered_one": "{{count}} place propose ce tarif.",
+    "tierFiltered_other": "{{count}} places proposent ce tarif.",
+    "noTier": "Aucune place ne propose ce tarif. Toutes restent affichées.",
+    "for": "Recherche : {{criteria}}",
+    "reset": "Réinitialiser"
+  },
+  "home": {
+    "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte."
   }
 }

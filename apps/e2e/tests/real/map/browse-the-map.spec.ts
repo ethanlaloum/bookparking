@@ -15,7 +15,7 @@
 //   demanderait de publier une annonce que le produit ne veut pas, pour
 //   observer une absence. Le rung `unit` le prouve sur le double.
 import { expect, test } from '../../../src/fixtures/test';
-import { MapPage } from '../../../src/pages/MapPage';
+import { SearchPage } from '../../../src/pages/SearchPage';
 
 test.describe('Map', () => {
   test('places a published listing on the map and leads back to its page', async ({
@@ -25,7 +25,7 @@ test.describe('Map', () => {
     const owner = await seed.user('map-owner');
     const listing = await seed.listing(owner, { address: '12 rue Barla, 06300 Nice' });
 
-    const map = new MapPage(page);
+    const map = new SearchPage(page);
     await map.open();
     await map.expectMapVisible();
 
@@ -44,16 +44,16 @@ test.describe('Map', () => {
     const owner = await seed.user('map-search-owner');
     const listing = await seed.listing(owner, { address: '4 place Masséna, 06000 Nice' });
 
-    const map = new MapPage(page);
+    const map = new SearchPage(page);
     await map.open();
     await expect(map.marker(listing.address)).toBeVisible();
 
     await map.searchAddress('place mass', 'Place Masséna 06000 Nice');
 
-    await map.expectSearchSummary(/Autour de Place Masséna/);
+    await map.expectSearchSummary(/Autour de : Place Masséna/);
     await map.expectSearchSummary(/à moins d.un kilomètre/);
 
-    await map.clearSearch();
+    await map.abandonSearch();
     await expect(page.getByText(/Autour de/)).toHaveCount(0);
   });
 });

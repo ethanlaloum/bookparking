@@ -10,8 +10,8 @@ const ListingsPage = lazy(async () => ({
 const ListingDetailPage = lazy(async () => ({
   default: (await import('../pages/ListingDetailPage')).ListingDetailPage,
 }));
-const MapPage = lazy(async () => ({
-  default: (await import('../pages/MapPage')).MapPage,
+const SearchPage = lazy(async () => ({
+  default: (await import('../pages/SearchPage')).SearchPage,
 }));
 const SignInPage = lazy(async () => ({
   default: (await import('../pages/SignInPage')).SignInPage,
@@ -36,7 +36,7 @@ export const Routes = () => (
   <Suspense fallback={<Loader />}>
     <RouterRoutes>
       <Route path="/" element={<ListingsPage />} />
-      <Route path="/carte" element={<MapPage />} />
+      <Route path="/recherche" element={<SearchPage />} />
       <Route path="/place/:id" element={<ListingDetailPage />} />
       <Route path="/connexion" element={<SignInPage />} />
       <Route path="/inscription" element={<RegisterPage />} />

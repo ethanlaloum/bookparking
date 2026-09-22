@@ -29,7 +29,7 @@ telle quelle.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-002","story":"US-014","ex":["EX-35","EX-36","EX-37","EX-39","EX-40"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-014","ex":["EX-35","EX-36","EX-37","EX-39","EX-40"],"pr":41} -->
 
 ## Ton mot de passe et ton adresse sont vérifiés avant la création de ton compte
 

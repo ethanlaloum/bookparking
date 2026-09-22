@@ -89,6 +89,18 @@ export class KnexListingRepository implements ListingRepository {
     return rows.map((row) => KnexListingRepository.toEntity(row));
   }
 
+  public async findAllByOwner(
+    ownerId: string,
+    trx?: GenericTransaction,
+  ): Promise<Listing[]> {
+    const query = this.connection(this.tableName)
+      .where({ owner_id: ownerId })
+      .orderBy('published_at', 'desc');
+    if (trx) query.transacting(trx);
+    const rows = await query;
+    return rows.map((row) => KnexListingRepository.toEntity(row));
+  }
+
   private static toRow(listing: Listing): ListingRow {
     const state = listing.toState();
     return {

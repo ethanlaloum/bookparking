@@ -21,6 +21,7 @@ import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
 import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
 import { ListActiveListings } from '../../../../domain/usecases/list-active-listings/ListActiveListings';
+import { ListOwnerListings } from '../../../../domain/usecases/list-owner-listings/ListOwnerListings';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
@@ -33,6 +34,7 @@ import { UnpublishListing } from '../../../../domain/usecases/unpublish-listing/
 import { UpdateListingPricing } from '../../../../domain/usecases/update-listing-pricing/UpdateListingPricing';
 import { ListingMapper } from '../../../mappers/ListingMapper';
 import { GetListingResponseDto } from '../../dtos/GetListingResponseDto';
+import { GetOwnerListingResponseDto } from '../../dtos/GetOwnerListingResponseDto';
 import { PublishListingSchema } from '../../dtos/PublishListingSchema';
 import { UpdateListingPricingSchema } from '../../dtos/UpdateListingPricingSchema';
 
@@ -42,6 +44,7 @@ export class ListingController {
     private readonly publishListingUseCase: PublishListing,
     private readonly getListingUseCase: GetListing,
     private readonly listActiveListingsUseCase: ListActiveListings,
+    private readonly listOwnerListingsUseCase: ListOwnerListings,
     private readonly unpublishListingUseCase: UnpublishListing,
     private readonly updateListingPricingUseCase: UpdateListingPricing,
   ) {}
@@ -124,6 +127,29 @@ export class ListingController {
 
     return result.right.map((listing) =>
       ListingMapper.toGetListingDto(listing),
+    );
+  }
+
+  // Déclarée avant `@Get(':id')` : Nest confronte les routes dans l'ordre de
+  // déclaration, et placée après, celle-ci ne serait jamais atteinte — « mine »
+  // se ferait décoder comme un identifiant, puis refuser en 404.
+  @Get('mine')
+  @UseGuards(AuthGuard)
+  public async listOwnerListings(
+    @Req() req: TokenRequest,
+  ): Promise<GetOwnerListingResponseDto[]> {
+    const result = await this.listOwnerListingsUseCase.execute({
+      ownerId: req.user.id,
+    });
+
+    if (Either.isLeft(result))
+      throw new HttpException(
+        'La liste de vos annonces est indisponible',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+
+    return result.right.map((listing) =>
+      ListingMapper.toGetOwnerListingDto(listing),
     );
   }
 

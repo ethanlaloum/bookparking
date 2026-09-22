@@ -8,6 +8,7 @@ import { InMemoryPhotoStorage } from './listing/adapters/services/photo-storage/
 import { ListingController } from './listing/adapters/rest/controllers/listing/listing.controller';
 import { GetListing } from './listing/domain/usecases/get-listing/GetListing';
 import { ListActiveListings } from './listing/domain/usecases/list-active-listings/ListActiveListings';
+import { ListOwnerListings } from './listing/domain/usecases/list-owner-listings/ListOwnerListings';
 import { PublishListing } from './listing/domain/usecases/publish-listing/PublishListing';
 import { UnpublishListing } from './listing/domain/usecases/unpublish-listing/UnpublishListing';
 import { UpdateListingPricing } from './listing/domain/usecases/update-listing-pricing/UpdateListingPricing';
@@ -15,6 +16,8 @@ import { KnexPublishedListingReader } from './rental/adapters/repositories/publi
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
 import { RentalRequestController } from './rental/adapters/rest/controllers/rental-request/rental-request.controller';
 import { ConfirmRentalRequest } from './rental/domain/usecases/confirm-rental-request/ConfirmRentalRequest';
+import { ListOwnerRentalRequests } from './rental/domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
+import { ListRenterRentalRequests } from './rental/domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
 import { RequestRental } from './rental/domain/usecases/request-rental/RequestRental';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
@@ -96,6 +99,12 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       inject: [DATABASE_CONNECTION],
     },
     {
+      provide: ListOwnerListings,
+      useFactory: (connection: DatabaseConnection) =>
+        new ListOwnerListings(new KnexListingRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
       provide: GetListing,
       useFactory: (connection: DatabaseConnection) =>
         new GetListing(new KnexListingRepository(typedAs(connection))),
@@ -129,6 +138,22 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       provide: ConfirmRentalRequest,
       useFactory: (connection: DatabaseConnection) =>
         new ConfirmRentalRequest(
+          new KnexRentalRequestRepository(typedAs(connection)),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ListRenterRentalRequests,
+      useFactory: (connection: DatabaseConnection) =>
+        new ListRenterRentalRequests(
+          new KnexRentalRequestRepository(typedAs(connection)),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ListOwnerRentalRequests,
+      useFactory: (connection: DatabaseConnection) =>
+        new ListOwnerRentalRequests(
           new KnexRentalRequestRepository(typedAs(connection)),
         ),
       inject: [DATABASE_CONNECTION],

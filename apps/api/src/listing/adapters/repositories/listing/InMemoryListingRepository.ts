@@ -44,4 +44,10 @@ export class InMemoryListingRepository implements ListingRepository {
       (listing) => listing.toState().status === ListingStatus.ACTIVE,
     );
   }
+
+  public async findAllByOwner(ownerId: string): Promise<Listing[]> {
+    return this.listingList.filter(
+      (listing) => listing.toState().ownerId === ownerId,
+    );
+  }
 }

@@ -1,7 +1,7 @@
 import { Either } from 'effect/index';
 
 import { ListingBuilder } from '../../builders/ListingBuilder';
-import { Listing, ListingStatus } from '../../entities/Listing';
+import { Listing, ListingStatus, VehicleType } from '../../entities/Listing';
 import { InMemoryListingRepository } from '../../../adapters/repositories/listing/InMemoryListingRepository';
 import { InMemoryPhotoStorage } from '../../../adapters/services/photo-storage/InMemoryPhotoStorage';
 import { PublishListing } from './PublishListing';
@@ -26,6 +26,7 @@ interface PublishingInput {
   box: string;
   accessDescription: string;
   photos: string[];
+  acceptedVehicles: VehicleType[];
   pricing: { day: number | null; week: number | null; month: number | null };
   availability: { from: string; to: string };
   publishedAt: string;
@@ -141,6 +142,7 @@ export const createPublishListingSUT = () => {
         accessDescription:
           'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
         photos: ['photo-1'],
+        acceptedVehicles: [VehicleType.VOITURE],
         pricing: { day: 1200, week: 6000, month: 18000 },
         availability: { from: '2026-10-01', to: '2026-10-31' },
         publishedAt: '2026-09-10',
@@ -153,6 +155,7 @@ export const createPublishListingSUT = () => {
         box: input.box,
         accessDescription: input.accessDescription,
         photos: input.photos,
+        acceptedVehicles: input.acceptedVehicles,
         pricing: {
           dayInCents: input.pricing.day,
           weekInCents: input.pricing.week,
@@ -194,6 +197,15 @@ export const createPublishListingSUT = () => {
         ]),
       );
       expect(carried).toEqual(expected);
+    },
+
+    thenAcceptedVehiclesAre(
+      result: Either.Either<Listing, unknown>,
+      expected: VehicleType[],
+    ) {
+      thenResultIsRight(result);
+      if (!Either.isRight(result)) return;
+      expect(result.right.toState().acceptedVehicles).toEqual(expected);
     },
 
     thenPublicationIsRefusedWith(

@@ -12,10 +12,7 @@ export interface ListingRepository {
   // Rend les annonces du propriétaire quel que soit leur statut : le tableau de
   // bord doit montrer une place dépubliée, qui n'apparaît par définition dans
   // aucune lecture publique.
-  findAllByOwner(
-    ownerId: string,
-    trx?: GenericTransaction,
-  ): Promise<Listing[]>;
+  findAllByOwner(ownerId: string, trx?: GenericTransaction): Promise<Listing[]>;
   findActiveByPlaceKey(
     placeKey: string,
     trx?: GenericTransaction,

@@ -11,6 +11,7 @@ export class ListingMapper {
       address: state.address,
       box: state.box,
       photos: [...state.photos],
+      acceptedVehicles: [...state.acceptedVehicles],
       pricing: {
         dayInCents: state.pricing.dayInCents,
         weekInCents: state.pricing.weekInCents,

@@ -147,6 +147,24 @@ change côté api casse la compilation du front plutôt que sa production.
   recherche, c'est vider puis valider, comme dans n'importe quel formulaire. Un bouton qui promet plus
   que ce qu'il fait est un défaut, pas un raccourci.
 
+- **Le vocabulaire des véhicules vient du contrat, pas du front.**
+  `VEHICLE_TYPES` dans `SearchCriteria.ts` doit rester identique à l'énumération de l'api : c'est la
+  même liste qui sert à déclarer et à chercher. `VEHICLE_ICON` est l'unique table d'icônes — publication,
+  fiche et carte de résultat la lisent toutes, donc un vélo est le même dessin partout.
+
+- **Le filtre véhicule met en avant, il ne masque pas.** `acceptsVehicle` rend `true` pour une place qui
+  n'a rien déclaré, et `selectVehicleTally` rend **deux** nombres : combien acceptent explicitement, et
+  combien se sont tues. L'écran dit les deux. Masquer les secondes ferait croire qu'elles n'existent pas ;
+  les compter avec les premières ferait croire qu'elles ont été vérifiées.
+
+- **Un `Partial<T>` rend chaque champ `undefined`-able, et l'étalement l'écrase.**
+  `aListing({ box: 'X' })` effaçait `acceptedVehicles` parce que `...overrides` passe un `undefined`
+  explicite. Dans un constructeur de fixture, réaffirmer les champs obligatoires **après** l'étalement.
+
+- **`getByLabel('Voiture')` désigne aussi « Voiture électrique ».**
+  La correspondance est par sous-chaîne : tout libellé qui en préfixe un autre exige
+  `{ exact: true }`. Attrapé par le barreau `e2e`, en « strict mode violation ».
+
 - **Trois pages, trois rôles — et l'accueil ne liste plus rien.**
   `/` est une page d'atterrissage : le hero, la barre de recherche, trois arguments. Elle charge quand
   même les annonces, mais pour un seul chiffre — le tarif d'appel doit être vrai. `/recherche` porte la

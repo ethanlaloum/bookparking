@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { VEHICLE_TYPES } from '../app/listing/domain/entities/SearchCriteria';
 import { i18n } from '../lib/i18n';
 
 const price = z
@@ -15,6 +16,9 @@ export const publishListingSchema = z
     box: z.string().trim().min(1, { message: i18n.t('listing:validation.box') }),
     accessDescription: z.string().trim().min(1, { message: i18n.t('listing:validation.access') }),
     photos: z.string().trim().min(1, { message: i18n.t('listing:validation.photos') }),
+    acceptedVehicles: z
+      .array(z.enum(VEHICLE_TYPES))
+      .min(1, { message: i18n.t('listing:criteria.acceptedRequired') }),
     dayInCents: price,
     weekInCents: price,
     monthInCents: price,

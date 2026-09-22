@@ -5,15 +5,26 @@ export const RENTAL_TIERS = ['day', 'week', 'month'] as const;
 export type RentalTier = (typeof RENTAL_TIERS)[number];
 
 /**
- * Les gabarits qu'un conducteur reconnaît, du plus petit au plus encombrant.
- * Aucune annonce ne déclare aujourd'hui le gabarit qu'elle accepte : le
- * contrat n'a pas ce champ, et la description d'accès ne se lit pas comme une
- * donnée. Ce critère est donc porté, affiché et transmis — mais il ne filtre
- * rien. Le jour où `listings` portera une contenance, `acceptsVehicle` se
- * branchera ici et rien d'autre ne bougera.
+ * Le vocabulaire est celui du contrat : une annonce déclare ce qu'elle accepte,
+ * et la recherche interroge la même liste. `electrique` dit plus qu'un
+ * gabarit — il annonce une borne de recharge ; mêler gabarit et équipement
+ * dans une seule liste est une simplification assumée.
  */
-export const VEHICLE_TYPES = ['moto', 'citadine', 'berline', 'suv', 'utilitaire'] as const;
+export const VEHICLE_TYPES = ['velo', 'moto', 'voiture', 'electrique', 'utilitaire'] as const;
 export type VehicleType = (typeof VEHICLE_TYPES)[number];
+
+/**
+ * Une place qui n'a rien déclaré n'exclut personne : l'absence d'information
+ * n'est pas un refus. La masquer ferait croire qu'elle n'existe pas — même
+ * discipline que la proximité, qui met en avant sans filtrer.
+ */
+export const acceptsVehicle = (
+  acceptedVehicles: readonly string[],
+  vehicle: VehicleType,
+): boolean => acceptedVehicles.length === 0 || acceptedVehicles.includes(vehicle);
+
+export const declaresVehicles = (acceptedVehicles: readonly string[]): boolean =>
+  acceptedVehicles.length > 0;
 
 export interface SearchedAddress {
   label: string;

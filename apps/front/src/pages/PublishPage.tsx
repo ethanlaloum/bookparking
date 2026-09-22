@@ -9,6 +9,7 @@ import {
   resetPublishListingState,
 } from '../app/listing/domain/use-cases/publish-listing/publishListingEpic';
 import { Notice } from '../components/Notice';
+import { VehiclePicker } from '../components/VehiclePicker';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Field } from '../components/ui/field';
@@ -40,6 +41,7 @@ export const PublishPage = () => {
       box: '',
       accessDescription: '',
       photos: '',
+      acceptedVehicles: [],
       dayInCents: '',
       weekInCents: '',
       monthInCents: '',
@@ -60,6 +62,7 @@ export const PublishPage = () => {
           .split('\n')
           .map((line) => line.trim())
           .filter((line) => line !== ''),
+        acceptedVehicles: values.acceptedVehicles,
         pricing: {
           dayInCents: centsFromInput(values.dayInCents),
           weekInCents: centsFromInput(values.weekInCents),
@@ -145,6 +148,21 @@ export const PublishPage = () => {
               />
             )}
           </Field>
+
+          <VehiclePicker
+            selected={form.watch('acceptedVehicles')}
+            onToggle={(vehicle) => {
+              const current = form.getValues('acceptedVehicles');
+              form.setValue(
+                'acceptedVehicles',
+                current.includes(vehicle)
+                  ? current.filter((value) => value !== vehicle)
+                  : [...current, vehicle],
+                { shouldValidate: form.formState.isSubmitted },
+              );
+            }}
+            error={form.formState.errors.acceptedVehicles?.message}
+          />
 
           <Field
             label={t('listing:field.photos')}

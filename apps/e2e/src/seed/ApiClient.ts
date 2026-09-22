@@ -12,6 +12,7 @@ export interface PublishListingInput {
   box: string;
   accessDescription: string;
   photos: string[];
+  acceptedVehicles?: string[];
   pricing: { dayInCents?: number; weekInCents?: number; monthInCents?: number };
   availability: { from: string; to: string };
 }

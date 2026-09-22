@@ -1,7 +1,11 @@
 import type { Knex } from 'knex';
 
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
-import { Listing, ListingStatus } from '../../../domain/entities/Listing';
+import {
+  Listing,
+  ListingStatus,
+  VehicleType,
+} from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
 import { ActiveListingNotFoundError } from '../../../domain/usecases/update-listing-pricing/errors/ActiveListingNotFoundError';
 import { ListingAlreadyActiveError } from '../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
@@ -111,6 +115,7 @@ export class KnexListingRepository implements ListingRepository {
       place_key: listing.placeKey(),
       access_description: state.accessDescription,
       photos: state.photos,
+      accepted_vehicles: state.acceptedVehicles,
       day_price_in_cents: state.pricing.dayInCents,
       week_price_in_cents: state.pricing.weekInCents,
       month_price_in_cents: state.pricing.monthInCents,
@@ -129,6 +134,7 @@ export class KnexListingRepository implements ListingRepository {
       box: row.box,
       accessDescription: row.access_description,
       photos: row.photos,
+      acceptedVehicles: (row.accepted_vehicles ?? []) as VehicleType[],
       pricing: {
         dayInCents: row.day_price_in_cents,
         weekInCents: row.week_price_in_cents,

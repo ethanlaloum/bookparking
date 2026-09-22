@@ -104,10 +104,10 @@
     "vehicle": "Véhicule",
     "anyVehicle": "Tous véhicules",
     "vehicleType": {
+      "velo": "Vélo",
       "moto": "Moto ou scooter",
-      "citadine": "Citadine",
-      "berline": "Berline",
-      "suv": "SUV ou 4×4",
+      "voiture": "Voiture",
+      "electrique": "Voiture électrique",
       "utilitaire": "Utilitaire"
     },
     "duration": "Durée",
@@ -118,12 +118,20 @@
       "month": "Au mois"
     },
     "search": "Rechercher",
-    "vehicleNotFiltered": "Le gabarit du véhicule n'est pas encore déclaré par les annonces : il est retenu pour votre recherche, mais ne filtre aucune place.",
     "tierFiltered_one": "{{count}} place propose ce tarif.",
     "tierFiltered_other": "{{count}} places proposent ce tarif.",
     "noTier": "Aucune place ne propose ce tarif. Toutes restent affichées.",
     "for": "Recherche : {{criteria}}",
-    "reset": "Réinitialiser"
+    "reset": "Réinitialiser",
+    "accepted": "Véhicules acceptés",
+    "acceptedHint": "Cochez tout ce que la place peut recevoir. « Voiture électrique » suppose une borne de recharge.",
+    "acceptedRequired": "Indiquez au moins un véhicule accepté.",
+    "notDeclared": "Véhicules acceptés non précisés",
+    "vehicleFiltered_one": "{{count}} place accepte ce véhicule.",
+    "vehicleFiltered_other": "{{count}} places acceptent ce véhicule.",
+    "noVehicle": "Aucune place n'accepte ce véhicule. Toutes restent affichées.",
+    "undeclaredKept_one": "{{count}} place n'a rien déclaré et reste affichée.",
+    "undeclaredKept_other": "{{count}} places n'ont rien déclaré et restent affichées."
   },
   "home": {
     "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte.",

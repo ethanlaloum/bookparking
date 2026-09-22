@@ -104,10 +104,10 @@
     "vehicle": "Vehicle",
     "anyVehicle": "Any vehicle",
     "vehicleType": {
+      "velo": "Bike",
       "moto": "Motorbike or scooter",
-      "citadine": "City car",
-      "berline": "Saloon",
-      "suv": "SUV or 4×4",
+      "voiture": "Car",
+      "electrique": "Electric car",
       "utilitaire": "Van"
     },
     "duration": "Duration",
@@ -118,12 +118,20 @@
       "month": "By the month"
     },
     "search": "Search",
-    "vehicleNotFiltered": "Listings do not declare the vehicle size they take yet: your choice is kept, but it filters no space.",
     "tierFiltered_one": "{{count}} space offers this rate.",
     "tierFiltered_other": "{{count}} spaces offer this rate.",
     "noTier": "No space offers this rate. All of them stay visible.",
     "for": "Search: {{criteria}}",
-    "reset": "Reset"
+    "reset": "Reset",
+    "accepted": "Vehicles accepted",
+    "acceptedHint": "Tick everything the space can take. “Electric car” implies a charging point.",
+    "acceptedRequired": "Name at least one accepted vehicle.",
+    "notDeclared": "Accepted vehicles not stated",
+    "vehicleFiltered_one": "{{count}} space takes this vehicle.",
+    "vehicleFiltered_other": "{{count}} spaces take this vehicle.",
+    "noVehicle": "No space takes this vehicle. All of them stay visible.",
+    "undeclaredKept_one": "{{count}} space stated nothing and stays visible.",
+    "undeclaredKept_other": "{{count}} spaces stated nothing and stay visible."
   },
   "home": {
     "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map.",

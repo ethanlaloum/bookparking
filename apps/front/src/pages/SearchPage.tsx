@@ -29,6 +29,7 @@ import {
   selectSearchLabel,
   selectSearchPoint,
   selectUnmappableCount,
+  selectVehicleTally,
 } from '../selectors/listing/listingSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 
@@ -55,6 +56,9 @@ export const SearchPage = () => {
   const unplaced = useAppSelector(selectUnmappableCount);
 
   const { criteria, replaceCriteria } = useSearchCriteria();
+  const vehicleTally = useAppSelector((state) =>
+    selectVehicleTally(state, criteria.vehicle),
+  );
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const barKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}`;
@@ -111,8 +115,16 @@ export const SearchPage = () => {
         </Notice>
       )}
       {criteria.vehicle !== null && (
-        <Notice tone="info" className="mt-4">
-          {t('listing:criteria.vehicleNotFiltered')}
+        <Notice tone={vehicleTally.accepting > 0 ? 'success' : 'info'} className="mt-4">
+          {vehicleTally.accepting > 0
+            ? t('listing:criteria.vehicleFiltered', { count: vehicleTally.accepting })
+            : t('listing:criteria.noVehicle')}
+          {vehicleTally.undeclared > 0 && (
+            <>
+              {' '}
+              {t('listing:criteria.undeclaredKept', { count: vehicleTally.undeclared })}
+            </>
+          )}
         </Notice>
       )}
       {criteria.tier !== null && (
@@ -182,6 +194,7 @@ export const SearchPage = () => {
                   distanceKm={distanceKm}
                   precision={located.precision}
                   tier={criteria.tier}
+                  vehicle={criteria.vehicle}
                   focused={focusedId === listing.id}
                   onFocus={() => setFocusedId(listing.id)}
                 />

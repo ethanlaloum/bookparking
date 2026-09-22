@@ -321,7 +321,7 @@
             "description": "Annonce publiée. Aucun corps de réponse."
           },
           "400": {
-            "description": "Corps de requête invalide, période de disponibilité déjà passée, ou grille tarifaire incomplète.",
+            "description": "Corps de requête invalide, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu.",
             "content": {
               "application/json": {
                 "schema": {
@@ -344,6 +344,12 @@
                     "value": {
                       "statusCode": 400,
                       "message": "La grille tarifaire est incomplète"
+                    }
+                  },
+                  "vehiculeInconnu": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Ce type de véhicule n'existe pas"
                     }
                   }
                 }
@@ -1108,7 +1114,8 @@
           "box",
           "photos",
           "pricing",
-          "availability"
+          "availability",
+          "acceptedVehicles"
         ],
         "properties": {
           "id": {
@@ -1149,6 +1156,20 @@
                 "format": "date-time"
               }
             }
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge."
           }
         }
       },
@@ -1218,6 +1239,20 @@
                 "format": "date-time"
               }
             }
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. Facultatif : un client qui ne le déclare pas obtient « non déclaré » plutôt qu'un refus."
           }
         }
       },
@@ -1279,7 +1314,8 @@
           "status",
           "photos",
           "pricing",
-          "availability"
+          "availability",
+          "acceptedVehicles"
         ],
         "properties": {
           "id": {
@@ -1325,6 +1361,20 @@
                 "format": "date-time"
               }
             }
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge."
           }
         }
       },

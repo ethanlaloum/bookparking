@@ -15,6 +15,11 @@ import {
   type Coordinates,
   type LocatedAddress,
 } from '../../app/listing/domain/entities/Coordinates';
+import {
+  acceptsVehicle,
+  declaresVehicles,
+  type VehicleType,
+} from '../../app/listing/domain/entities/SearchCriteria';
 import type { OwnerListing } from '../../app/listing/domain/ports/ListingGateway';
 import type { AppState } from '../../store/AppState';
 
@@ -188,4 +193,31 @@ export const selectMapFocus = createSelector(
           zoom: zoomForSpan(spanInKilometers(mapped.map((entry) => entry.located.coordinates))),
         }
       : { center: point, zoom: CITY_ZOOM + 2 },
+);
+
+export interface VehicleTally {
+  accepting: number;
+  undeclared: number;
+}
+
+/**
+ * Deux nombres et non un : combien de places acceptent explicitement ce
+ * véhicule, et combien n'ont rien déclaré. Les secondes restent affichées —
+ * l'absence d'information n'est pas un refus — mais le dire évite de laisser
+ * croire que toutes ont été vérifiées.
+ */
+export const selectVehicleTally = createSelector(
+  [selectListings, (_state: AppState, vehicle: VehicleType | null) => vehicle],
+  (listings, vehicle): VehicleTally => {
+    if (vehicle === null) return { accepting: 0, undeclared: 0 };
+    return {
+      accepting: listings.filter(
+        (listing) =>
+          declaresVehicles(listing.acceptedVehicles) &&
+          acceptsVehicle(listing.acceptedVehicles, vehicle),
+      ).length,
+      undeclared: listings.filter((listing) => !declaresVehicles(listing.acceptedVehicles))
+        .length,
+    };
+  },
 );

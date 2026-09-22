@@ -57,6 +57,7 @@ export class Seeder {
       box: overrides.box ?? uniqueBox('E2E'),
       accessDescription: overrides.accessDescription ?? 'Digicode 4321, deuxieme sous-sol.',
       photos: overrides.photos ?? ['e2e-photo-1.jpg'],
+      acceptedVehicles: overrides.acceptedVehicles ?? ['voiture'],
       pricing: overrides.pricing ?? { dayInCents: 1500, weekInCents: 8000, monthInCents: 25000 },
       availability: overrides.availability ?? { from: inDays(1), to: inDays(120) },
     };

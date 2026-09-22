@@ -10,16 +10,19 @@ import { cheapestNightlyRateInCents, type Listing } from '../app/listing/domain/
 import {
   priceForTier,
   type RentalTier,
+  type VehicleType,
 } from '../app/listing/domain/entities/SearchCriteria';
 import { cn } from '../lib/cn';
 import { formatCents, formatDay } from '../lib/format';
 import { Badge } from './ui/badge';
+import { VehicleBadges } from './VehicleBadges';
 
 interface SearchResultCardProps {
   listing: Listing;
   distanceKm: number | null;
   precision: LocationPrecision | null;
   tier: RentalTier | null;
+  vehicle: VehicleType | null;
   focused: boolean;
   onFocus: () => void;
 }
@@ -29,6 +32,7 @@ export const SearchResultCard = ({
   distanceKm,
   precision,
   tier,
+  vehicle,
   focused,
   onFocus,
 }: SearchResultCardProps) => {
@@ -78,6 +82,12 @@ export const SearchResultCard = ({
             <span className="text-warn">{t('listing:map.approx')}</span>
           )}
         </p>
+
+        <VehicleBadges
+          acceptedVehicles={listing.acceptedVehicles}
+          highlighted={vehicle}
+          className="mt-3 pl-5.5"
+        />
 
         <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
           <p className="tabular flex items-baseline gap-1.5">

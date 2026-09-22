@@ -24,10 +24,12 @@ import { ListActiveListings } from '../../../../domain/usecases/list-active-list
 import { ListOwnerListings } from '../../../../domain/usecases/list-owner-listings/ListOwnerListings';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
+import { UnknownVehicleTypeError } from '../../../../domain/errors/UnknownVehicleTypeError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { ListingNotFoundError } from '../../../../domain/usecases/get-listing/errors/ListingNotFoundError';
 import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-listing/errors/PhotoStorageFailedError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
+import { VehicleType } from '../../../../domain/entities/Listing';
 import { ActiveListingNotFoundError } from '../../../../domain/usecases/update-listing-pricing/errors/ActiveListingNotFoundError';
 import { ListingNotOwnedError } from '../../../../domain/errors/ListingNotOwnedError';
 import { UnpublishListing } from '../../../../domain/usecases/unpublish-listing/UnpublishListing';
@@ -72,6 +74,9 @@ export class ListingController {
         box: parsedBody.box,
         accessDescription: parsedBody.accessDescription,
         photos: [...parsedBody.photos],
+        acceptedVehicles: [
+          ...(parsedBody.acceptedVehicles ?? []),
+        ] as VehicleType[],
         pricing: {
           dayInCents: parsedBody.pricing.dayInCents ?? null,
           weekInCents: parsedBody.pricing.weekInCents ?? null,
@@ -87,6 +92,9 @@ export class ListingController {
           throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
         if (error instanceof IncompletePricingError) {
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        if (error instanceof UnknownVehicleTypeError) {
           throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
         if (error instanceof ListingAlreadyActiveError) {

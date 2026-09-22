@@ -318,6 +318,8 @@ export interface components {
                 /** Format: date-time */
                 to: string;
             };
+            /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. */
+            acceptedVehicles: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
         };
         PublishListingRequest: {
             address: string;
@@ -337,6 +339,8 @@ export interface components {
                 /** Format: date-time */
                 to: string;
             };
+            /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. Facultatif : un client qui ne le déclare pas obtient « non déclaré » plutôt qu'un refus. */
+            acceptedVehicles?: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
         };
         /** @description Nouvelle grille tarifaire. Tous les paliers sont facultatifs, mais la grille résultante doit rester complète au sens du domaine ; un palier omis est effacé. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles. */
         UpdateListingPricingRequest: {
@@ -381,6 +385,8 @@ export interface components {
                 /** Format: date-time */
                 to: string;
             };
+            /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. */
+            acceptedVehicles: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
         };
         /** @description Une demande de location. Ni le locataire ni le propriétaire n'y figurent : les deux routes qui la rendent sont déjà clés sur le compte appelant. */
         RentalRequest: {
@@ -616,7 +622,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Corps de requête invalide, période de disponibilité déjà passée, ou grille tarifaire incomplète. */
+            /** @description Corps de requête invalide, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu. */
             400: {
                 headers: {
                     [name: string]: unknown;

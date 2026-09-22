@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  acceptsVehicle,
   criteriaFromSearchParams,
+  declaresVehicles,
   criteriaToSearchParams,
   EMPTY_CRITERIA,
   hasAnyCriterion,
@@ -15,7 +17,7 @@ const MASSENA = {
   coordinates: { latitude: 43.6975, longitude: 7.2707 },
 };
 
-const FULL: SearchCriteria = { address: MASSENA, vehicle: 'suv', tier: 'week' };
+const FULL: SearchCriteria = { address: MASSENA, vehicle: 'electrique', tier: 'week' };
 
 const PRICING = { dayInCents: 1500, weekInCents: 8000, monthInCents: null };
 
@@ -67,5 +69,24 @@ describe('the search criteria carried in the url', () => {
   it('knows an empty search from one that asks for something', () => {
     expect(hasAnyCriterion(EMPTY_CRITERIA)).toBe(false);
     expect(hasAnyCriterion({ ...EMPTY_CRITERIA, tier: 'day' })).toBe(true);
+  });
+});
+
+describe('the vehicles a place accepts', () => {
+  it('accepts a vehicle it declared', () => {
+    expect(acceptsVehicle(['voiture', 'moto'], 'moto')).toBe(true);
+  });
+
+  it('refuses a vehicle it did not declare', () => {
+    expect(acceptsVehicle(['voiture', 'moto'], 'velo')).toBe(false);
+  });
+
+  it('excludes nobody when it declared nothing, because silence is not a refusal', () => {
+    expect(acceptsVehicle([], 'utilitaire')).toBe(true);
+  });
+
+  it('knows a place that declared something from one that stayed silent', () => {
+    expect(declaresVehicles(['velo'])).toBe(true);
+    expect(declaresVehicles([])).toBe(false);
   });
 });

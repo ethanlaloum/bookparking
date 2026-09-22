@@ -22,6 +22,7 @@ import {
 } from '../app/rental/domain/use-cases/request-rental/requestRentalEpic';
 import { Notice } from '../components/Notice';
 import { PricingGrid } from '../components/PricingGrid';
+import { VehicleBadges } from '../components/VehicleBadges';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Badge } from '../components/ui/badge';
@@ -167,6 +168,13 @@ export const ListingDetailPage = () => {
             <p className="tabular mt-2 text-fg-muted">
               {formatDay(listing.availability.from)} → {formatDay(listing.availability.to)}
             </p>
+          </section>
+
+          <section className="mt-8">
+            <h2 className="font-display text-lg font-semibold text-fg">
+              {t('listing:criteria.accepted')}
+            </h2>
+            <VehicleBadges acceptedVehicles={listing.acceptedVehicles} className="mt-3" />
           </section>
 
           <section className="mt-8">

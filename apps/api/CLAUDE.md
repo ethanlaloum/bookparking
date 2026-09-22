@@ -360,6 +360,30 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   Une demande faite sur une place depuis dépubliée reste une demande : la masquer priverait le propriétaire
   de l'historique qui justifie ses revenus.
 
+- **`accepted_vehicles` est un tableau, et le tableau vide se lit « non déclaré ».**
+  Jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et `Listing.accepts()`
+  rend `true` pour une place silencieuse. Une recherche par véhicule ne doit pas les faire disparaître —
+  l'absence d'information n'est pas un refus. Ne pas « corriger » ce `true` en `false`.
+
+- **Postgres refuse tout paramètre lié dans l'expression d'un `CHECK`.**
+  C'est du DDL, il n'y a pas de plan à préparer : `knex.raw` avec des `?` échoue sur
+  « bind message supplies 5 parameters, but prepared statement requires 0 ». Les valeurs de
+  `listings_accepted_vehicles_check` sont donc écrites littéralement, avec une garde qui vérifie
+  qu'elles restent des identifiants simples. La contrainte utilise `<@`, seule forme qui valide chaque
+  élément d'un tableau — un `CHECK IN (...)` ne saurait le faire.
+
+- **Un `Schema.Literal` en union fait fuiter la valeur soumise, et l'annoter n'y change rien.**
+  `ArrayFormatter` descend dans chaque membre : cinq littéraux donnent cinq messages
+  « Expected "velo", actual "tracteur" » concaténés, qui recopient l'entrée dans la 400 — constaté à
+  l'exécution pendant cette story. La forme qui marche est un **raffinement unique** :
+  `Schema.String.annotations({...}).pipe(Schema.filter(...)).annotations({...})`, annoté sur le type de
+  base *et* sur le raffinement, exactement comme le veut la règle des schémas de décodage.
+
+- **`tsconfig.build.json` exclut les specs et les `.sut.ts` : `tsc -p tsconfig.build.json` ne les typecheck pas.**
+  Ajouter un champ obligatoire à un `Props` de cas d'usage compile donc sans rien dire, et n'échoue
+  qu'à l'exécution de jest, sur des messages qui ne ressemblent pas à une erreur de type. Après tout
+  élargissement d'un `Props`, lancer la suite `unit` avant de conclure.
+
 ## Frozen versions — do not bump without reading the reason
 
 | App | Paquet | Pin | Pourquoi — ce qui casse |

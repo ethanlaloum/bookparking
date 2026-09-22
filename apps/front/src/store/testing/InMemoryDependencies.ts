@@ -191,12 +191,15 @@ export const buildInMemoryDependencies = (): InMemoryDependencies => ({
 
 export const aListing = (overrides: Partial<Listing> = {}): Listing => ({
   id: '3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c',
-  address: '12 rue des Lilas, 75011 Paris',
+  address: '12 rue Barla, 06300 Nice',
   box: 'B12',
   photos: ['photo-1.jpg'],
   pricing: { dayInCents: 1500, weekInCents: 8000, monthInCents: 25000 },
   availability: { from: '2026-10-01T00:00:00.000Z', to: '2026-12-31T00:00:00.000Z' },
   ...overrides,
+  // Réaffirmé après l'étalement : `Partial` rend le champ `undefined`-able, et
+  // une surcharge qui ne le mentionne pas l'effacerait.
+  acceptedVehicles: overrides.acceptedVehicles ?? ['voiture'],
 });
 
 export const aRentalRequestView = (
@@ -204,7 +207,7 @@ export const aRentalRequestView = (
 ): RentalRequestView => ({
   id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
   listingId: '3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c',
-  address: '12 rue des Lilas, 75011 Paris',
+  address: '12 rue Barla, 06300 Nice',
   box: 'B12',
   fromDay: '2026-10-10',
   toDay: '2026-10-12',
@@ -217,11 +220,12 @@ export const aRentalRequestView = (
 
 export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerListing => ({
   id: '3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c',
-  address: '12 rue des Lilas, 75011 Paris',
+  address: '12 rue Barla, 06300 Nice',
   box: 'B12',
   status: 'ACTIVE',
   photos: ['photo-1.jpg'],
   pricing: { dayInCents: 1500, weekInCents: 8000, monthInCents: 25000 },
   availability: { from: '2026-10-01T00:00:00.000Z', to: '2026-12-31T00:00:00.000Z' },
   ...overrides,
+  acceptedVehicles: overrides.acceptedVehicles ?? ['voiture'],
 });

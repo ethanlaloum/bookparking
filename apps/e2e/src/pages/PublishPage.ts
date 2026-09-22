@@ -13,6 +13,7 @@ export class PublishPage {
     box: string;
     accessDescription: string;
     photos: string;
+    vehicles: string[];
     dayInEuros: string;
     from: string;
     to: string;
@@ -21,6 +22,10 @@ export class PublishPage {
     await this.page.getByLabel('Numéro de box').fill(input.box);
     await this.page.getByLabel('Consignes d’accès').fill(input.accessDescription);
     await this.page.getByLabel('Photos').fill(input.photos);
+    // `exact` obligatoire : « Voiture » est un préfixe de « Voiture
+    // électrique », et une correspondance par sous-chaîne désigne les deux.
+    for (const vehicle of input.vehicles)
+      await this.page.getByLabel(vehicle, { exact: true }).check();
     await this.page.getByLabel('Jour').fill(input.dayInEuros);
     await this.page.getByLabel('Disponible à partir du').fill(input.from);
     await this.page.getByLabel('Jusqu’au').fill(input.to);

@@ -199,6 +199,12 @@ export const createRequestRentalSUT = () => {
       expect(Either.isRight(result)).toEqual(true);
     },
 
+    thenRequestIsRecordedFor(renterName: string) {
+      const recorded = context.rentalRepository.rentalRequestList;
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].toState().renterId).toEqual(toAccountId(renterName));
+    },
+
     thenListingStaysPublished(place: RentalPlace) {
       const publishedListings =
         context.publishedListingReader.listingList.filter(

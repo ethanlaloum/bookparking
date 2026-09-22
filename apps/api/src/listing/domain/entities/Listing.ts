@@ -29,6 +29,17 @@ export interface ListingPlace {
 const normalizePlacePart = (part: string): string =>
   part.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase();
 
+// Distincte de `normalizePlacePart`, et elle doit le rester : celle-ci sert la recherche
+// texte d'une place et supprime les diacritiques, quand l'autre compose la `place_key`
+// recopiée à l'identique dans une migration (voir apps/api/CLAUDE.md).
+const normalizeForSearch = (text: string): string =>
+  text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .toLowerCase();
+
 interface Props {
   id: string;
   ownerId: string;
@@ -130,6 +141,19 @@ export class Listing {
 
   public designates(place: ListingPlace): boolean {
     return this.placeKey() === Listing.placeKeyOf(place);
+  }
+
+  public addressCarries(place: string): boolean {
+    return normalizeForSearch(this.props.address).includes(
+      normalizeForSearch(place),
+    );
+  }
+
+  public availabilityCovers(from: Date, to: Date): boolean {
+    return (
+      this.props.availability.from.getTime() <= from.getTime() &&
+      this.props.availability.to.getTime() >= to.getTime()
+    );
   }
 
   public isActiveFor(place: ListingPlace): boolean {

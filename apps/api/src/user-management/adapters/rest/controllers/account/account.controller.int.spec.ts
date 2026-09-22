@@ -10,6 +10,9 @@ const SEVEN_CHAR_PASSWORD = 'Prom06!';
 const EIGHT_CHAR_PASSWORD = 'Prom06!!';
 const MARC_PASSWORD = 'Barla2026!';
 const ADDRESS_WITHOUT_AT_SIGN = 'marc.d';
+const ADDRESS_OF_254_CHARACTERS = `${'a'.repeat(242)}@example.com`;
+const ADDRESS_OF_255_CHARACTERS = `${'a'.repeat(243)}@example.com`;
+const ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER = "marc'--@example.com";
 
 describe('AccountController @SPEC-002', () => {
   let sut: ReturnType<typeof createAccountControllerSUT>;
@@ -79,6 +82,34 @@ describe('AccountController @SPEC-002', () => {
       const response = await http()
         .post('/account')
         .send({ email: '', password: MARC_PASSWORD });
+
+      expect(response.status).toEqual(400);
+      sut.thenNoAccountWasRegistered();
+    });
+    it('refuses an address of 255 characters @EX-002-36', async () => {
+      const response = await http()
+        .post('/account')
+        .send({ email: ADDRESS_OF_255_CHARACTERS, password: MARC_PASSWORD });
+
+      expect(response.status).toEqual(400);
+      sut.thenNoAccountWasRegistered();
+    });
+
+    it('accepts an address of 254 characters @EX-002-37', async () => {
+      sut.givenRegistrationSucceedsFor(ADDRESS_OF_254_CHARACTERS);
+
+      const response = await http()
+        .post('/account')
+        .send({ email: ADDRESS_OF_254_CHARACTERS, password: MARC_PASSWORD });
+
+      expect(response.status).toEqual(201);
+    });
+
+    it('refuses an address carrying a quote and a comment marker @EX-002-40', async () => {
+      const response = await http().post('/account').send({
+        email: ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER,
+        password: MARC_PASSWORD,
+      });
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();

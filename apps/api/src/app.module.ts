@@ -9,15 +9,20 @@ import { ListingController } from './listing/adapters/rest/controllers/listing/l
 import { GetListing } from './listing/domain/usecases/get-listing/GetListing';
 import { ListActiveListings } from './listing/domain/usecases/list-active-listings/ListActiveListings';
 import { PublishListing } from './listing/domain/usecases/publish-listing/PublishListing';
+import { UnpublishListing } from './listing/domain/usecases/unpublish-listing/UnpublishListing';
+import { UpdateListingPricing } from './listing/domain/usecases/update-listing-pricing/UpdateListingPricing';
 import { KnexPublishedListingReader } from './rental/adapters/repositories/published-listing/KnexPublishedListingReader';
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
 import { RentalRequestController } from './rental/adapters/rest/controllers/rental-request/rental-request.controller';
+import { ConfirmRentalRequest } from './rental/domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RequestRental } from './rental/domain/usecases/request-rental/RequestRental';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
 import { SessionController } from './user-management/adapters/rest/controllers/session/session.controller';
 import { SlidingAccessTokenVerifier } from './user-management/adapters/services/access-token/SlidingAccessTokenVerifier';
+import { TimerDelay } from './user-management/adapters/services/delay/TimerDelay';
 import { ScryptPasswordHasher } from './user-management/adapters/services/password-hasher/ScryptPasswordHasher';
+import { InMemorySignInFailureLog } from './user-management/adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { ChangePassword } from './user-management/domain/usecases/change-password/ChangePassword';
 import { RegisterAccount } from './user-management/domain/usecases/register-account/RegisterAccount';
 import { SignIn } from './user-management/domain/usecases/sign-in/SignIn';
@@ -53,12 +58,16 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       inject: [DATABASE_CONNECTION],
     },
     {
+      // Le journal d'échecs vit en mémoire, dans ce seul fournisseur singleton :
+      // le ralentissement ne couvre donc qu'un processus, pas une flotte.
       provide: SignIn,
       useFactory: (connection: DatabaseConnection) =>
         new SignIn(
           new KnexAccountRepository(typedAs(connection)),
           new ScryptPasswordHasher(),
           environment.accessTokenSecret(),
+          new InMemorySignInFailureLog(),
+          new TimerDelay(),
         ),
       inject: [DATABASE_CONNECTION],
     },
@@ -93,10 +102,33 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       inject: [DATABASE_CONNECTION],
     },
     {
+      provide: UnpublishListing,
+      useFactory: (connection: DatabaseConnection) =>
+        new UnpublishListing(new KnexListingRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: UpdateListingPricing,
+      useFactory: (connection: DatabaseConnection) =>
+        new UpdateListingPricing(
+          new KnexListingRepository(typedAs(connection)),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
       provide: RequestRental,
       useFactory: (connection: DatabaseConnection) =>
         new RequestRental(
           new KnexPublishedListingReader(typedAs(connection)),
+          new KnexRentalRequestRepository(typedAs(connection)),
+          environment.rentalRequestExpiryInHours(),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ConfirmRentalRequest,
+      useFactory: (connection: DatabaseConnection) =>
+        new ConfirmRentalRequest(
           new KnexRentalRequestRepository(typedAs(connection)),
         ),
       inject: [DATABASE_CONNECTION],

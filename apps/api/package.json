@@ -9,7 +9,9 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
-    "test:unit:ci": "jest --config ./jest.unit.config.js"
+    "test:unit:ci": "jest --config ./jest.unit.config.js",
+    "start": "node dist/main.js",
+    "migrate": "knex migrate:latest"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.5",

@@ -1,0 +1,152 @@
+{
+  "group": "Site administration",
+  "banner": "You are acting on behalf of the site. Every action is logged with its reason.",
+  "tab": {
+    "overview": "Overview",
+    "accounts": "Accounts",
+    "listings": "Listings",
+    "requests": "Requests"
+  },
+  "counts": {
+    "title": "State of the site",
+    "hint": "Everything the database holds today."
+  },
+  "activity": {
+    "title": "What is moving",
+    "hint": "The last twenty-four hours, compared with the last seven days.",
+    "accelerating": "Faster than the week",
+    "window": "{{day}} in 24 h · {{week}} in 7 d"
+  },
+  "attention": {
+    "title": "Needs watching",
+    "hint": "Three questions that call for a decision from you.",
+    "calm": "Nothing needs your attention right now."
+  },
+  "metric": {
+    "accounts": "Accounts",
+    "accountsHint": "Registered accounts, suspended ones included.",
+    "suspended": "Suspended accounts",
+    "suspendedHint": "They can no longer sign in.",
+    "activeListings": "Active listings",
+    "activeListingsHint": "Visible to drivers.",
+    "unpublishedListings": "Unpublished listings",
+    "unpublishedListingsHint": "Withdrawn by their owner or by administration.",
+    "pendingRequests": "Pending requests",
+    "pendingRequestsHint": "The owner has not answered yet.",
+    "confirmedRequests": "Confirmed requests",
+    "confirmedRequestsHint": "The space is booked for those dates.",
+    "cancelledRequests": "Cancelled requests",
+    "cancelledRequestsHint": "Cancelled by administration.",
+    "revenue": "Confirmed revenue",
+    "revenueHint": "Sum of confirmed requests, at the price frozen when they were made.",
+    "newAccounts": "Sign-ups",
+    "newListings": "Publications",
+    "newRequests": "Requests received",
+    "staleRequests": "Unanswered requests",
+    "staleRequestsHint": "Pending for more than twenty-four hours.",
+    "pricelessListings": "Listings without a price",
+    "pricelessListingsHint": "Active, but no tier filled in: nobody can book.",
+    "idleAccounts": "Accounts without activity",
+    "idleAccountsHint": "Neither a listing nor a request since sign-up."
+  },
+  "accounts": {
+    "title": "Accounts",
+    "subtitle": "{{total}} account(s), {{suspended}} of them suspended.",
+    "caption": "Accounts registered on Bookparking",
+    "empty": "No registered account.",
+    "column": {
+      "email": "Email address",
+      "registeredAt": "Registered on",
+      "listings": "Listings",
+      "requests": "Requests",
+      "status": "Status",
+      "action": "Action"
+    },
+    "status": {
+      "active": "Active",
+      "suspended": "Suspended"
+    },
+    "suspendedSince": "Suspended on {{date}}",
+    "noActivity": "No activity",
+    "suspend": "Suspend",
+    "lift": "Lift suspension"
+  },
+  "listings": {
+    "title": "Listings",
+    "subtitle": "{{total}} listing(s), {{active}} of them active.",
+    "caption": "Listings published on Bookparking",
+    "empty": "No published listing.",
+    "column": {
+      "place": "Space",
+      "owner": "Owner",
+      "vehicles": "Vehicles",
+      "pricing": "Pricing",
+      "publishedAt": "Published on",
+      "status": "Status",
+      "action": "Action"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "UNPUBLISHED": "Unpublished"
+    },
+    "box": "Spot {{box}}",
+    "noPrice": "No price",
+    "pricing": {
+      "day": "{{price}} / day",
+      "week": "{{price}} / week",
+      "month": "{{price}} / month"
+    },
+    "unpublish": "Unpublish"
+  },
+  "requests": {
+    "title": "Rental requests",
+    "subtitle": "{{total}} request(s), {{waiting}} of them unanswered for more than a day.",
+    "caption": "Rental requests received on Bookparking",
+    "empty": "No rental request.",
+    "column": {
+      "place": "Space",
+      "owner": "Owner",
+      "renter": "Driver",
+      "dates": "Dates",
+      "price": "Price",
+      "status": "Status",
+      "requestedAt": "Requested on",
+      "action": "Action"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "EXPIRED": "Expired",
+      "CANCELLED": "Cancelled"
+    },
+    "range": "from {{from}} to {{to}}",
+    "waiting": "Overdue",
+    "cancel": "Cancel the request"
+  },
+  "moderation": {
+    "reason": "Reason",
+    "reasonHint": "Ten characters minimum. This text is kept: it is what will answer, six months from now, whoever asks why.",
+    "reasonPlaceholder": "What motivates this decision…",
+    "confirm": "Confirm",
+    "target": "Target: {{target}}",
+    "validation": {
+      "reason": "The reason must be at least ten characters long."
+    },
+    "unpublish": {
+      "title": "Unpublish this listing",
+      "body": "The listing disappears from searches. Its owner is not notified by the application."
+    },
+    "suspend": {
+      "title": "Suspend this account",
+      "body": "The account will no longer be able to sign in. Its listings stay online."
+    },
+    "lift": {
+      "title": "Lift the suspension",
+      "body": "The account will be able to sign in again immediately."
+    },
+    "cancelRequest": {
+      "title": "Cancel this request",
+      "body": "No refund is issued: the site cannot take payment yet, so it cannot give it back."
+    }
+  }
+}

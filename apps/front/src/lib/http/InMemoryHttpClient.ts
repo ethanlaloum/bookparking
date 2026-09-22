@@ -34,8 +34,8 @@ export class InMemoryHttpClient implements HttpClient {
     return this.answer<T>('PATCH', path, body);
   }
 
-  delete<T>(path: string): Observable<HttpResponse<T>> {
-    return this.answer<T>('DELETE', path);
+  delete<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
+    return this.answer<T>('DELETE', path, body);
   }
 
   private answer<T>(method: string, path: string, body?: unknown): Observable<HttpResponse<T>> {

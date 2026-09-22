@@ -2,10 +2,16 @@
 
 ## Layout
 
-Monorepo pnpm, un seul package aujourd'hui (`apps/api`), déclaré dans `pnpm-workspace.yaml`
-(`packages: apps/*`). Chaque app porte son propre `tsconfig.json`, qui étend
-`tsconfig.base.json` à la racine (`skipLibCheck`, `forceConsistentCasingInFileNames`) — la
-seule configuration TypeScript partagée entre apps.
+Monorepo pnpm, trois packages déclarés par `pnpm-workspace.yaml` (`packages: apps/*`) :
+`apps/api` (NestJS), `apps/front` (le site, administration comprise) et `apps/e2e`
+(Playwright). Chaque app porte son propre `tsconfig.json`, qui étend `tsconfig.base.json` à
+la racine (`skipLibCheck`, `forceConsistentCasingInFileNames`) — la seule configuration
+TypeScript partagée entre apps.
+
+**Il n'y a pas d'application d'administration séparée.** Une `apps/bo` a existé le temps
+d'une session : elle a été repliée dans `apps/front`, où les écrans de modération sont
+quatre onglets de `/compte`, ouverts au seul compte pour lequel `GET /admin/access` répond
+204. Ne pas la recréer sans relire pourquoi elle a disparu — voir `apps/front/CLAUDE.md`.
 
 ## Things that will bite you
 

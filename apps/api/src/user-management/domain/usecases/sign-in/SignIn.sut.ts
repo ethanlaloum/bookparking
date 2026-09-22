@@ -90,6 +90,23 @@ export const createSignInSUT = () => {
       return account;
     },
 
+    async givenSuspendedAccountFor(
+      email: string,
+      password: string,
+    ): Promise<Account> {
+      const account = Account.register({
+        email,
+        passwordHash: context.passwordHasher.hash(password),
+        registeredAt: context.testConstants.registeredAtForTest,
+      });
+      const suspended = Account.fromState({
+        ...account.toState(),
+        suspendedAt: new Date('2026-09-20T09:00:00.000Z'),
+      });
+      await context.accountRepository.create(suspended);
+      return suspended;
+    },
+
     async whenSigningIn(
       overrides: Partial<SignInInput>,
     ): Promise<SignInEither> {

@@ -1,0 +1,78 @@
+{
+  "title": "My account",
+  "subtitle": "Your session and your password.",
+  "session": {
+    "title": "Session",
+    "validUntil": "Valid until {{date}}",
+    "signOut": "Sign out"
+  },
+  "password": {
+    "title": "Change password",
+    "current": "Current password",
+    "next": "New password",
+    "hint": "At least 8 characters.",
+    "submit": "Change password",
+    "changed": "Password changed."
+  },
+  "validation": {
+    "current": "Enter your current password.",
+    "next": "The new password must be at least 8 characters."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Your spaces, your requests, and what they earn.",
+    "tab": {
+      "overview": "Overview",
+      "places": "My spaces",
+      "received": "Requests received",
+      "mine": "My bookings",
+      "settings": "Settings"
+    }
+  },
+  "metric": {
+    "revenue": "Confirmed revenue",
+    "revenueHint": "Total of the requests you accepted.",
+    "pending": "Awaiting your answer",
+    "pendingHint": "What the requests you have not confirmed would earn.",
+    "places": "Published spaces",
+    "placesHint": "Unpublished listings do not count.",
+    "nights": "Nights booked",
+    "nightsHint": "Across confirmed requests."
+  },
+  "places": {
+    "title": "My spaces",
+    "empty": "You have not listed any space.",
+    "emptyAction": "List my first space",
+    "active": "Published",
+    "unpublished": "Unpublished",
+    "open": "View listing",
+    "count_one": "{{count}} space",
+    "count_other": "{{count}} spaces"
+  },
+  "received": {
+    "title": "Requests received",
+    "empty": "Nobody has asked for one of your spaces yet.",
+    "confirm": "Confirm",
+    "confirmed": "Request confirmed.",
+    "hint": "Confirming sends the access instructions to the renter. Without an answer, the request expires.",
+    "count_one": "{{count}} request",
+    "count_other": "{{count}} requests"
+  },
+  "mine": {
+    "title": "My bookings",
+    "empty": "You have not made any rental request.",
+    "emptyAction": "Find a space",
+    "awaiting": "Waiting for the owner to answer."
+  },
+  "status": {
+    "PENDING": "Pending",
+    "CONFIRMED": "Confirmed",
+    "EXPIRED": "Expired"
+  },
+  "row": {
+    "period": "From {{from}} to {{to}}",
+    "nights_one": "{{count}} night",
+    "nights_other": "{{count}} nights",
+    "requestedOn": "Requested on {{date}}"
+  }
+}

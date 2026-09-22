@@ -1,0 +1,81 @@
+{
+  "list": {
+    "title": "Available spaces",
+    "count_one": "{{count}} space",
+    "count_other": "{{count}} spaces",
+    "empty": "No space matches your search.",
+    "emptyAll": "No space is listed yet.",
+    "emptyAction": "List the first one."
+  },
+  "search": {
+    "label": "Search an address or a box",
+    "placeholder": "Street, city, box number…",
+    "from": "From",
+    "to": "To",
+    "clear": "Clear filters",
+    "panel": "Filter spaces"
+  },
+  "card": {
+    "box": "Box {{box}}",
+    "from": "from",
+    "noPrice": "Price on request",
+    "availableUntil": "Available until {{date}}",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos"
+  },
+  "detail": {
+    "access": "Access",
+    "pricing": "Pricing",
+    "availability": "Availability",
+    "photos": "Photos",
+    "ownerActions": "Manage this listing",
+    "ownerHint": "These actions only succeed if the listing is yours.",
+    "unpublish": "Unpublish",
+    "editPricing": "Edit pricing",
+    "unpublished": "The listing has been unpublished."
+  },
+  "pricing": {
+    "day": "Day",
+    "week": "Week",
+    "month": "Month",
+    "none": "—",
+    "save": "Save pricing",
+    "saved": "Pricing updated.",
+    "atLeastOne": "Set at least one price.",
+    "integer": "A price must be a whole number of cents."
+  },
+  "publish": {
+    "title": "List a space",
+    "subtitle": "Describe the space, set your prices, pick the period.",
+    "step": {
+      "place": "The space",
+      "pricing": "Pricing",
+      "availability": "The period"
+    },
+    "submit": "Publish the listing",
+    "published": "Your listing is live.",
+    "seeIt": "See the spaces"
+  },
+  "field": {
+    "address": "Address",
+    "addressHint": "Number, street, postcode and city.",
+    "box": "Box number",
+    "accessDescription": "Access instructions",
+    "accessHint": "Door code, floor, landmarks. Shared with the renter after confirmation.",
+    "photos": "Photos",
+    "photosHint": "One reference per line. At least one.",
+    "from": "Available from",
+    "to": "Until"
+  },
+  "validation": {
+    "address": "The address is required.",
+    "box": "The box number is required.",
+    "access": "Access instructions are required.",
+    "photos": "Add at least one photo.",
+    "pricing": "Set at least one price.",
+    "from": "Pick a start date.",
+    "to": "Pick an end date.",
+    "reversed": "The end must follow the start.",
+    "past": "That period is already over."
+  }
+}

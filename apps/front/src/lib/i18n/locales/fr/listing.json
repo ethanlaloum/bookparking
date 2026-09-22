@@ -1,0 +1,81 @@
+{
+  "list": {
+    "title": "Places disponibles",
+    "count_one": "{{count}} place",
+    "count_other": "{{count}} places",
+    "empty": "Aucune place ne correspond à votre recherche.",
+    "emptyAll": "Aucune place n’est publiée pour le moment.",
+    "emptyAction": "Publiez la première."
+  },
+  "search": {
+    "label": "Rechercher une adresse ou un box",
+    "placeholder": "Rue, ville, numéro de box…",
+    "from": "Du",
+    "to": "Au",
+    "clear": "Effacer les filtres",
+    "panel": "Filtrer les places"
+  },
+  "card": {
+    "box": "Box {{box}}",
+    "from": "dès",
+    "noPrice": "Tarif sur demande",
+    "availableUntil": "Disponible jusqu’au {{date}}",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos"
+  },
+  "detail": {
+    "access": "Accès",
+    "pricing": "Grille tarifaire",
+    "availability": "Disponibilité",
+    "photos": "Photos",
+    "ownerActions": "Gérer cette annonce",
+    "ownerHint": "Ces actions n’aboutissent que si l’annonce vous appartient.",
+    "unpublish": "Dépublier",
+    "editPricing": "Modifier les tarifs",
+    "unpublished": "L’annonce a été dépubliée."
+  },
+  "pricing": {
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "none": "—",
+    "save": "Enregistrer les tarifs",
+    "saved": "Grille tarifaire mise à jour.",
+    "atLeastOne": "Renseignez au moins un tarif.",
+    "integer": "Un prix doit être un nombre entier de centimes."
+  },
+  "publish": {
+    "title": "Publier une place",
+    "subtitle": "Décrivez la place, fixez vos tarifs, choisissez la période.",
+    "step": {
+      "place": "La place",
+      "pricing": "Les tarifs",
+      "availability": "La période"
+    },
+    "submit": "Publier l’annonce",
+    "published": "Votre annonce est en ligne.",
+    "seeIt": "Voir les places"
+  },
+  "field": {
+    "address": "Adresse",
+    "addressHint": "Numéro, rue, code postal et ville.",
+    "box": "Numéro de box",
+    "accessDescription": "Consignes d’accès",
+    "accessHint": "Digicode, étage, repères. Transmis au locataire après confirmation.",
+    "photos": "Photos",
+    "photosHint": "Une référence par ligne. Au moins une.",
+    "from": "Disponible à partir du",
+    "to": "Jusqu’au"
+  },
+  "validation": {
+    "address": "L’adresse est obligatoire.",
+    "box": "Le numéro de box est obligatoire.",
+    "access": "Les consignes d’accès sont obligatoires.",
+    "photos": "Ajoutez au moins une photo.",
+    "pricing": "Renseignez au moins un tarif.",
+    "from": "Choisissez une date de début.",
+    "to": "Choisissez une date de fin.",
+    "reversed": "La fin doit suivre le début.",
+    "past": "La période est déjà passée."
+  }
+}

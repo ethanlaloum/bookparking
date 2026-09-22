@@ -171,3 +171,27 @@ describe('RequestRental @SPEC-001', () => {
     sut.thenNoRequestRecordedFor({ from: '2026-11-05', to: '2026-11-12' });
   });
 });
+
+describe('RequestRental @SPEC-002', () => {
+  it('records a rental request for an account that already publishes @EX-002-20', async () => {
+    const sut = createRequestRentalSUT();
+    const OTHER_PLACE = {
+      address: '3 avenue Malausséna, 06000 Nice',
+      box: '4',
+    };
+    sut.givenListing({
+      ...OTHER_PLACE,
+      pricing: { day: 1200, week: 6000, month: 18000 },
+    });
+
+    const result = await sut.whenRequestedBy('Marc D.', {
+      ...OTHER_PLACE,
+      from: '2026-10-01',
+      to: '2026-10-03',
+      requestedAt: '2026-09-25',
+    });
+
+    sut.thenRequestIsAccepted(result);
+    sut.thenRequestIsRecordedFor('Marc D.');
+  });
+});

@@ -179,14 +179,24 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   Toute écriture qui contourne `Account.register()` peut insérer une adresse non normalisée
   qu'`accounts_email_unique` ne rapprochera jamais d'un compte existant équivalent.
 
-- **Un `Schema.Struct` `effect` sans annotation `message` fait fuiter la valeur soumise dans la réponse `400`.**
+- **Un `Schema.Struct` `effect` sans annotation `message` — sur le type de base *et* sur chaque raffinement `.pipe(...)` — fait fuiter la valeur soumise dans la réponse `400`.**
   `parseSchemaError` (`shared/error/parseSchemaError.ts`) retombe sur le message par défaut d'`effect`, qui
   compose le texte avec la valeur reçue — un mot de passe envoyé en nombre JSON, ou un corps racine qui
-  n'est pas un objet, repartaient en clair dans le `400` avant `3af4eda` et `04fb79b`. `RegisterAccountSchema.ts`
-  est aujourd'hui le seul schéma du dépôt annoté à la fois sur ses champs et sur le `Struct` englobant ;
-  `PublishListingSchema.ts` n'a aucune annotation.
-  Annoter `.annotations({ message: () => '...' })` sur chaque champ **et** sur le `Struct` englobant de
-  tout nouveau schéma de décodage — jamais seulement les champs.
+  n'est pas un objet, repartaient en clair dans le `400` avant `3af4eda` et `04fb79b`. Un `.pipe(Schema.pattern(...))`
+  ou `.pipe(Schema.minLength(...))` **n'hérite pas** de l'annotation posée sur le type de base qu'il raffine :
+  annoter seulement le raffinement laisse un mismatch de type (un mot de passe soumis en nombre JSON, où le
+  raffinement `minLength` ne s'applique même pas) retomber sur le message par défaut d'`effect`. Cette régression
+  est réapparue puis a été corrigée à l'intérieur de cette story, sur `email` et `password`
+  (`RegisterAccountSchema.ts:6-19`), qui est aujourd'hui le seul schéma du dépôt annoté à la fois sur le type de
+  base et sur chaque raffinement ; `PublishListingSchema.ts` n'a aucune annotation.
+  Annoter `.annotations({ message: () => '...' })` sur le type de base **et**, séparément, sur chaque
+  `.pipe(Schema....)` de raffinement de tout nouveau schéma de décodage — jamais l'un sans l'autre.
+  Ne pas fusionner les deux dans `{ message: () => ({ message: '…', override: true }) }` posé sur le seul
+  raffinement — cette forme existe dans `effect` (`SchemaAST.MessageAnnotation`,
+  `node_modules/effect/dist/dts/SchemaAST.d.ts:54-57`, `effect@3.22.2`) mais couvre le même message pour deux
+  échecs distincts : d'après la sonde exécutée puis supprimée pendant cette story, un mot de passe envoyé en
+  nombre y répondait « Le mot de passe doit contenir au moins 8 caractères », ce qui est faux — le champ n'est
+  même pas une chaîne. Essayé puis écarté pendant cette story.
 
 - **`KnexAccountRepository` ne traduit en `EmailAlreadyUsedError` que la violation de l'index unique
   `accounts_email_unique` (code Postgres `23505`) — toute autre erreur d'insertion remonte telle quelle.**

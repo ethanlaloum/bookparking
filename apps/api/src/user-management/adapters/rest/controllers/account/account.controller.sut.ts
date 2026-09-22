@@ -1,14 +1,25 @@
 import { ModuleMetadata } from '@nestjs/common';
 import { Either } from 'effect/index';
 
+import { UnknownError } from '../../../../../shared/error/errors/UnknownError';
 import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
+import { Account } from '../../../../domain/entities/Account';
 import { RegisterAccount } from '../../../../domain/usecases/register-account/RegisterAccount';
 import { EmailAlreadyUsedError } from '../../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
 import { AccountController } from './account.controller';
 
+interface RegisterAccountInput {
+  email: string;
+  password: string;
+  registeredAt: Date;
+}
+
 export const createAccountControllerSUT = () => {
-  const registerAccount = new UseCaseDouble();
+  const registerAccount = new UseCaseDouble<
+    RegisterAccountInput,
+    Either.Either<Account, EmailAlreadyUsedError | UnknownError>
+  >();
   const authState: TestAuthState = { user: null };
 
   const metadata: ModuleMetadata = {
@@ -24,6 +35,25 @@ export const createAccountControllerSUT = () => {
     givenAccountAlreadyExistsFor(email: string) {
       registerAccount.willResolve(Either.left(new EmailAlreadyUsedError()));
       return { email };
+    },
+
+    givenRegistrationSucceedsFor(email: string) {
+      const account = Account.register({
+        email,
+        passwordHash: 'stub-password-hash',
+        registeredAt: new Date(),
+      });
+      registerAccount.willResolve(Either.right(account));
+      return { account };
+    },
+
+    thenAccountWasRegisteredFor(email: string) {
+      expect(registerAccount.calls).toHaveLength(1);
+      expect(registerAccount.lastCall?.email).toEqual(email);
+    },
+
+    thenNoAccountWasRegistered() {
+      expect(registerAccount.calls).toHaveLength(0);
     },
   };
 };

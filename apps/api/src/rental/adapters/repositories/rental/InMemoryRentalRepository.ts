@@ -4,6 +4,7 @@ import { RentalRequest } from '../../../domain/entities/RentalRequest';
 import {
   RentalRepository,
   RentalRequestSummary,
+  RentalRequestView,
 } from '../../../domain/ports/RentalRepository';
 
 export class InMemoryRentalRepository implements RentalRepository {
@@ -13,6 +14,12 @@ export class InMemoryRentalRepository implements RentalRepository {
   public confirmedRequestIds = new Set<string>();
   public expiredRequestIds = new Set<string>();
   public confirmations: { requestId: string; confirmedAt: Date }[] = [];
+  // Le double n'a pas de jointure : l'adresse, le box et le propriétaire qu'un
+  // vrai SELECT lirait sur `listings` sont déposés ici par le test.
+  public placeByRequestId = new Map<
+    string,
+    { listingId: string; address: string; box: string }
+  >();
 
   public async createRequest(rentalRequest: RentalRequest): Promise<void> {
     this.rentalRequestList.push(rentalRequest);
@@ -52,6 +59,42 @@ export class InMemoryRentalRepository implements RentalRepository {
   ): Promise<void> {
     this.confirmedRequestIds.add(requestId);
     this.confirmations.push({ requestId, confirmedAt });
+  }
+
+  public async findAllByRenter(renterId: string): Promise<RentalRequestView[]> {
+    return this.views().filter((view) => view.renterId === renterId);
+  }
+
+  public async findAllForOwner(ownerId: string): Promise<RentalRequestView[]> {
+    return this.views().filter((view) => view.ownerId === ownerId);
+  }
+
+  private views(): RentalRequestView[] {
+    return this.rentalRequestList.map((request) => {
+      const state = request.toState();
+      const place = this.placeByRequestId.get(request.id);
+      return {
+        id: request.id,
+        listingId: place?.listingId ?? '',
+        address: place?.address ?? state.address,
+        box: place?.box ?? state.box,
+        ownerId: this.ownerIdByRequestId.get(request.id) ?? '',
+        renterId: state.renterId,
+        fromDay: state.days.from,
+        toDay: state.days.to,
+        priceInCents: state.priceInCents,
+        status: this.confirmedRequestIds.has(request.id)
+          ? 'CONFIRMED'
+          : this.expiredRequestIds.has(request.id)
+            ? 'EXPIRED'
+            : 'PENDING',
+        requestedAt: state.requestedAt,
+        confirmedAt:
+          this.confirmations.find(
+            (confirmation) => confirmation.requestId === request.id,
+          )?.confirmedAt ?? null,
+      };
+    });
   }
 
   public async expireRequestsPendingSince(deadline: Date): Promise<number> {

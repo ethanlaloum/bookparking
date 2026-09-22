@@ -15,6 +15,26 @@ export interface RentalRequestSummary {
   isExpired: boolean;
 }
 
+// Ce qu'un tableau de bord montre d'une demande, et qu'aucune entité ne porte :
+// l'adresse et le box vivent sur `listings`, la demande n'en garde qu'une clé.
+// C'est un modèle de lecture, pas un agrégat — il ne se reconstitue pas, il
+// s'affiche. Les deux finders ci-dessous le lisent par jointure, comme
+// `findRequestSummary` lit déjà `owner_id`.
+export interface RentalRequestView {
+  id: string;
+  listingId: string;
+  address: string;
+  box: string;
+  ownerId: string;
+  renterId: string;
+  fromDay: string;
+  toDay: string;
+  priceInCents: number;
+  status: string;
+  requestedAt: Date;
+  confirmedAt: Date | null;
+}
+
 export interface RentalRepository {
   createRequest(
     rentalRequest: RentalRequest,
@@ -39,4 +59,12 @@ export interface RentalRepository {
     deadline: Date,
     trx?: GenericTransaction,
   ): Promise<number>;
+  findAllByRenter(
+    renterId: string,
+    trx?: GenericTransaction,
+  ): Promise<RentalRequestView[]>;
+  findAllForOwner(
+    ownerId: string,
+    trx?: GenericTransaction,
+  ): Promise<RentalRequestView[]>;
 }

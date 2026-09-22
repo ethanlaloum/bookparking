@@ -1,0 +1,260 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------------ */
+/* Bookparking — systeme de design                                          */
+/*                                                                          */
+/* Direction : la signaletique de stationnement europeenne. Le bleu panneau, */
+/* le blanc des marquages au sol, le gris du bitume. Style Swiss Modernism   */
+/* 2.0 : grille 12 colonnes, unite de base 8px, un seul accent, contraste    */
+/* eleve, aucune decoration. Les couleurs semantiques viennent du motif      */
+/* « Booking » : vert disponible, ardoise reserve, rouge destructif.         */
+/* ------------------------------------------------------------------------ */
+
+@theme {
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Bleu panneau — l'accent unique. 600 est la teinte de reference. */
+  --color-signal-50: #eef4ff;
+  --color-signal-100: #d9e6ff;
+  --color-signal-200: #bcd3ff;
+  --color-signal-300: #8eb6ff;
+  --color-signal-400: #598eff;
+  --color-signal-500: #3366f5;
+  --color-signal-600: #1f46e0;
+  --color-signal-700: #1a37b4;
+  --color-signal-800: #1b318f;
+  --color-signal-900: #1c2f71;
+  --color-signal-950: #141e45;
+
+  /* Bitume — neutres froids, jamais de noir pur. */
+  --color-asphalt-50: #f6f7f9;
+  --color-asphalt-100: #ebedf1;
+  --color-asphalt-200: #d3d8e1;
+  --color-asphalt-300: #acb5c6;
+  --color-asphalt-400: #7f8ca6;
+  --color-asphalt-500: #5f6d8b;
+  --color-asphalt-600: #4b5672;
+  --color-asphalt-700: #3e465d;
+  --color-asphalt-800: #363c4f;
+  --color-asphalt-900: #303544;
+  --color-asphalt-950: #14161d;
+
+  /* Marquage au sol — le jaune des lignes, reserve aux etats rares. */
+  --color-marking-400: #f5b73d;
+  --color-marking-500: #e09b14;
+
+  --radius-panel: 0.125rem;
+  --ease-signal: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Tokens semantiques : un seul endroit definit une couleur de role. */
+:root {
+  --bg: var(--color-asphalt-50);
+  --bg-raised: #ffffff;
+  --bg-sunken: var(--color-asphalt-100);
+  --fg: var(--color-asphalt-950);
+  --fg-muted: var(--color-asphalt-600);
+  --fg-subtle: var(--color-asphalt-500);
+  --line: var(--color-asphalt-200);
+  --line-strong: var(--color-asphalt-300);
+  --accent: var(--color-signal-600);
+  --accent-hover: var(--color-signal-700);
+  --on-accent: #ffffff;
+  --ok: #15803d;
+  --ok-bg: #dcfce7;
+  --warn: var(--color-marking-500);
+  --warn-bg: #fef6e0;
+  --danger: #b91c1c;
+  --danger-bg: #fee2e2;
+  --shadow-panel: 0 1px 2px rgb(20 22 29 / 0.06), 0 1px 3px rgb(20 22 29 / 0.04);
+  --shadow-lift: 0 8px 24px -8px rgb(20 22 29 / 0.18), 0 2px 6px rgb(20 22 29 / 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: var(--color-asphalt-950);
+    --bg-raised: #1b1e27;
+    --bg-sunken: #101219;
+    --fg: var(--color-asphalt-50);
+    --fg-muted: var(--color-asphalt-300);
+    --fg-subtle: var(--color-asphalt-400);
+    --line: #2b303d;
+    --line-strong: #3b4252;
+    --accent: var(--color-signal-400);
+    --accent-hover: var(--color-signal-300);
+    --on-accent: var(--color-asphalt-950);
+    --ok: #4ade80;
+    --ok-bg: #0c2c1a;
+    --warn: var(--color-marking-400);
+    --warn-bg: #33270a;
+    --danger: #fca5a5;
+    --danger-bg: #3a1417;
+    --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-lift: 0 8px 28px -8px rgb(0 0 0 / 0.7);
+  }
+}
+
+[data-theme='dark'] {
+  --bg: var(--color-asphalt-950);
+  --bg-raised: #1b1e27;
+  --bg-sunken: #101219;
+  --fg: var(--color-asphalt-50);
+  --fg-muted: var(--color-asphalt-300);
+  --fg-subtle: var(--color-asphalt-400);
+  --line: #2b303d;
+  --line-strong: #3b4252;
+  --accent: var(--color-signal-400);
+  --accent-hover: var(--color-signal-300);
+  --on-accent: var(--color-asphalt-950);
+  --ok: #4ade80;
+  --ok-bg: #0c2c1a;
+  --warn: var(--color-marking-400);
+  --warn-bg: #33270a;
+  --danger: #fca5a5;
+  --danger-bg: #3a1417;
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-lift: 0 8px 28px -8px rgb(0 0 0 / 0.7);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-raised: var(--bg-raised);
+  --color-bg-sunken: var(--bg-sunken);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Un anneau de focus visible partout : la checklist le rend obligatoire et
+     l'ecraser est l'anti-pattern numero un de la categorie accessibilite. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--on-accent);
+  }
+}
+
+@layer utilities {
+  /* Hachures de bordure de chaussee — utilise avec parcimonie, en bandeau. */
+  .bg-hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--line) 0 1px,
+      transparent 1px 9px
+    );
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .animate-rise {
+    animation: rise 0.42s var(--ease-signal) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Aucune animation non essentielle si le systeme la refuse. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Carte                                                                     */
+/* OpenStreetMap n'a pas de fond sombre : on inverse la couche de tuiles puis */
+/* on remet les teintes a l'endroit. Le filtre porte sur la seule couche,     */
+/* jamais sur le conteneur, sinon les marqueurs et les infobulles s'inversent */
+/* avec elle.                                                                */
+/* ------------------------------------------------------------------------ */
+.bookparking-dark-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+}
+
+.leaflet-container {
+  background-color: var(--bg-sunken);
+  font-family: var(--font-sans);
+}
+
+.leaflet-control-attribution {
+  background-color: color-mix(in srgb, var(--bg-raised) 88%, transparent) !important;
+  color: var(--fg-subtle) !important;
+  font-size: 10px;
+}
+
+.leaflet-control-attribution a {
+  color: var(--accent) !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 2px;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem;
+  min-width: 13rem;
+}

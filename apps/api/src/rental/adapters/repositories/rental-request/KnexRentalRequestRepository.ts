@@ -7,6 +7,7 @@ import { RentalRequest } from '../../../domain/entities/RentalRequest';
 import {
   RentalRepository,
   RentalRequestSummary,
+  RentalRequestView,
 } from '../../../domain/ports/RentalRepository';
 import { DatesAlreadyRentedError } from '../../../domain/usecases/request-rental/errors/DatesAlreadyRentedError';
 import { ListingNotPublishedError } from '../../../domain/usecases/request-rental/errors/ListingNotPublishedError';
@@ -18,6 +19,21 @@ import {
   RentalRequestStatus,
   SchemaRentalRequestRepository,
 } from './SchemaRentalRequestRepository';
+
+interface ViewRow {
+  id: string;
+  listing_id: string;
+  renter_id: string;
+  from_day: string;
+  to_day: string;
+  price_in_cents: number | string;
+  status: string;
+  requested_at: Date | string;
+  confirmed_at: Date | string | null;
+  owner_id: string;
+  address: string;
+  box: string;
+}
 
 const EXCLUSION_VIOLATION = '23P01';
 const PLACE_PERIOD_EXCLUSION_CONSTRAINT = 'rental_requests_place_period_excl';
@@ -187,6 +203,75 @@ export class KnexRentalRequestRepository implements RentalRepository {
       });
     if (trx) query.transacting(trx);
     return await query;
+  }
+
+  public async findAllByRenter(
+    renterId: string,
+    trx?: GenericTransaction,
+  ): Promise<RentalRequestView[]> {
+    return this.findViews(
+      `${this.tableName}.renter_id`,
+      renterId,
+      trx,
+    );
+  }
+
+  public async findAllForOwner(
+    ownerId: string,
+    trx?: GenericTransaction,
+  ): Promise<RentalRequestView[]> {
+    return this.findViews(`${LISTINGS_TABLE}.owner_id`, ownerId, trx);
+  }
+
+  // La jointure porte l'adresse et le box, que la demande ne stocke pas. Elle
+  // vise `listings` sans filtrer sur son statut : une demande sur une place
+  // depuis dépubliée reste une demande, et la masquer priverait le propriétaire
+  // de l'historique qui justifie ses revenus.
+  private async findViews(
+    column: string,
+    value: string,
+    trx?: GenericTransaction,
+  ): Promise<RentalRequestView[]> {
+    const query = this.connection(this.tableName)
+      .join(
+        LISTINGS_TABLE,
+        `${this.tableName}.listing_id`,
+        `${LISTINGS_TABLE}.id`,
+      )
+      .where(column, value)
+      .orderBy(`${this.tableName}.requested_at`, 'desc')
+      .select(
+        `${this.tableName}.id as id`,
+        `${this.tableName}.listing_id as listing_id`,
+        `${this.tableName}.renter_id as renter_id`,
+        `${this.tableName}.from_day as from_day`,
+        `${this.tableName}.to_day as to_day`,
+        `${this.tableName}.price_in_cents as price_in_cents`,
+        `${this.tableName}.status as status`,
+        `${this.tableName}.requested_at as requested_at`,
+        `${this.tableName}.confirmed_at as confirmed_at`,
+        `${LISTINGS_TABLE}.owner_id as owner_id`,
+        `${LISTINGS_TABLE}.address as address`,
+        `${LISTINGS_TABLE}.box as box`,
+      );
+    if (trx) query.transacting(trx);
+
+    const rows = (await query) as ViewRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      listingId: row.listing_id,
+      address: row.address,
+      box: row.box,
+      ownerId: row.owner_id,
+      renterId: row.renter_id,
+      fromDay: row.from_day,
+      toDay: row.to_day,
+      priceInCents: Number(row.price_in_cents),
+      status: row.status,
+      requestedAt: new Date(row.requested_at),
+      confirmedAt:
+        row.confirmed_at === null ? null : new Date(row.confirmed_at),
+    }));
   }
 
   // The row stores no address and no box on purpose: copying them here would put

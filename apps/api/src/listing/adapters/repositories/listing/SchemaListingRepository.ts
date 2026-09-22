@@ -6,6 +6,7 @@ export interface SchemaListingRepository {
   place_key: string;
   access_description: string;
   photos: string[];
+  accepted_vehicles: string[];
   day_price_in_cents: number | null;
   week_price_in_cents: number | null;
   month_price_in_cents: number | null;

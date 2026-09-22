@@ -1,0 +1,78 @@
+{
+  "title": "Mon compte",
+  "subtitle": "Votre session et votre mot de passe.",
+  "session": {
+    "title": "Session",
+    "validUntil": "Valide jusqu’au {{date}}",
+    "signOut": "Se déconnecter"
+  },
+  "password": {
+    "title": "Changer le mot de passe",
+    "current": "Mot de passe actuel",
+    "next": "Nouveau mot de passe",
+    "hint": "Au moins 8 caractères.",
+    "submit": "Changer le mot de passe",
+    "changed": "Mot de passe changé."
+  },
+  "validation": {
+    "current": "Saisissez votre mot de passe actuel.",
+    "next": "Le nouveau mot de passe doit contenir au moins 8 caractères."
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "subtitle": "Vos places, vos demandes et ce qu'elles rapportent.",
+    "tab": {
+      "overview": "Vue d'ensemble",
+      "places": "Mes places",
+      "received": "Demandes reçues",
+      "mine": "Mes réservations",
+      "settings": "Réglages"
+    }
+  },
+  "metric": {
+    "revenue": "Revenus confirmés",
+    "revenueHint": "Somme des demandes que vous avez acceptées.",
+    "pending": "En attente d'acceptation",
+    "pendingHint": "Ce que rapporteraient les demandes non encore confirmées.",
+    "places": "Places publiées",
+    "placesHint": "Les annonces dépubliées ne comptent pas.",
+    "nights": "Nuits réservées",
+    "nightsHint": "Sur les demandes confirmées."
+  },
+  "places": {
+    "title": "Mes places",
+    "empty": "Vous n'avez publié aucune place.",
+    "emptyAction": "Publier ma première place",
+    "active": "Publiée",
+    "unpublished": "Dépubliée",
+    "open": "Voir l'annonce",
+    "count_one": "{{count}} place",
+    "count_other": "{{count}} places"
+  },
+  "received": {
+    "title": "Demandes reçues",
+    "empty": "Personne n'a encore demandé l'une de vos places.",
+    "confirm": "Confirmer",
+    "confirmed": "Demande confirmée.",
+    "hint": "Confirmer transmet les consignes d'accès au locataire. Sans réponse, la demande expire.",
+    "count_one": "{{count}} demande",
+    "count_other": "{{count}} demandes"
+  },
+  "mine": {
+    "title": "Mes réservations",
+    "empty": "Vous n'avez fait aucune demande de location.",
+    "emptyAction": "Chercher une place",
+    "awaiting": "En attente de la réponse du propriétaire."
+  },
+  "status": {
+    "PENDING": "En attente",
+    "CONFIRMED": "Confirmée",
+    "EXPIRED": "Expirée"
+  },
+  "row": {
+    "period": "Du {{from}} au {{to}}",
+    "nights_one": "{{count}} nuit",
+    "nights_other": "{{count}} nuits",
+    "requestedOn": "Demandée le {{date}}"
+  }
+}

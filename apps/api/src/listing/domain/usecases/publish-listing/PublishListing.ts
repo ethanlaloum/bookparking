@@ -6,11 +6,13 @@ import {
   Listing,
   ListingAvailability,
   ListingPricing,
+  VehicleType,
 } from '../../entities/Listing';
 import { ListingRepository } from '../../ports/ListingRepository';
 import { PhotoStorage } from '../../ports/PhotoStorage';
 import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
 import { IncompletePricingError } from '../../errors/IncompletePricingError';
+import { UnknownVehicleTypeError } from '../../errors/UnknownVehicleTypeError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
 
@@ -20,6 +22,7 @@ interface Props {
   box: string;
   accessDescription: string;
   photos: string[];
+  acceptedVehicles: VehicleType[];
   pricing: ListingPricing;
   availability: ListingAvailability;
   publishedAt: Date;
@@ -34,6 +37,7 @@ export class PublishListing implements UseCase<
       | IncompletePricingError
       | ListingAlreadyActiveError
       | PhotoStorageFailedError
+      | UnknownVehicleTypeError
       | UnknownError
     >
   >
@@ -52,6 +56,7 @@ export class PublishListing implements UseCase<
       | IncompletePricingError
       | ListingAlreadyActiveError
       | PhotoStorageFailedError
+      | UnknownVehicleTypeError
       | UnknownError
     >
   > {

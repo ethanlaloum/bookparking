@@ -3,6 +3,7 @@ import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpir
 import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
 import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
+import { VehicleType } from '../../entities/Listing';
 
 const MARC = 'Marc D.';
 const PIERRE = 'Pierre L.';
@@ -319,5 +320,36 @@ describe('PublishListing @SPEC-002', () => {
     sut.thenListingIsActive(result);
     sut.thenActiveListingOf('Léa T.', LEA_PLACE);
     sut.thenNoAccountActivationWasNeeded();
+  });
+
+  it('publishes a listing carrying the vehicles the place accepts', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenOwner({ name: MARC });
+
+    const result = await sut.whenPublishing({
+      acceptedVehicles: [VehicleType.VELO, VehicleType.MOTO],
+    });
+
+    sut.thenAcceptedVehiclesAre(result, [VehicleType.VELO, VehicleType.MOTO]);
+  });
+
+  it('publishes a listing that declares no vehicle at all', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenOwner({ name: MARC });
+
+    const result = await sut.whenPublishing({ acceptedVehicles: [] });
+
+    sut.thenAcceptedVehiclesAre(result, []);
+  });
+
+  it('refuses a listing naming a vehicle that does not exist', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenOwner({ name: MARC });
+
+    const result = await sut.whenPublishing({
+      acceptedVehicles: ['tracteur' as VehicleType],
+    });
+
+    sut.thenRefusalMessageIs(result, "Ce type de véhicule n'existe pas");
   });
 });

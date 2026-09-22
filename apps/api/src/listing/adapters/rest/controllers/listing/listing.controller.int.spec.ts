@@ -200,9 +200,14 @@ describe('ListingController @SPEC-001', () => {
       const response = await http().get('/listing');
 
       expect(response.status).toEqual(200);
-      expect(response.body).toHaveLength(2);
-      expect(response.body[0].address).toEqual('12 rue Barla, 06300 Nice');
-      expect(response.body[1].box).toEqual('4');
+      expect(response.body.listings).toHaveLength(2);
+      expect(response.body.listings[0].address).toEqual(
+        '12 rue Barla, 06300 Nice',
+      );
+      expect(response.body.listings[1].box).toEqual('4');
+      expect(response.body.total).toEqual(2);
+      expect(response.body.page).toEqual(1);
+      expect(response.body.size).toEqual(20);
     });
 
     it('never exposes the access description in the list', async () => {
@@ -230,7 +235,56 @@ describe('ListingController @SPEC-001', () => {
       const response = await http().get('/listing');
 
       expect(response.status).toEqual(200);
-      expect(response.body).toEqual([]);
+      expect(response.body).toEqual({
+        listings: [],
+        total: 0,
+        page: 1,
+        size: 20,
+      });
+    });
+
+    it('hands the place, the requested period and the page over to the use case', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListings([]);
+
+      const response = await http().get(
+        '/listing?place=nice&from=2026-10-05&to=2026-10-07&page=2&size=50',
+      );
+
+      expect(response.status).toEqual(200);
+      sut.thenListingsWereListedWith({
+        place: 'nice',
+        from: new Date('2026-10-05T00:00:00.000Z'),
+        to: new Date('2026-10-07T00:00:00.000Z'),
+        page: 2,
+        size: 50,
+      });
+    });
+
+    it('leaves every criterion undefined when the query carries none', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListings([]);
+
+      await http().get('/listing');
+
+      sut.thenListingsWereListedWith({
+        place: undefined,
+        from: undefined,
+        to: undefined,
+        page: undefined,
+        size: undefined,
+      });
+    });
+
+    it('refuses a malformed date without reading a single listing', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListings([]);
+
+      const response = await http().get('/listing?from=05/10/2026');
+
+      expect(response.status).toEqual(400);
+      expect(JSON.stringify(response.body)).not.toContain('05/10/2026');
+      sut.thenNoListingWasListed();
     });
   });
 });

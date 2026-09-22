@@ -31,8 +31,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**40 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-22) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
-| int-repo + int-http (**5 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-21 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
+| unit (**79 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-22) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| int-repo + int-http (**6 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-22 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
 ## Things that will bite you
@@ -234,6 +234,30 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   `RegisterAccountSchema` ; un motif de validation ajouté côté schéma peut donc refuser une adresse que
   le domaine accepte sans faire échouer ce test-là (`RegisterAccountSchema.ts:3`).
   Toute règle observable aux deux barreaux a besoin d'un cas aux deux barreaux — voir `docs/plan/SPEC-002.md`, note T7.
+
+- **`Schema.optional(x)` compose une union avec `undefined` dont la branche `undefined` n'est annotable par aucun message — son refus réémet la valeur soumise en clair.**
+  Sonde exécutée puis supprimée pendant SPEC-003 : `Schema.Struct({ from: Schema.optional(jour) })`
+  répond, sur `?from=05/10/2026`, « from: DATE-INVALIDE,from: Expected undefined, actual "05/10/2026" ».
+  Annoter la `PropertySignature` (`Schema.optional(x).annotations(...)`) ne change rien, et envelopper
+  dans un `Schema.UndefinedOr` annoté ajoute une troisième copie de la valeur. Seul
+  `Schema.optionalWith(x, { exact: true })` n'engendre pas cette union et ne réémet rien
+  (`ListListingsQuerySchema.ts`, l'unique champ optionnel décodé du dépôt).
+  C'est la même famille de fuite que l'annotation manquante sur un `Schema.Struct` ci-dessus : un champ
+  optionnel d'un nouveau schéma de décodage s'écrit `optionalWith(..., { exact: true })`, jamais
+  `Schema.optional(...)`.
+
+- **`normalizeForSearch` et `normalizePlacePart` vivent dans le même fichier et ne doivent jamais fusionner.**
+  `normalizeForSearch` (`Listing.ts`) supprime les diacritiques (`NFD` + `\p{Diacritic}`) pour que
+  `malaussena` trouve « Malausséna » (SPEC-003, EX-02) ; `normalizePlacePart` compose la `place_key`,
+  recopiée à l'identique dans une migration SQL (voir le piège plus haut) et ne les supprime pas.
+  Faire servir l'une à l'usage de l'autre écrirait des `place_key` que le runtime ne produit jamais.
+
+- **`GET /listing` rend une enveloppe, pas un tableau — et filtre en mémoire, au-dessus de `findAllActive()`.**
+  La réponse est `{ listings, total, page, size }` (`ListListingsResponseDto.ts`), `size` valant 20 par
+  défaut et 100 au plus (`ListActiveListings.ts`). Le filtre par lieu et par période est appliqué par
+  `ListActiveListings` sur toutes les annonces actives chargées, jamais par une clause SQL — voir `ADR-009`
+  pour l'alternative écartée. Aucun index ne porte `address` : le coût croît avec le nombre d'annonces
+  actives (`docs/specs/SPEC-003-chercher-une-place.md`, §11).
 
 ## Frozen versions — do not bump without reading the reason
 

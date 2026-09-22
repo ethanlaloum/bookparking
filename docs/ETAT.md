@@ -1,10 +1,11 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-22 16:17 — ne pas éditer à la main._
+_Généré le 2026-09-22 17:00 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|
 | SPEC-001 Publier une place de parking en location | ✅ 16/09 | ✅ 17/09 | ✅ 17/09 | 🔄 9/12 stories · 📝 registre à relire | 45 exemples |
 | SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 12/13 stories | 43 exemples |
+| SPEC-003 Chercher une place sur la page d'accueil | — | ✅ 22/09 | ✅ 22/09 | — | 10 exemples |
 
 ## Builds autonomes
 

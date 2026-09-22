@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -26,7 +27,15 @@ import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-lis
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
 import { ListingMapper } from '../../../mappers/ListingMapper';
 import { GetListingResponseDto } from '../../dtos/GetListingResponseDto';
+import { ListListingsQuerySchema } from '../../dtos/ListListingsQuerySchema';
+import { ListListingsResponseDto } from '../../dtos/ListListingsResponseDto';
 import { PublishListingSchema } from '../../dtos/PublishListingSchema';
+
+const toUtcDay = (day: string | undefined): Date | undefined =>
+  day === undefined ? undefined : new Date(`${day}T00:00:00.000Z`);
+
+const toPositiveInteger = (value: string | undefined): number | undefined =>
+  value === undefined ? undefined : Number(value);
 
 @Controller('listing')
 export class ListingController {
@@ -103,8 +112,26 @@ export class ListingController {
   }
 
   @Get()
-  public async listListings(): Promise<GetListingResponseDto[]> {
-    const result = await this.listActiveListingsUseCase.execute();
+  public async listListings(
+    @Query() query: unknown,
+  ): Promise<ListListingsResponseDto> {
+    const decode = Schema.decodeUnknownEither(ListListingsQuerySchema)(query);
+
+    if (Either.isLeft(decode))
+      throw new HttpException(
+        parseSchemaError(decode.left),
+        HttpStatus.BAD_REQUEST,
+      );
+
+    const criteria = decode.right;
+
+    const result = await this.listActiveListingsUseCase.execute({
+      place: criteria.place,
+      from: toUtcDay(criteria.from),
+      to: toUtcDay(criteria.to),
+      page: toPositiveInteger(criteria.page),
+      size: toPositiveInteger(criteria.size),
+    });
 
     if (Either.isLeft(result))
       throw new HttpException(
@@ -112,9 +139,7 @@ export class ListingController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
 
-    return result.right.map((listing) =>
-      ListingMapper.toGetListingDto(listing),
-    );
+    return ListingMapper.toListListingsDto(result.right);
   }
 
   @Get(':id')

@@ -39,15 +39,21 @@ POST /account            créer un compte
 POST /account/password   changer son mot de passe
 POST /session            se connecter
 POST /listing            publier une annonce
-GET  /listing            lister toutes les annonces actives
+GET  /listing            lister les annonces actives · ?place= ?from= ?to= ?page= ?size=
 GET  /listing/:id        lire UNE annonce, par son identifiant
 POST /rental-request     demander une place
 ```
 
 Conséquences concrètes en testant :
 
-- **Aucune recherche.** `GET /listing` rend *toutes* les annonces actives, sans filtre : ni par ville,
-  ni par adresse, ni par dates. Sans pagination non plus — la liste grossit sans limite.
+- **La recherche ne connaît que le lieu et les dates.** `GET /listing` accepte `place` (cherché dans
+  l'adresse, insensible à la casse et aux accents), `from` et `to` (`AAAA-MM-JJ`, la disponibilité doit
+  couvrir entièrement la période, bornes comprises), `page` et `size` (20 par défaut, 100 au plus).
+  Aucun tri autre que la date de publication, aucune recherche par prix ni par distance.
+- **Une place déjà louée sur les dates demandées apparaît quand même.** L'exclure demanderait de croiser
+  les demandes confirmées ; c'est explicitement hors périmètre (`docs/specs/SPEC-003-chercher-une-place.md`, §2).
+- **La réponse de `GET /listing` est une enveloppe**, pas un tableau :
+  `{ "listings": [...], "total": 42, "page": 1, "size": 20 }`.
 - **`POST /listing` ne rend pas l'identifiant** de l'annonce créée : il répond `201` sans corps. Pour
   relire ce qu'on vient de publier, il faut aller le chercher en base :
 
@@ -60,8 +66,10 @@ Conséquences concrètes en testant :
   ne le monte.
 
 `GET /listing` a été ajoutée **hors spec**, à la demande, parce que c'est la première chose que le
-site affichera. Elle est testée (4 unit, 1 int-repo, 3 int-http) mais aucun exemple de SPEC-001 ni de
-SPEC-002 ne la décrit : le filtrage, le tri et la pagination restent à spécifier.
+site affichera ; son filtrage et sa pagination sont depuis décrits par `SPEC-003` (10 exemples, tous au
+barreau `unit`). Elle est testée par 14 tests unitaires, 1 `int-repo` et 6 `int-http` — mais ces six-là
+ne portent aucun `@EX` : aucun exemple ne décrit la route elle-même, seulement la liste qu'elle rend.
+Le tri reste à spécifier.
 
 Le reste des manques est dans le même cas — rien dans les deux specs ne décrit une recherche, un
 retour d'identifiant à la publication, ou une route de dépublication.

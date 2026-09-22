@@ -77,7 +77,22 @@ Authorization: Bearer {{token}}
 ### 5 · Lister toutes les places disponibles, sans compte · attendu 200
 # C'est la route de la page d'accueil du site : toutes les annonces actives.
 # Une annonce dépubliée en disparaît. La description d'accès n'y est jamais.
+# La réponse est une enveloppe : { "listings": [...], "total", "page", "size" }.
 GET {{baseUrl}}/listing
+
+### 5b · Chercher par lieu · attendu 200 · SPEC-003 EX-01, EX-02
+# `place` est cherché dans l'adresse, sans tenir compte de la casse ni des accents :
+# `nice`, `NICE` et `Nice` trouvent la même chose, et `malaussena` trouve « Malausséna ».
+GET {{baseUrl}}/listing?place=nice
+
+### 5c · Chercher sur une période · attendu 200 · SPEC-003 EX-04 à EX-07
+# Ne garde que les annonces dont la disponibilité couvre entièrement ces deux jours, bornes comprises.
+# ⚠ Une place déjà louée sur ces dates apparaît quand même — c'est hors périmètre de SPEC-003.
+GET {{baseUrl}}/listing?from=2026-10-05&to=2026-10-07
+
+### 5d · Deuxième page · attendu 200 · SPEC-003 EX-08, EX-09
+# 20 annonces par page par défaut, 100 au plus. `total` compte toujours la liste entière.
+GET {{baseUrl}}/listing?place=nice&from=2026-10-05&to=2026-10-07&page=2&size=5
 
 > {%
     client.test("la liste est publique et ne fuit rien", function() {

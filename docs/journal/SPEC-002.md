@@ -2,12 +2,34 @@
 spec: SPEC-002
 langue: fr
 entrees:
+  - { us: US-014, date: null, titre: "Une adresse trop longue ou portant certains caractères est refusée à l'inscription" }
   - { us: US-013, date: null, titre: "Ton mot de passe et ton adresse sont vérifiés avant la création de ton compte" }
   - { us: US-012, date: null, titre: "Une adresse déjà utilisée est refusée à l'inscription" }
   - { us: US-011, date: null, titre: "Créer un compte avec une adresse e-mail et un mot de passe" }
 ---
 
 # Comptes et authentification — ce qui change pour toi
+
+## Une adresse trop longue ou portant certains caractères est refusée à l'inscription
+
+**Ce qui change** — Ton adresse e-mail ne peut plus dépasser 254 caractères, et elle ne peut plus
+porter de guillemet simple ('), de guillemet double ("), d'antislash (\) ou de point-virgule (;).
+
+**Pour qui** — Les loueurs et les conducteurs qui créent un compte.
+
+**Ce que tu vois maintenant** — Si ton adresse dépasse 254 caractères, ton inscription est refusée et
+aucun compte n'est créé ; à 254 caractères ou moins, elle passe normalement. Si ton adresse porte un
+guillemet simple, un guillemet double, un antislash ou un point-virgule, ton inscription est refusée
+de la même façon et aucun compte n'est créé.
+
+**Ce qu'il faut faire différemment** — Choisis une adresse d'au plus 254 caractères, sans guillemet,
+sans antislash et sans point-virgule : une adresse comme `o'brien@example.com` ne peut pas s'inscrire
+telle quelle.
+
+**Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
+l'instant.
+
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-014","ex":["EX-35","EX-36","EX-37","EX-39","EX-40"],"pr":null} -->
 
 ## Ton mot de passe et ton adresse sont vérifiés avant la création de ton compte
 

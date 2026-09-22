@@ -27,7 +27,7 @@ e-mail complète avec un `@` et un domaine.
 **Depuis le** — pas encore : cette règle n'est accessible depuis aucune application publiée pour
 l'instant.
 
-<!-- jp-way:journal {"spec":"SPEC-002","story":"US-013","ex":["EX-05","EX-06","EX-09","EX-34","EX-38"],"pr":null} -->
+<!-- jp-way:journal {"spec":"SPEC-002","story":"US-013","ex":["EX-05","EX-06","EX-09","EX-34","EX-38"],"pr":40} -->
 
 ## Une adresse déjà utilisée est refusée à l'inscription
 

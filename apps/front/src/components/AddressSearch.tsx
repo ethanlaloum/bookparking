@@ -24,9 +24,11 @@ import { Button } from './ui/button';
 interface AddressSearchProps {
   value: SearchedAddress | null;
   onChoose: (address: SearchedAddress | null) => void;
+  /** Rendu par l'appelant, sous la barre — voir le bloc de rendu ci-dessous. */
+  onQueryStateChange?: (state: { tooShort: boolean }) => void;
 }
 
-export const AddressSearch = ({ value, onChoose }: AddressSearchProps) => {
+export const AddressSearch = ({ value, onChoose, onQueryStateChange }: AddressSearchProps) => {
   const { t } = useTranslation('listing');
   const dispatch = useAppDispatch();
 
@@ -86,16 +88,23 @@ export const AddressSearch = ({ value, onChoose }: AddressSearchProps) => {
   };
 
   const expanded = open && suggestions.length > 0;
-  const tooShort = query.trim().length > 0 && query.trim().length < MINIMUM_QUERY_LENGTH;
 
   return (
-    <div ref={containerRef} className="relative">
+    /*
+     * La colonne fait exactement la même hauteur que celles des sélecteurs :
+     * un libellé, puis un contrôle. L'aide et l'adresse retenue sont rendues
+     * par l'appelant sous la barre entière — les garder ici faisait grandir
+     * cette seule colonne dès que le texte passait sur deux lignes, et
+     * désalignait toute la rangée.
+     */
+    <div ref={containerRef} className="flex min-w-0 flex-col gap-1.5">
       <label htmlFor={inputId} className="text-sm font-medium text-fg">
         {t('mapSearch.label')}
       </label>
 
-      <div className="mt-1.5 flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex min-w-0 gap-2">
+        {/* Ancre de la liste : elle se pose sous l'entrée, sans décalage codé en dur. */}
+        <div className="relative min-w-0 flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle"
             aria-hidden="true"
@@ -117,61 +126,64 @@ export const AddressSearch = ({ value, onChoose }: AddressSearchProps) => {
             onChange={(event) => {
               setQuery(event.target.value);
               setOpen(true);
-              // Les suggestions ne changent qu'à la suite d'une frappe : c'est
-              // donc ici que le surlignage se remet à zéro, et non dans un
-              // effet qui réagirait au tableau reçu — un `setState` synchrone
-              // dans un effet déclenche des rendus en cascade.
               setHighlighted(-1);
+              onQueryStateChange?.({
+                tooShort:
+                  event.target.value.trim().length > 0 &&
+                  event.target.value.trim().length < MINIMUM_QUERY_LENGTH,
+              });
               dispatch(addressQueryChanged({ query: event.target.value }));
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={onKeyDown}
             className="min-h-11 w-full rounded-[2px] border border-line-strong bg-bg-raised pr-3 pl-9 text-fg placeholder:text-fg-subtle transition-colors duration-150 focus:border-accent"
           />
+
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label={t('mapSearch.suggestions')}
+            hidden={!expanded}
+            className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-[2px] border border-line-strong bg-bg-raised shadow-[var(--shadow-lift)]"
+          >
+            {suggestions.map((suggestion, index) => (
+              <li
+                key={suggestion.id}
+                id={`${listId}-option-${String(index)}`}
+                role="option"
+                aria-selected={index === highlighted}
+                onMouseEnter={() => setHighlighted(index)}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  choose(suggestion);
+                }}
+                className={cn(
+                  'flex cursor-pointer items-center gap-2 px-3.5 py-2.5 text-sm',
+                  index === highlighted ? 'bg-accent text-on-accent' : 'text-fg',
+                )}
+              >
+                <MapPin
+                  className={cn('size-4 shrink-0', index === highlighted ? '' : 'text-accent')}
+                  aria-hidden="true"
+                />
+                {suggestion.label}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {(value !== null || query !== '') && (
-          <Button variant="outline" onClick={clear} aria-label={t('mapSearch.clear')}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={clear}
+            aria-label={t('mapSearch.clear')}
+            className="shrink-0"
+          >
             <X className="size-4" aria-hidden="true" />
           </Button>
         )}
       </div>
-
-      <p id={hintId} className="mt-1.5 text-xs text-fg-subtle">
-        {tooShort || value === null ? t('mapSearch.hint') : value.label}
-      </p>
-
-      <ul
-        id={listId}
-        role="listbox"
-        aria-label={t('mapSearch.suggestions')}
-        hidden={!expanded}
-        className="absolute inset-x-0 top-[4.6rem] z-20 overflow-hidden rounded-[2px] border border-line-strong bg-bg-raised shadow-[var(--shadow-lift)]"
-      >
-        {suggestions.map((suggestion, index) => (
-          <li
-            key={suggestion.id}
-            id={`${listId}-option-${String(index)}`}
-            role="option"
-            aria-selected={index === highlighted}
-            onMouseEnter={() => setHighlighted(index)}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              choose(suggestion);
-            }}
-            className={cn(
-              'flex cursor-pointer items-center gap-2 px-3.5 py-2.5 text-sm',
-              index === highlighted ? 'bg-accent text-on-accent' : 'text-fg',
-            )}
-          >
-            <MapPin
-              className={cn('size-4 shrink-0', index === highlighted ? '' : 'text-accent')}
-              aria-hidden="true"
-            />
-            {suggestion.label}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 };

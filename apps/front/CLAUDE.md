@@ -147,6 +147,22 @@ change côté api casse la compilation du front plutôt que sa production.
   recherche, c'est vider puis valider, comme dans n'importe quel formulaire. Un bouton qui promet plus
   que ce qu'il fait est un défaut, pas un raccourci.
 
+- **Une rangée de champs s'aligne par sa structure, jamais par une marge calibrée.**
+  `SearchBar` donne à chaque colonne la même forme — un libellé, puis un contrôle de 44 px — et la
+  colonne du bouton porte une étiquette vide qui tient la place du libellé. Mesuré : les quatre
+  contrôles partagent le même `top` au pixel.
+  La version précédente s'appuyait sur `items-end` et sur un `lg:mb-[1.625rem]` réglé à la main : dès
+  que l'aide de l'adresse passait sur deux lignes, la colonne grandissait, son contenu remontait, et
+  toute la rangée se décalait de près de 50 px. Une marge magique se règle pour un texte donné, et se
+  dérègle au premier changement de libellé ou de traduction.
+  Corollaire : `AddressSearch` ne rend **ni l'aide ni l'adresse retenue** — c'est l'appelant qui les
+  affiche sous la barre entière. Un texte de hauteur variable n'a rien à faire dans une cellule de
+  grille alignée.
+
+- **La liste de suggestions s'ancre en `top-full` sous l'entrée**, pas à un décalage codé en dur.
+  Elle valait `top-[4.6rem]`, mesuré depuis le haut de la colonne — donc faux dès que la colonne
+  changeait de hauteur.
+
 - **La page `/recherche` s'appelait `/carte`.** Le composant de carte, lui, reste `ListingsMap` : c'est
   la page qui a changé de rôle, pas la carte.
 

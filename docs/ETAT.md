@@ -1,10 +1,10 @@
 # État du cycle — Bookparking
-_Généré le 2026-09-22 15:49 — ne pas éditer à la main._
+_Généré le 2026-09-22 15:52 — ne pas éditer à la main._
 
 | Sujet | Brainstorm | Spec | Plan | Build | Exemples |
 |---|---|---|---|---|---|
 | SPEC-001 Publier une place de parking en location | ✅ 16/09 | ✅ 17/09 | ✅ 17/09 | 🔄 9/12 stories · 📝 registre à relire | 45 exemples |
-| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 5/13 stories | 43 exemples |
+| SPEC-002 Comptes et authentification des loueurs et conducteurs | ✅ 19/09 | ✅ 20/09 | ✅ 20/09 | 🔄 6/13 stories | 43 exemples |
 
 ## Builds autonomes
 
@@ -22,7 +22,6 @@ _Généré le 2026-09-22 15:49 — ne pas éditer à la main._
 | #32 [US-019] Changer son mot de passe | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/32 |
 | #31 [US-018] Ralentir par origine et par fenêtre | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/31 |
 | #30 [US-017] Ralentir les essais de connexion | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/30 |
-| #29 [US-016] Prolonger et expirer le jeton | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/29 |
 | #23 [SPEC-002] Comptes et authentification des loueurs et conducteurs | — | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/23 |
 | #18 [DETTE] Purger les données personnelles : annonces dépubliées et demandes sans suite | api | ⚪ todo | https://github.com/ethanlaloum/bookparking/issues/18 |
 | #11 [US-010] Parcours de publication d'une place | e2e | 🔴 blocked | https://github.com/ethanlaloum/bookparking/issues/11 |
@@ -38,4 +37,4 @@ _Généré le 2026-09-22 15:49 — ne pas éditer à la main._
 ## Reprises possibles
 
 - `/jp-way:build SPEC-001` — 3 story(ies) restante(s)
-- `/jp-way:build SPEC-002` — 8 story(ies) restante(s)
+- `/jp-way:build SPEC-002` — 7 story(ies) restante(s)

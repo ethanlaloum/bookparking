@@ -7,10 +7,10 @@ export const RegisterAccountSchema = Schema.Struct({
   email: Schema.String.annotations({
     message: () => 'Adresse e-mail invalide',
   }).pipe(
-    Schema.pattern(EMAIL_PATTERN, {
+    Schema.maxLength(MAX_EMAIL_LENGTH, {
       message: () => 'Adresse e-mail invalide',
     }),
-    Schema.maxLength(MAX_EMAIL_LENGTH, {
+    Schema.pattern(EMAIL_PATTERN, {
       message: () => 'Adresse e-mail invalide',
     }),
   ),

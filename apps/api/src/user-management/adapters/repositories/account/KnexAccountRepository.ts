@@ -40,6 +40,19 @@ export class KnexAccountRepository implements AccountRepository {
     }
   }
 
+  public async findByEmail(
+    email: string,
+    trx?: GenericTransaction,
+  ): Promise<Account | null> {
+    const query = this.connection<SchemaAccountRepository>(this.tableName)
+      .where({ email: Account.normalizeEmail(email) })
+      .first();
+    if (trx) query.transacting(trx);
+    const row = await query;
+    if (!row) return null;
+    return KnexAccountRepository.toEntity(row);
+  }
+
   private static toRow(account: Account): AccountRow {
     const state = account.toState();
     return {
@@ -48,5 +61,14 @@ export class KnexAccountRepository implements AccountRepository {
       password_hash: state.passwordHash,
       registered_at: state.registeredAt,
     };
+  }
+
+  private static toEntity(row: SchemaAccountRepository): Account {
+    return Account.fromState({
+      id: row.id,
+      email: row.email,
+      passwordHash: row.password_hash,
+      registeredAt: new Date(row.registered_at),
+    });
   }
 }

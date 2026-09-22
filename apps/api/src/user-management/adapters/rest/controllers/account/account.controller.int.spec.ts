@@ -10,6 +10,8 @@ const SEVEN_CHAR_PASSWORD = 'Prom06!';
 const EIGHT_CHAR_PASSWORD = 'Prom06!!';
 const MARC_PASSWORD = 'Barla2026!';
 const ADDRESS_WITHOUT_AT_SIGN = 'marc.d';
+const MISTYPED_PASSWORD = 12345678;
+const NON_OBJECT_BODY = ['lea.t@example.com', 'Promenade06!'];
 const ADDRESS_OF_254_CHARACTERS = `${'a'.repeat(242)}@example.com`;
 const ADDRESS_OF_255_CHARACTERS = `${'a'.repeat(243)}@example.com`;
 const ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER = "marc'--@example.com";
@@ -87,6 +89,27 @@ describe('AccountController @SPEC-002', () => {
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
     });
+    it('keeps a mistyped password out of the validation response @EX-002-41', async () => {
+      const response = await http()
+        .post('/account')
+        .send({ email: LEA_EMAIL, password: MISTYPED_PASSWORD });
+
+      expect(response.status).toEqual(400);
+      expect(JSON.stringify(response.body)).not.toContain('12345678');
+      sut.thenNoAccountWasRegistered();
+    });
+
+    it('keeps a non-object request body out of the validation response @EX-002-42', async () => {
+      const response = await http()
+        .post('/account')
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify(NON_OBJECT_BODY));
+
+      expect(response.status).toEqual(400);
+      expect(JSON.stringify(response.body)).not.toContain('Promenade06!');
+      sut.thenNoAccountWasRegistered();
+    });
+
     it('refuses an address of 255 characters @EX-002-36', async () => {
       const response = await http()
         .post('/account')

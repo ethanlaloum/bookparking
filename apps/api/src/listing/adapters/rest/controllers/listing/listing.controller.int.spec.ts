@@ -167,4 +167,22 @@ describe('ListingController @SPEC-001', () => {
       ]);
     });
   });
+  describe('GET /listing/:id @SPEC-002', () => {
+    it('serves a listing to a visitor with no account @EX-002-11', async () => {
+      sut.authState.user = null;
+      sut.givenActiveListing({
+        id: LISTING_ID,
+        address: '12 rue Barla, 06300 Nice',
+        box: '12',
+      });
+
+      const response = await http().get(`/listing/${LISTING_ID}`);
+
+      expect(response.status).toEqual(200);
+      expect(response.body.address).toEqual('12 rue Barla, 06300 Nice');
+      expect(response.body.box).toEqual('12');
+      expect(response.body.photos).not.toEqual(undefined);
+      expect(response.body.pricing).not.toEqual(undefined);
+    });
+  });
 });

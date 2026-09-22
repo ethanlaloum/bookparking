@@ -1,12 +1,12 @@
 ---
 spec: SPEC-002
 statut: valide
-revision: 4
+revision: 5
 valide_le: 2026-09-20
 valide_par: JP
-derive_de: SPEC-002@cd56f5e83c7e23e4008c5bd864b63789988566e2
+derive_de: SPEC-002@40748525c4be10c63f73ed11a8347e696c3d884b
 apps: [api]
-cas: 43
+cas: 44
 stories: 12
 ---
 
@@ -17,10 +17,10 @@ stories: 12
 | Barreau | api | Cas | Exemples |
 |---|---|---|---|
 | unit | 26 | 26 | 26 |
-| int-repo | 1 | 1 | 1 |
+| int-repo | 2 | 2 | 2 |
 | int-http | 16 | 16 | 15 |
 | journey | 0 | 0 | 0 |
-| **total** | **43** | **43** | 42 exemples, 0 sans cas |
+| **total** | **44** | **44** | 43 exemples, 0 sans cas |
 
 **Écarts avec la suggestion de la spec**
 
@@ -84,6 +84,7 @@ requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nom
 | EX-14 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | issues a token valid for seven days |
 | EX-17 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | refuses a wrong password without saying the account exists |
 | EX-18 | unit | api | US-015 | `apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts` | refuses an unknown address with the same error as a wrong password |
+| EX-43 | int-repo | api | US-015 | `apps/api/src/user-management/adapters/repositories/account/KnexAccountRepository.int.spec.ts` | reads an account back by its address whatever its casing |
 | EX-15 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | extends the token when it is used before it expires |
 | EX-16 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | refuses a token left unused for seven days |
 | EX-19 | unit | api | US-016 | `apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts` | refuses a token 168 hours old though the local clock shows less than seven days |
@@ -128,6 +129,7 @@ requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nom
 <!-- jp-way:cas {"ex":"EX-14","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"issues a token valid for seven days","empreinte":"e62194d6"} -->
 <!-- jp-way:cas {"ex":"EX-17","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"refuses a wrong password without saying the account exists","empreinte":"2377fa7e"} -->
 <!-- jp-way:cas {"ex":"EX-18","barreau":"unit","app":"api","story":"US-015","chemin":"apps/api/src/user-management/domain/usecases/sign-in/SignIn.unit.spec.ts","titre":"refuses an unknown address with the same error as a wrong password","empreinte":"c93f0dcb"} -->
+<!-- jp-way:cas {"ex": "EX-43", "barreau": "int-repo", "app": "api", "story": "US-015", "chemin": "apps/api/src/user-management/adapters/repositories/account/KnexAccountRepository.int.spec.ts", "titre": "reads an account back by its address whatever its casing", "empreinte": "2cf28dbb"} -->
 <!-- jp-way:cas {"ex":"EX-15","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"extends the token when it is used before it expires","empreinte":"b140c8eb"} -->
 <!-- jp-way:cas {"ex":"EX-16","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"refuses a token left unused for seven days","empreinte":"6ca2359a"} -->
 <!-- jp-way:cas {"ex":"EX-19","barreau":"unit","app":"api","story":"US-016","chemin":"apps/api/src/user-management/domain/services/slidingAccessToken.unit.spec.ts","titre":"refuses a token 168 hours old though the local clock shows less than seven days","empreinte":"55b7ef5d"} -->
@@ -157,7 +159,7 @@ requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nom
 | 2 | US-012 | Refuser une adresse déjà utilisée | api | unit int-http | EX-02 EX-04 EX-07 EX-39 | #26 |
 | 3 | US-013 | Valider l'adresse et le mot de passe à l'inscription | api | int-http | EX-05 EX-06 EX-09 EX-34 EX-38 | #24 |
 | 4 | US-014 | Borner et assainir l'adresse | api | unit int-http | EX-35 EX-36 EX-37 EX-39 EX-40 | #27 |
-| 5 | US-015 | Se connecter et obtenir un jeton | api | unit | EX-14 EX-17 EX-18 | #28 |
+| 5 | US-015 | Se connecter et obtenir un jeton | api | unit int-repo | EX-14 EX-17 EX-18 EX-43 | #28 |
 | 6 | US-016 | Prolonger et expirer le jeton | api | unit | EX-15 EX-16 EX-19 | #29 |
 | 7 | US-017 | Ralentir les essais de connexion | api | unit | EX-22 EX-23 EX-24 EX-25 | #30 |
 | 8 | US-018 | Ralentir par origine et par fenêtre | api | unit | EX-26 EX-27 EX-28 | #31 |

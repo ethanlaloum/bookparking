@@ -20,4 +20,12 @@ export class InMemoryAccountRepository implements AccountRepository {
       throw new EmailAlreadyUsedError();
     this.accountList.push(account);
   }
+
+  public async findByEmail(email: string): Promise<Account | null> {
+    if (this.failing) throw new Error('accounts repository is unreachable');
+    const account = this.accountList.find((stored) =>
+      stored.isIdentifiedBy(email),
+    );
+    return account ?? null;
+  }
 }

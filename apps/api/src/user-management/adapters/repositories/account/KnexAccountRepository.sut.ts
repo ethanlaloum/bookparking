@@ -51,6 +51,28 @@ export const createKnexAccountRepositorySUT = () => {
       expect(outcome).toBeInstanceOf(ErrorClass);
     },
 
+    async whenReadingAccountFor(email: string): Promise<Account | null> {
+      return context.accountRepository.findByEmail(email);
+    },
+
+    async thenFoundAccountIsTheStoredOneFor(
+      found: Account | null,
+      email: string,
+    ) {
+      expect(found).not.toEqual(null);
+      const rows = await context
+        .testDbConnection<SchemaAccountRepository>('accounts')
+        .where({ email });
+      expect(rows).toHaveLength(1);
+      expect(found?.id).toEqual(rows[0].id);
+      expect(found?.email).toEqual(rows[0].email);
+      expect(found?.passwordHash).toEqual(rows[0].password_hash);
+    },
+
+    thenNoAccountFound(found: Account | null) {
+      expect(found).toEqual(null);
+    },
+
     async thenAccountsTableHasOneRowFor(email: string) {
       const rows = await context
         .testDbConnection<SchemaAccountRepository>('accounts')

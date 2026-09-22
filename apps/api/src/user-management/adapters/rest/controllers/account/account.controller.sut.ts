@@ -5,6 +5,7 @@ import { UnknownError } from '../../../../../shared/error/errors/UnknownError';
 import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { Account } from '../../../../domain/entities/Account';
+import { ChangePassword } from '../../../../domain/usecases/change-password/ChangePassword';
 import { RegisterAccount } from '../../../../domain/usecases/register-account/RegisterAccount';
 import { EmailAlreadyUsedError } from '../../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
 import { AccountController } from './account.controller';
@@ -20,11 +21,15 @@ export const createAccountControllerSUT = () => {
     RegisterAccountInput,
     Either.Either<Account, EmailAlreadyUsedError | UnknownError>
   >();
+  const changePassword = new UseCaseDouble();
   const authState: TestAuthState = { user: null };
 
   const metadata: ModuleMetadata = {
     controllers: [AccountController],
-    providers: [{ provide: RegisterAccount, useValue: registerAccount }],
+    providers: [
+      { provide: RegisterAccount, useValue: registerAccount },
+      { provide: ChangePassword, useValue: changePassword },
+    ],
   };
 
   return {
@@ -54,6 +59,9 @@ export const createAccountControllerSUT = () => {
 
     thenNoAccountWasRegistered() {
       expect(registerAccount.calls).toHaveLength(0);
+    },
+    thenNoPasswordWasChanged() {
+      expect(changePassword.calls).toHaveLength(0);
     },
   };
 };

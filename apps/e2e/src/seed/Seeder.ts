@@ -15,8 +15,23 @@ export const inDays = (days: number): string =>
 export const dayInDays = (days: number): string =>
   new Date(Date.now() + days * DAY).toISOString().slice(0, 10);
 
-export const uniqueAddress = (label: string): string =>
-  `${Math.floor(Math.random() * 400) + 1} rue E2E ${label} ${randomUUID().slice(0, 8)}, 75011 Paris`;
+// Bookparking ne couvre que Nice : une adresse d'une autre commune serait
+// refusée par le géocodage, et un parcours de carte n'aurait rien à placer.
+const NICE_STREETS = [
+  'rue Barla',
+  'avenue Malausséna',
+  'avenue Jean Médecin',
+  'boulevard Gambetta',
+  'rue de France',
+] as const;
+
+export const uniqueAddress = (): string => {
+  const street = NICE_STREETS[Math.floor(Math.random() * NICE_STREETS.length)];
+  return `${String(Math.floor(Math.random() * 90) + 1)} ${street}, 06000 Nice`;
+};
+
+export const uniqueBox = (label: string): string =>
+  `${label}-${randomUUID().slice(0, 6)}`;
 
 /**
  * Aucun endpoint ne supprime un compte, et il n'existe pas de table
@@ -38,8 +53,8 @@ export class Seeder {
     overrides: Partial<PublishListingInput> = {},
   ): Promise<SeededListing> {
     const input: PublishListingInput = {
-      address: overrides.address ?? uniqueAddress('place'),
-      box: overrides.box ?? `B${String(Math.floor(Math.random() * 900) + 100)}`,
+      address: overrides.address ?? uniqueAddress(),
+      box: overrides.box ?? uniqueBox('E2E'),
       accessDescription: overrides.accessDescription ?? 'Digicode 4321, deuxieme sous-sol.',
       photos: overrides.photos ?? ['e2e-photo-1.jpg'],
       pricing: overrides.pricing ?? { dayInCents: 1500, weekInCents: 8000, monthInCents: 25000 },

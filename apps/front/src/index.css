@@ -222,3 +222,39 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------------------------------ */
+/* Carte                                                                     */
+/* OpenStreetMap n'a pas de fond sombre : on inverse la couche de tuiles puis */
+/* on remet les teintes a l'endroit. Le filtre porte sur la seule couche,     */
+/* jamais sur le conteneur, sinon les marqueurs et les infobulles s'inversent */
+/* avec elle.                                                                */
+/* ------------------------------------------------------------------------ */
+.bookparking-dark-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+}
+
+.leaflet-container {
+  background-color: var(--bg-sunken);
+  font-family: var(--font-sans);
+}
+
+.leaflet-control-attribution {
+  background-color: color-mix(in srgb, var(--bg-raised) 88%, transparent) !important;
+  color: var(--fg-subtle) !important;
+  font-size: 10px;
+}
+
+.leaflet-control-attribution a {
+  color: var(--accent) !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 2px;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem;
+  min-width: 13rem;
+}

@@ -1,4 +1,4 @@
-import { LogOut, Plus, UserRound } from 'lucide-react';
+import { LogOut, Map, Plus, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink } from 'react-router-dom';
 
@@ -10,7 +10,7 @@ import { buttonVariants } from './ui/buttonVariants';
 import { cn } from '../lib/cn';
 
 export const Header = () => {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'listing']);
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
@@ -19,7 +19,7 @@ export const Header = () => {
       <div className="mx-auto flex min-h-16 max-w-[1240px] items-center gap-4 px-4 sm:px-6">
         <BrandLink />
 
-        <nav aria-label={t('nav.browse')} className="ml-auto flex items-center gap-1 sm:gap-2">
+        <nav aria-label={t('common:nav.browse')} className="ml-auto flex items-center gap-1 sm:gap-2">
           <NavLink
             to="/"
             end
@@ -30,7 +30,20 @@ export const Header = () => {
               )
             }
           >
-            {t('nav.browse')}
+            {t('common:nav.browse')}
+          </NavLink>
+
+          <NavLink
+            to="/carte"
+            className={({ isActive }) =>
+              cn(
+                buttonVariants({ variant: 'ghost', size: 'sm' }),
+                isActive && 'text-fg font-semibold',
+              )
+            }
+          >
+            <Map className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{t('listing:map.nav')}</span>
           </NavLink>
 
           {isAuthenticated ? (
@@ -40,20 +53,20 @@ export const Header = () => {
                 className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'hidden sm:inline-flex')}
               >
                 <Plus className="size-4" aria-hidden="true" />
-                {t('nav.publish')}
+                {t('common:nav.publish')}
               </Link>
               <Link
                 to="/compte"
-                aria-label={t('nav.account')}
+                aria-label={t('common:nav.account')}
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
               >
                 <UserRound className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">{t('nav.account')}</span>
+                <span className="hidden sm:inline">{t('common:nav.account')}</span>
               </Link>
               <button
                 type="button"
                 onClick={() => dispatch(logoutRequested())}
-                aria-label={t('nav.signOut')}
+                aria-label={t('common:nav.signOut')}
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
               >
                 <LogOut className="size-4" aria-hidden="true" />
@@ -62,10 +75,10 @@ export const Header = () => {
           ) : (
             <>
               <Link to="/connexion" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
-                {t('nav.signIn')}
+                {t('common:nav.signIn')}
               </Link>
               <Link to="/inscription" className={buttonVariants({ variant: 'primary', size: 'sm' })}>
-                {t('nav.register')}
+                {t('common:nav.register')}
               </Link>
             </>
           )}

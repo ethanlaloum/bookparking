@@ -3,7 +3,12 @@ import { createReducer } from '@reduxjs/toolkit';
 import { logoutSucceeded } from '../../auth/domain/use-cases/sign-out/signOutEpic';
 import { initialCommonState, type CommonState } from '../../../store/CommonState';
 import type { Listing } from '../domain/entities/Listing';
+import type { LocatedAddress } from '../domain/entities/Coordinates';
 import type { OwnerListing } from '../domain/ports/ListingGateway';
+import {
+  locateListingsRequested,
+  locateListingsSucceeded,
+} from '../domain/use-cases/locate-listings/locateListingsEpic';
 import {
   getListingFailed,
   getListingRequested,
@@ -42,9 +47,11 @@ import {
 export interface ListingState {
   listings: Listing[];
   ownerListings: OwnerListing[];
+  locations: Record<string, LocatedAddress>;
   selected: Listing | null;
   list: CommonState;
   listOwner: CommonState;
+  locate: CommonState;
   get: CommonState;
   publish: CommonState;
   unpublish: CommonState;
@@ -54,9 +61,11 @@ export interface ListingState {
 const initialState: ListingState = {
   listings: [],
   ownerListings: [],
+  locations: {},
   selected: null,
   list: initialCommonState,
   listOwner: initialCommonState,
+  locate: initialCommonState,
   get: initialCommonState,
   publish: initialCommonState,
   unpublish: initialCommonState,
@@ -84,6 +93,13 @@ export const listingReducer = createReducer(initialState, (builder) => {
     })
     .addCase(listOwnerListingsFailed, (state, action) => {
       state.listOwner = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(locateListingsRequested, (state) => {
+      state.locate = { state: 'pending' };
+    })
+    .addCase(locateListingsSucceeded, (state, action) => {
+      state.locate = { state: 'succeeded' };
+      for (const { listingId, located } of action.payload) state.locations[listingId] = located;
     })
     .addCase(getListingRequested, (state) => {
       state.get = { state: 'pending' };

@@ -70,6 +70,34 @@ change côté api casse la compilation du front plutôt que sa production.
 - **Le libellé du DOM n'est pas celui de l'écran.** `uppercase` est une règle CSS : le DOM contient
   « Places publiées ». Écrire un locator depuis une capture d'écran donne un test qui ne trouve rien.
 
+- **Bookparking ne couvre que Nice, et trois endroits en dépendent.**
+  `NICE` et `NICE_INSEE_CODE` vivent dans `Coordinates.ts` : le géocodage restreint sa recherche à
+  `citycode=06088`, le cadrage retombe sur la ville quand rien n'est situé, et les paliers de zoom sont
+  calibrés à l'échelle d'une agglomération, pas d'un pays. Une adresse d'une autre commune ressort
+  **non située**, ce qui est le comportement voulu et non un bug de géocodage.
+
+- **La Base Adresse Nationale rend toujours un résultat, même pour une adresse qui n'existe pas.**
+  Elle retombe sur la voie la plus proche et le dit par un score. « 12 rue des Lilas 75011 Paris »
+  ressortait ainsi en « 12 Rue des Bluets » à 0,61. D'où deux seuils dans le domaine : en dessous de
+  `MINIMUM_PLACEABLE_SCORE` (0,5) on ne place rien, en dessous de `EXACT_MATCH_SCORE` (0,9) on place
+  en disant que la position est approximative — marqueur orange, et un bandeau qui l'explique. Ne
+  jamais afficher un point sans porter cette nuance : ce serait mettre une voiture dans la mauvaise rue.
+
+- **Le géocodage est fait dans le navigateur, et c'est une dette assumée.**
+  `BanGeocodingGateway` est un adaptateur derrière un port : le jour où une annonce portera ses
+  coordonnées, l'adaptateur disparaît et le reste ne bouge pas. En attendant, chaque ouverture de carte
+  géocode les annonces qu'elle n'a pas encore situées, quatre requêtes en vol au maximum — la BAN est un
+  service public gratuit. `exhaustMap` empêche qu'un second déclenchement relance la rafale.
+
+- **Les tuiles viennent d'OpenStreetMap, pas de CARTO.**
+  Les fonds CARTO exigent désormais une clé d'API et rendent sinon des tuiles barrées
+  « API KEY REQUIRED » — constaté à l'écran pendant cette story. OSM n'ayant pas de variante sombre, le
+  thème sombre passe par un filtre CSS posé sur la **seule couche de tuiles** (`.bookparking-dark-tiles`),
+  jamais sur le conteneur : appliqué au conteneur, il inverserait aussi les marqueurs et les infobulles.
+
+- **Le marqueur est un SVG en ligne, pas l'icône par défaut de Leaflet.**
+  Celle-ci arrive par une URL que le bundler réécrit, et qui casse silencieusement en production.
+
 ## Commandes (formes sûres pour un agent)
 
 | Intention | Commande |

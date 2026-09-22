@@ -9,7 +9,9 @@ import type { Account } from '../../app/account/domain/entities/Account';
 import type { Session } from '../../app/auth/domain/entities/Session';
 import type { Credentials, SessionGateway } from '../../app/auth/domain/ports/SessionGateway';
 import type { SessionStore } from '../../app/auth/domain/ports/SessionStore';
+import type { LocatedAddress } from '../../app/listing/domain/entities/Coordinates';
 import type { Listing } from '../../app/listing/domain/entities/Listing';
+import type { GeocodingGateway } from '../../app/listing/domain/ports/GeocodingGateway';
 import type {
   ListingGateway,
   OwnerListing,
@@ -148,8 +150,19 @@ export class InMemoryAccountGateway implements AccountGateway {
   }
 }
 
+export class InMemoryGeocodingGateway implements GeocodingGateway {
+  public readonly locatedByAddress = new Map<string, LocatedAddress>();
+  public readonly asked: string[] = [];
+
+  locate(address: string): Observable<LocatedAddress | null> {
+    this.asked.push(address);
+    return of(this.locatedByAddress.get(address) ?? null);
+  }
+}
+
 export interface InMemoryDependencies extends Dependencies {
   accountGateway: InMemoryAccountGateway;
+  geocodingGateway: InMemoryGeocodingGateway;
   listingGateway: InMemoryListingGateway;
   rentalGateway: InMemoryRentalGateway;
   sessionGateway: InMemorySessionGateway;
@@ -158,6 +171,7 @@ export interface InMemoryDependencies extends Dependencies {
 
 export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   accountGateway: new InMemoryAccountGateway(),
+  geocodingGateway: new InMemoryGeocodingGateway(),
   listingGateway: new InMemoryListingGateway(),
   rentalGateway: new InMemoryRentalGateway(),
   sessionGateway: new InMemorySessionGateway(),

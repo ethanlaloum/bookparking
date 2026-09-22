@@ -77,5 +77,27 @@
     "to": "Pick an end date.",
     "reversed": "The end must follow the start.",
     "past": "That period is already over."
+  },
+  "map": {
+    "title": "Map of spaces",
+    "subtitle": "Every published space, placed on the map.",
+    "nav": "Map",
+    "located_one": "{{count}} space placed",
+    "located_other": "{{count}} spaces placed",
+    "approximate_one": "{{count}} approximate position",
+    "approximate_other": "{{count}} approximate positions",
+    "approximateHint": "The address has no exact match: the pin sits on the nearest street.",
+    "unplaced_one": "{{count}} space not placed",
+    "unplaced_other": "{{count}} spaces not placed",
+    "unplacedHint": "Their address could not be recognised. They stay visible in the list.",
+    "locating": "Locating the spaces…",
+    "empty": "No space to place yet.",
+    "emptyLocated": "No address could be placed.",
+    "attribution": "Addresses geocoded by the Base Adresse Nationale.",
+    "openListing": "View listing",
+    "exact": "Exact position",
+    "approx": "Approximate position",
+    "listTab": "List",
+    "mapTab": "Map"
   }
 }

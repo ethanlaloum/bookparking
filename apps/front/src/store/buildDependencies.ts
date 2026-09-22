@@ -1,6 +1,7 @@
 import { BookparkingRxAccountGateway } from '../app/account/adapters/RealAccountGateway';
 import { LocalStorageSessionStore } from '../app/auth/adapters/LocalStorageSessionStore';
 import { BookparkingRxSessionGateway } from '../app/auth/adapters/RealSessionGateway';
+import { BanGeocodingGateway } from '../app/listing/adapters/RealGeocodingGateway';
 import { BookparkingRxListingGateway } from '../app/listing/adapters/RealListingGateway';
 import { BookparkingRxRentalGateway } from '../app/rental/adapters/RealRentalGateway';
 import { FetchHttpClient } from '../lib/http/FetchHttpClient';
@@ -12,6 +13,7 @@ export const buildDependencies = (baseUrl: string): Dependencies => {
 
   return {
     accountGateway: new BookparkingRxAccountGateway(httpClient),
+    geocodingGateway: new BanGeocodingGateway(),
     listingGateway: new BookparkingRxListingGateway(httpClient),
     rentalGateway: new BookparkingRxRentalGateway(httpClient),
     sessionGateway: new BookparkingRxSessionGateway(httpClient),

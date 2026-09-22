@@ -77,5 +77,27 @@
     "to": "Choisissez une date de fin.",
     "reversed": "La fin doit suivre le début.",
     "past": "La période est déjà passée."
+  },
+  "map": {
+    "title": "Carte des places",
+    "subtitle": "Toutes les places publiées, situées sur le territoire.",
+    "nav": "Carte",
+    "located_one": "{{count}} place située",
+    "located_other": "{{count}} places situées",
+    "approximate_one": "{{count}} position approximative",
+    "approximate_other": "{{count}} positions approximatives",
+    "approximateHint": "L'adresse saisie n'a pas de correspondance exacte : le point est placé sur la voie la plus proche.",
+    "unplaced_one": "{{count}} place non située",
+    "unplaced_other": "{{count}} places non situées",
+    "unplacedHint": "Leur adresse n'a pu être reconnue. Elles restent visibles dans la liste.",
+    "locating": "Localisation des places…",
+    "empty": "Aucune place à situer pour le moment.",
+    "emptyLocated": "Aucune adresse n'a pu être située.",
+    "attribution": "Adresses géocodées par la Base Adresse Nationale.",
+    "openListing": "Voir l'annonce",
+    "exact": "Position exacte",
+    "approx": "Position approximative",
+    "listTab": "Liste",
+    "mapTab": "Carte"
   }
 }

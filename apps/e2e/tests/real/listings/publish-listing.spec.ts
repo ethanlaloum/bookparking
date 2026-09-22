@@ -22,7 +22,7 @@ test.describe('Listings', () => {
     await app.openAs(owner);
     await new HeaderNav(page).expectSignedIn();
 
-    const address = uniqueAddress('publiee');
+    const address = uniqueAddress();
     const publish = new PublishPage(page);
     await publish.open();
     await publish.fill({

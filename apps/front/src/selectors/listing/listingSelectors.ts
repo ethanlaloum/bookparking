@@ -5,6 +5,13 @@ import {
   isListingAvailableOn,
   type Listing,
 } from '../../app/listing/domain/entities/Listing';
+import {
+  centerOf,
+  spanInKilometers,
+  zoomForSpan,
+  type Coordinates,
+  type LocatedAddress,
+} from '../../app/listing/domain/entities/Coordinates';
 import type { OwnerListing } from '../../app/listing/domain/ports/ListingGateway';
 import type { AppState } from '../../store/AppState';
 
@@ -101,4 +108,48 @@ export const selectOwnerListingsError = (state: AppState): string | null =>
 
 export const selectActiveOwnerListings = createSelector([selectOwnerListings], (listings) =>
   listings.filter((listing) => listing.status === 'ACTIVE'),
+);
+
+export interface MappedListing {
+  listing: Listing;
+  located: LocatedAddress;
+}
+
+export const selectLocations = (state: AppState): Record<string, LocatedAddress> =>
+  state.core.listing.locations;
+
+export const selectLocating = (state: AppState): boolean =>
+  state.core.listing.locate.state === 'pending';
+
+export const selectLocated = (state: AppState): boolean =>
+  state.core.listing.locate.state === 'succeeded';
+
+export const selectMappedListings = createSelector(
+  [selectListings, selectLocations],
+  (listings, locations): MappedListing[] =>
+    listings
+      .map((listing) => ({ listing, located: locations[listing.id] }))
+      .filter((entry): entry is MappedListing => entry.located !== undefined),
+);
+
+export const selectUnmappableCount = createSelector(
+  [selectListings, selectLocations],
+  (listings, locations) =>
+    listings.filter((listing) => locations[listing.id] === undefined).length,
+);
+
+const coordinatesOf = (mapped: MappedListing[]): Coordinates[] =>
+  mapped.map((entry) => entry.located.coordinates);
+
+export const selectMapCenter = createSelector([selectMappedListings], (mapped): Coordinates =>
+  centerOf(coordinatesOf(mapped)),
+);
+
+export const selectMapZoom = createSelector([selectMappedListings], (mapped): number =>
+  zoomForSpan(spanInKilometers(coordinatesOf(mapped))),
+);
+
+export const selectApproximateCount = createSelector(
+  [selectMappedListings],
+  (mapped) => mapped.filter((entry) => entry.located.precision === 'approximate').length,
 );

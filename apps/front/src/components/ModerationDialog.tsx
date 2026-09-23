@@ -59,7 +59,7 @@ export const ModerationDialog = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-asphalt-950/55 p-4 sm:items-center"
+      className="animate-fade fixed inset-0 z-50 flex items-end justify-center bg-asphalt-950/60 p-4 backdrop-blur-sm sm:items-center"
       onKeyDown={(event) => {
         if (event.key === 'Escape') onClose();
       }}
@@ -68,13 +68,13 @@ export const ModerationDialog = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="titre-moderation"
-        className="animate-rise w-full max-w-lg rounded-[2px] border border-line bg-bg-raised p-6 shadow-[var(--shadow-lift)]"
+        className="animate-rise w-full max-w-lg rounded-3xl border border-line bg-bg-raised p-6 shadow-[var(--shadow-float)] sm:p-7"
       >
-        <h2 id="titre-moderation" className="font-display text-xl font-semibold text-fg">
+        <h2 id="titre-moderation" className="font-display text-2xl font-bold text-fg">
           {t(`admin:moderation.${copy}.title`)}
         </h2>
         <p className="mt-2 text-sm text-fg-muted">{t(`admin:moderation.${copy}.body`)}</p>
-        <p className="mt-1 text-sm font-medium text-fg">
+        <p className="mt-3 rounded-xl bg-bg-sunken px-3 py-2 font-mono text-[0.8rem] break-all text-fg">
           {t('admin:moderation.target', { target: target.label })}
         </p>
 

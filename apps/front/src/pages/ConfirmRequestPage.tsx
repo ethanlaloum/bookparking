@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -7,6 +8,7 @@ import {
   resetConfirmRentalRequestState,
 } from '../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { Notice } from '../components/Notice';
+import { ParkingMark } from '../components/ParkingMark';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Card } from '../components/ui/card';
@@ -31,9 +33,12 @@ export const ConfirmRequestPage = () => {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
-      <h1 className="font-display text-3xl font-bold text-fg">{t('rental:confirm.title')}</h1>
+      <ParkingMark className="size-11" />
+      <h1 className="mt-7 font-display text-[clamp(2rem,4vw,2.75rem)] leading-tight font-bold text-fg">
+        {t('rental:confirm.title')}
+      </h1>
 
-      <Card className="mt-7 p-6">
+      <Card className="mt-8 p-6 shadow-[var(--shadow-lift)] sm:p-7">
         {requestId === '' ? (
           <Notice tone="error">{t('rental:confirm.missingId')}</Notice>
         ) : success ? (
@@ -44,11 +49,9 @@ export const ConfirmRequestPage = () => {
           <>
             <p className="text-sm text-fg-muted">{t('rental:confirm.subtitle', { id: requestId })}</p>
 
-            <dl className="mt-5 border border-line p-4">
-              <dt className="text-xs font-semibold tracking-wide text-fg-subtle uppercase">
-                {t('rental:confirm.idLabel')}
-              </dt>
-              <dd className="tabular mt-1 font-mono text-sm break-all text-fg">{requestId}</dd>
+            <dl className="mt-5 rounded-2xl border border-dashed border-line-strong bg-bg-sunken p-4">
+              <dt className="label-ticket text-fg-subtle">{t('rental:confirm.idLabel')}</dt>
+              <dd className="tabular mt-1.5 font-mono text-sm break-all text-fg">{requestId}</dd>
             </dl>
 
             <p className="mt-3 text-xs text-fg-subtle">{t('rental:confirm.idHint')}</p>
@@ -72,8 +75,9 @@ export const ConfirmRequestPage = () => {
           </>
         )}
 
-        <Link to="/" className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} mt-4`}>
-          ← {t('common:action.back')}
+        <Link to="/" className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} mt-4 -ml-2`}>
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          {t('common:action.back')}
         </Link>
       </Card>
     </div>

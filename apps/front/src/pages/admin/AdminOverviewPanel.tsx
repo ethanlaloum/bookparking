@@ -50,21 +50,25 @@ const ActivityTile = ({
   windowLabel,
   acceleratingLabel,
 }: ActivityTileProps) => (
-  <Card role="group" aria-label={label} className="flex flex-col gap-2 p-5">
-    <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-fg-subtle uppercase">
-      <Icon className="size-4 text-fg-subtle" aria-hidden="true" />
-      {label}
-    </p>
-    <p className="tabular font-display text-3xl leading-none font-bold text-fg">
+  <Card role="group" aria-label={label} className="flex min-h-44 flex-col gap-3 p-5">
+    <div className="flex min-h-9 items-start justify-between gap-3">
+      <p className="label-ticket leading-snug text-fg-muted">{label}</p>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-bg-sunken text-fg-muted">
+        <Icon className="size-[1.1rem]" aria-hidden="true" />
+      </span>
+    </div>
+    <p className="tabular mt-2 font-display text-[2.5rem] leading-none font-bold tracking-[-0.04em] text-fg">
       {formatCount(last24h)}
     </p>
-    <p className="tabular text-xs text-fg-subtle">{windowLabel}</p>
-    {isAccelerating(last24h, last7d) && (
-      <Badge tone="accent" className="self-start">
-        <TrendingUp className="size-3" aria-hidden="true" />
-        {acceleratingLabel}
-      </Badge>
-    )}
+    <div className="mt-auto flex flex-wrap items-center gap-2">
+      <p className="tabular text-xs text-fg-subtle">{windowLabel}</p>
+      {isAccelerating(last24h, last7d) && (
+        <Badge tone="accent">
+          <TrendingUp className="size-3" aria-hidden="true" />
+          {acceleratingLabel}
+        </Badge>
+      )}
+    </div>
   </Card>
 );
 
@@ -77,10 +81,10 @@ const Block = ({
   hint: string;
   children: ReactNode;
 }) => (
-  <section className="mt-8 first:mt-0">
-    <h3 className="font-display text-lg font-semibold text-fg">{title}</h3>
-    <p className="mt-1 text-sm text-fg-subtle">{hint}</p>
-    <div className="mt-4">{children}</div>
+  <section className="mt-12 first:mt-0">
+    <h3 className="font-display text-2xl font-bold text-fg">{title}</h3>
+    <p className="mt-1.5 text-sm text-fg-subtle">{hint}</p>
+    <div className="mt-5">{children}</div>
   </section>
 );
 
@@ -108,7 +112,7 @@ export const AdminOverviewPanel = () => {
       {overview === null && loading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((slot) => (
-            <Skeleton key={slot} className="h-32" />
+            <Skeleton key={slot} className="h-44" />
           ))}
         </div>
       )}

@@ -19,7 +19,8 @@
     "ownerHint": "Ces actions n’aboutissent que si l’annonce vous appartient.",
     "unpublish": "Dépublier",
     "editPricing": "Modifier les tarifs",
-    "unpublished": "L’annonce a été dépubliée."
+    "unpublished": "L’annonce a été dépubliée.",
+    "photosHint": "Références fournies par le propriétaire."
   },
   "pricing": {
     "day": "Jour",
@@ -41,7 +42,10 @@
     },
     "submit": "Publier l’annonce",
     "published": "Votre annonce est en ligne.",
-    "seeIt": "Voir les places"
+    "seeIt": "Voir les places",
+    "preview": "Aperçu",
+    "previewHint": "Ce que verront les conducteurs, mis à jour pendant que vous écrivez.",
+    "previewAddress": "Adresse de la place"
   },
   "field": {
     "address": "Adresse",
@@ -134,6 +138,45 @@
     "undeclaredKept_other": "{{count}} places n'ont rien déclaré et restent affichées."
   },
   "home": {
+    "live": "En ce moment à Nice",
+    "heroLead": "Des places de parking,",
+    "heroAccent": "entre voisins.",
+    "ticket": {
+      "title": "Tarif d'appel",
+      "caption": "Le prix publié le plus bas, ramené à la nuit."
+    },
+    "visual": {
+      "free": "Place libre",
+      "confirmed": "Demande confirmée"
+    },
+    "how": {
+      "eyebrow": "Comment ça marche",
+      "title": "Réserver, en trois gestes.",
+      "step": {
+        "search": {
+          "title": "Cherchez autour d’une adresse",
+          "body": "Tapez une rue de Nice : toutes les places s’affichent sur la carte, les plus proches en tête."
+        },
+        "dates": {
+          "title": "Choisissez vos dates",
+          "body": "Le prix se calcule avant l’envoi, sur la grille du propriétaire : à la journée, à la semaine ou au mois."
+        },
+        "park": {
+          "title": "Garez-vous",
+          "body": "Une fois la demande confirmée, vous recevez les consignes d’accès : digicode, étage, repères."
+        }
+      }
+    },
+    "why": {
+      "eyebrow": "Pourquoi ici",
+      "title": "Une ville, des voisins, un prix tenu.",
+      "noFees": "de frais ajoutés après le calcul du prix"
+    },
+    "owner": {
+      "eyebrow": "Propriétaires",
+      "title": "Une place qui dort ? Louez-la à vos voisins.",
+      "body": "Fixez un prix à la journée, à la semaine ou au mois, choisissez la période, et confirmez vous-même chaque demande."
+    },
     "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte.",
     "available_one": "{{count}} place disponible",
     "available_other": "{{count}} places disponibles",

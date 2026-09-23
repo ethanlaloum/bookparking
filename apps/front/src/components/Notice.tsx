@@ -10,9 +10,17 @@ interface NoticeProps {
 }
 
 const TONE = {
-  error: { icon: AlertTriangle, box: 'border-danger/35 bg-danger-bg text-danger' },
-  success: { icon: CheckCircle2, box: 'border-ok/35 bg-ok-bg text-ok' },
-  info: { icon: Info, box: 'border-line-strong bg-bg-sunken text-fg-muted' },
+  error: {
+    icon: AlertTriangle,
+    box: 'border-danger/30 bg-danger-bg text-danger',
+    chip: 'bg-danger/12',
+  },
+  success: { icon: CheckCircle2, box: 'border-ok/30 bg-ok-bg text-ok', chip: 'bg-ok/12' },
+  info: {
+    icon: Info,
+    box: 'border-line bg-bg-raised text-fg-muted',
+    chip: 'bg-accent-soft text-accent',
+  },
 } as const;
 
 /**
@@ -21,16 +29,22 @@ const TONE = {
  * bas du formulaire sans jamais apprendre pourquoi rien ne s'est passe.
  */
 export const Notice = ({ tone, title, children, className }: NoticeProps) => {
-  const { icon: Icon, box } = TONE[tone];
+  const { icon: Icon, box, chip } = TONE[tone];
 
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
       tabIndex={tone === 'error' ? -1 : undefined}
-      className={cn('flex items-start gap-2.5 rounded-[2px] border px-3.5 py-3 text-sm', box, className)}
+      className={cn(
+        'animate-fade flex items-start gap-3 rounded-xl border px-3.5 py-3 text-sm',
+        box,
+        className,
+      )}
     >
-      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      <div className="min-w-0">
+      <span className={cn('grid size-6 shrink-0 place-items-center rounded-lg', chip)}>
+        <Icon className="size-3.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 pt-0.5">
         {title !== undefined && <p className="font-semibold">{title}</p>}
         <div className={cn(title !== undefined && 'mt-0.5', 'text-current/90')}>{children}</div>
       </div>

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import type { Pricing } from '../app/listing/domain/entities/Listing';
+import { cn } from '../lib/cn';
 import { formatCents } from '../lib/format';
 
 const TIERS = ['day', 'week', 'month'] as const;
@@ -15,23 +16,23 @@ export const PricingGrid = ({ pricing }: { pricing: Pricing }) => {
   const { t } = useTranslation('listing');
 
   return (
-    <dl className="grid grid-cols-3 border border-line">
-      {TIERS.map((tier, index) => {
+    <dl className="grid grid-cols-3 gap-3">
+      {TIERS.map((tier) => {
         const value = READ[tier](pricing);
         return (
           <div
             key={tier}
-            className={`px-4 py-3.5 ${index > 0 ? 'border-l border-line' : ''} ${
-              value === null ? 'bg-bg-sunken' : ''
-            }`}
+            className={cn(
+              'rounded-2xl border px-4 py-4',
+              value === null ? 'bg-hatch border-dashed border-line-strong' : 'border-line bg-bg-raised',
+            )}
           >
-            <dt className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
-              {t(`pricing.${tier}`)}
-            </dt>
+            <dt className="label-ticket text-fg-subtle">{t(`pricing.${tier}`)}</dt>
             <dd
-              className={`tabular mt-1 font-display text-lg font-semibold ${
-                value === null ? 'text-fg-subtle' : 'text-fg'
-              }`}
+              className={cn(
+                'tabular mt-2 font-display text-2xl font-bold tracking-tight',
+                value === null ? 'text-fg-subtle' : 'text-fg',
+              )}
             >
               {value === null ? t('pricing.none') : formatCents(value)}
             </dd>

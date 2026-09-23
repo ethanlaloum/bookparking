@@ -13,9 +13,30 @@ interface MetricTileProps {
 }
 
 const TONE = {
-  plain: { box: 'border-line bg-bg-raised', icon: 'text-fg-subtle', value: 'text-fg' },
-  accent: { box: 'border-accent/40 bg-accent/5', icon: 'text-accent', value: 'text-accent' },
-  warn: { box: 'border-warn/45 bg-warn-bg', icon: 'text-warn', value: 'text-warn' },
+  plain: {
+    box: 'border-line bg-bg-raised',
+    chip: 'bg-bg-sunken text-fg-muted',
+    label: 'text-fg-muted',
+    value: 'text-fg',
+    hint: 'text-fg-subtle',
+  },
+  // La tuile d'accent est pleine : c'est le chiffre qu'on vient lire. Le bleu
+  // du panneau, fixe dans les deux thèmes — le bleu plus clair du thème sombre
+  // ne porterait pas un texte blanc atténué à 4,5:1.
+  accent: {
+    box: 'grain border-transparent bg-signal-600 text-white shadow-[var(--shadow-brand)]',
+    chip: 'bg-white/15 text-white',
+    label: 'text-white/85',
+    value: 'text-white',
+    hint: 'text-white/85',
+  },
+  warn: {
+    box: 'border-warn/35 bg-warn-bg',
+    chip: 'bg-warn/15 text-warn',
+    label: 'text-warn',
+    value: 'text-warn',
+    hint: 'text-fg-muted',
+  },
 } as const;
 
 /**
@@ -35,18 +56,28 @@ export const MetricTile = ({
 
   const body = (
     <>
-      <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-fg-subtle uppercase">
-        <Icon className={cn('size-4', style.icon)} aria-hidden="true" />
-        {label}
-      </p>
-      <p className={cn('tabular font-display text-3xl leading-none font-bold', style.value)}>
+      {/* L'en-tête a la hauteur de la pastille d'icône, qu'il tienne sur une
+          ligne ou deux : les montants de tuiles voisines tombent ainsi sur la
+          même ligne, et l'aide, de longueur variable, part en bas. */}
+      <div className="flex min-h-9 items-start justify-between gap-3">
+        <p className={cn('label-ticket leading-snug', style.label)}>{label}</p>
+        <span className={cn('grid size-9 shrink-0 place-items-center rounded-xl', style.chip)}>
+          <Icon className="size-[1.1rem]" aria-hidden="true" />
+        </span>
+      </div>
+      <p
+        className={cn(
+          'tabular mt-2 font-display text-[2.5rem] leading-none font-bold tracking-[-0.04em]',
+          style.value,
+        )}
+      >
         {value}
       </p>
-      <p className="text-xs leading-snug text-fg-subtle">{hint}</p>
+      <p className={cn('mt-auto text-xs leading-snug', style.hint)}>{hint}</p>
     </>
   );
 
-  const shell = 'flex flex-col gap-1.5 rounded-[2px] border p-5';
+  const shell = 'relative flex min-h-44 flex-col gap-3 overflow-hidden rounded-2xl border p-5';
 
   // Une tuile cliquable est un lien, pas une `div` avec un `onClick` : elle se
   // parcourt au clavier, s'ouvre dans un onglet, et porte déjà un rôle.
@@ -55,7 +86,11 @@ export const MetricTile = ({
       <Link
         to={to}
         aria-label={label}
-        className={cn(shell, style.box, 'transition-colors hover:border-accent')}
+        className={cn(
+          shell,
+          style.box,
+          'transition-[translate,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]',
+        )}
       >
         {body}
       </Link>

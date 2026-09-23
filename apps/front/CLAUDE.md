@@ -95,8 +95,13 @@ change côté api casse la compilation du front plutôt que sa production.
   thème sombre passe par un filtre CSS posé sur la **seule couche de tuiles** (`.bookparking-dark-tiles`),
   jamais sur le conteneur : appliqué au conteneur, il inverserait aussi les marqueurs et les infobulles.
 
-- **Le marqueur est un SVG en ligne, pas l'icône par défaut de Leaflet.**
+- **Le marqueur est une pastille de prix en HTML, pas l'icône par défaut de Leaflet.**
   Celle-ci arrive par une URL que le bundler réécrit, et qui casse silencieusement en production.
+  Deux contraintes tiennent la pastille : l'icône Leaflet garde une **taille fixe** (84 × 34) où la
+  pastille se centre — une boîte de taille nulle n'est jamais « visible » pour Playwright, qui refuse
+  alors de la cliquer — et la pastille est **`aria-hidden`**. Un `role="button"` tire son nom de son
+  contenu *avant* son `title` : dès que la pastille a porté du texte, le nom est devenu « P 15 € »
+  au lieu de « <adresse> — <box> », et les deux tests de carte ont échoué sur `getByRole('button')`.
 
 - **`searchAddressEpic` est le seul `switchMap` de l'application, et c'est sa place.**
   Sur une frappe, la dernière requête gagne et la précédente ne vaut plus rien : l'annuler est
@@ -109,9 +114,11 @@ change côté api casse la compilation du front plutôt que sa production.
   distance et marque celles à moins d'un kilomètre ; toutes restent sur la carte. Filtrer ferait croire
   qu'il n'y a pas de place là où il y en a une à 1,2 km.
 
-- **La molette ne zoome pas la carte.** Elle occupe les deux tiers de la hauteur : un utilisateur qui
-  fait défiler la page verrait son geste détourné dès que le curseur passe dessus — constaté en
-  s'en servant. Les commandes `+`/`−` et le double-clic restent explicites.
+- **La molette ne zoome pas la carte.** Collée à droite de la liste, elle occupe toute la hauteur
+  de l'écran : un utilisateur qui fait défiler la liste verrait son geste détourné dès que le curseur
+  passe dessus — constaté en s'en servant. Les commandes `+`/`−` et le double-clic restent explicites.
+  La liste n'a plus de défilement interne : elle suit la page, et la carte reste sous la main en
+  `sticky`.
 
 - **Le combobox suit le motif ARIA à la lettre**, et pas seulement pour la forme : `aria-activedescendant`
   désigne l'option parcourue **sans** lui donner le focus, ce qui laisse la frappe continuer. C'est aussi
@@ -166,10 +173,13 @@ change côté api casse la compilation du front plutôt que sa production.
   `{ exact: true }`. Attrapé par le barreau `e2e`, en « strict mode violation ».
 
 - **Trois pages, trois rôles — et l'accueil ne liste plus rien.**
-  `/` est une page d'atterrissage : le hero, la barre de recherche, trois arguments. Elle charge quand
-  même les annonces, mais pour un seul chiffre — le tarif d'appel doit être vrai. `/recherche` porte la
-  liste **et** la carte, côte à côte ; `/place/:id` porte la fiche. Ne pas réintroduire une grille
-  d'annonces sur l'accueil : elle dupliquerait la colonne gauche de la recherche, avec un tri différent.
+  `/` est une page d'atterrissage : le hero et sa barre de recherche, « comment ça marche » en trois
+  gestes, les trois arguments, l'appel aux propriétaires. Elle charge quand même les annonces, mais
+  pour deux chiffres — le tarif d'appel du ticket et le nombre de places — qui doivent être vrais.
+  `/recherche` porte la liste **et** la carte, côte à côte ; `/place/:id` porte la fiche. Ne pas
+  réintroduire une grille d'annonces sur l'accueil : elle dupliquerait la colonne gauche de la
+  recherche, avec un tri différent. Les illustrations de l'accueil ne portent **aucun chiffre** : un
+  prix dessiné serait un prix inventé.
 
 - **La liste et la carte partagent la même donnée déjà classée.**
   `selectMappedListingsFromSearch` alimente les deux : ce que l'œil lit à gauche est dans le même ordre
@@ -182,13 +192,14 @@ change côté api casse la compilation du front plutôt que sa production.
   `en-US` restent à parité exacte, namespace par namespace.
 
 - **Une rangée de champs s'aligne par sa structure, jamais par une marge calibrée.**
-  `SearchBar` donne à chaque colonne la même forme — un libellé, puis un contrôle de 44 px — et la
-  colonne du bouton porte une étiquette vide qui tient la place du libellé. Mesuré : les quatre
-  contrôles partagent le même `top` au pixel.
-  La version précédente s'appuyait sur `items-end` et sur un `lg:mb-[1.625rem]` réglé à la main : dès
-  que l'aide de l'adresse passait sur deux lignes, la colonne grandissait, son contenu remontait, et
-  toute la rangée se décalait de près de 50 px. Une marge magique se règle pour un texte donné, et se
-  dérègle au premier changement de libellé ou de traduction.
+  `SearchBar` donne à chaque colonne la même forme — un libellé, puis un contrôle. Empilées sur
+  mobile, ce sont trois champs encadrés ; à partir de `lg`, trois segments d'une seule barre, sans
+  bordure propre. La colonne du bouton n'a pas de libellé : la grille est en `items-stretch`, et le
+  bouton prend la hauteur des trois autres. Les classes des segments vivent dans
+  `components/searchFieldStyles.ts`, partagé avec `AddressSearch` pour que les deux ne divergent pas.
+  L'ancêtre de cette règle : un `lg:mb-[1.625rem]` réglé à la main, qui décalait toute la rangée de
+  près de 50 px dès que l'aide de l'adresse passait sur deux lignes. Une marge magique se règle pour
+  un texte donné, et se dérègle au premier changement de libellé ou de traduction.
   Corollaire : `AddressSearch` ne rend **ni l'aide ni l'adresse retenue** — c'est l'appelant qui les
   affiche sous la barre entière. Un texte de hauteur variable n'a rien à faire dans une cellule de
   grille alignée.
@@ -199,6 +210,77 @@ change côté api casse la compilation du front plutôt que sa production.
 
 - **La page `/recherche` s'appelait `/carte`.** Le composant de carte, lui, reste `ListingsMap` : c'est
   la page qui a changé de rôle, pas la carte.
+
+## Le système de design « Signal Riviera »
+
+Trois matières, prises à la rue niçoise : le **bleu du panneau P** (la marque), l'**encre du
+bitume** (les surfaces sombres qui portent le propos : hero, pied de page, panneau
+d'authentification, carte « uniquement à Nice »), le **jaune des marquages au sol** (rare, et
+seulement sur l'encre). Bricolage Grotesque pour les titres, Geist pour le texte, Geist Mono pour
+les étiquettes « ticket d'horodateur » (`label-ticket`). Les jetons vivent tous dans `index.css`.
+
+- **`accent` est une couleur de texte, `brand` une couleur de fond.** En sombre, le bleu lisible sur
+  l'encre (`#7fa3ff`) est trop clair pour porter du blanc, et le bleu qui porte du blanc
+  (`#3a64f8`) est trop sombre pour se lire en petit texte : un seul jeton ne pouvait pas faire les
+  deux. `text-accent` pour les liens et icônes, `bg-brand text-on-brand` pour les boutons.
+- **Une surface qui porte du texte blanc atténué reste en `bg-signal-600` dans les deux thèmes.**
+  Le bandeau propriétaires et la tuile `accent` de `MetricTile` affichent du `text-white/85` : sur le
+  `brand` du thème sombre, il tombait sous 4,5:1. L'encre (`--ink`) est de la même famille : une
+  matière, pas un fond de thème.
+- **`--warn` vaut l'ambre 700 en clair, pas le jaune des marquages.** Sur `warn-bg`, le jaune
+  plafonnait à 2,3:1. Le jaune reste pour l'encre (`--highlight`) et pour le marqueur approximatif.
+- **Les utilitaires maison sont des `@utility`, pas des classes dans `@layer utilities`.**
+  Seul `@utility` reçoit les variantes de Tailwind 4 : `lg:label-ticket` sur les libellés de la
+  barre de recherche n'existerait pas autrement.
+- **En Tailwind 4, `translate` et `scale` sont des propriétés CSS à part entière.** Une liste
+  `transition-[…]` qui ne les nomme pas fait sauter le soulèvement au survol et l'enfoncement au
+  clic sans courbe — d'où leur présence dans `buttonVariants`.
+- **Les animations SMIL échappent à `prefers-reduced-motion`.** La règle globale de `index.css`
+  n'agit que sur les propriétés `animation-*` et `transition-*` ; la voiture qui se gare dans
+  `ParkingLotIllustration` est un `<animateMotion>`. `usePrefersReducedMotion` la retire du rendu, et
+  le dessin montre alors son état de repos : une place libre.
+- **Un `<legend>` se pose sur la bordure de son `<fieldset>`**, et ni `float` ni `display` ne l'en
+  délivrent de façon fiable — constaté à l'écran sur la page de publication. Le `<fieldset>` reste
+  sans cadre et c'est un bloc intérieur qui porte la carte ; la légende nomme toujours le groupe.
+- **Les « photos » d'une annonce sont des références, pas des images.** Aucune URL n'est
+  affichable : les vignettes (`art/BayThumbnail`, `art/BayScene`) dessinent la place vue du dessus
+  avec le box peint au sol — la seule donnée visuelle certaine — et la fiche liste les références
+  telles quelles, en le disant.
+- **`useId` sert d'identifiant SVG, nettoyé.** Les filtres et dégradés d'une illustration rendue deux
+  fois sur une page doivent avoir des `id` distincts ; les caractères spéciaux de `useId` sont
+  retirés avant d'entrer dans un `url(#…)`.
+- **Sur un téléphone, l'en-tête ne tient que trois boutons à côté de la marque.** La déconnexion
+  y est masquée — elle reste dans l'onglet « Réglages » du compte — et le lien de recherche garde
+  son libellé en `sr-only`, sans quoi il n'aurait eu aucun nom accessible sous 640 px.
+- **Les listes déroulantes ne sont plus des `<select>`.** `components/ui/select.tsx` suit le motif
+  ARIA « select-only combobox » : un `<button role="combobox">` nommé par `aria-labelledby`, une
+  liste de `role="option"`, `aria-activedescendant`, et le clavier complet d'un menu natif (flèches,
+  Début/Fin, Entrée/Espace, Échap, Tab, Alt+↑, frappe d'une lettre). Conséquence pour l'e2e :
+  `selectOption()` et `toHaveValue()` ne s'appliquent plus — le page object ouvre la liste et
+  clique l'option par son nom (`exact: true`, « Voiture » préfixant « Voiture électrique »), puis lit
+  la valeur retenue dans le texte du déclencheur.
+- **Les dates restent des champs où l'on tape.** `DateRangeField` garde deux `<input type="text">`
+  avec leur `<label>` ; `lib/calendarDay.ts` lit `jj/mm/aaaa` **et** la forme ISO, parce que le
+  barreau e2e fait `fill('2026-10-01')` et qu'un utilisateur au clavier ne doit pas dépendre du
+  calendrier. Le calendrier (`components/ui/calendar.tsx`) est `react-day-picker`, sans sa feuille de
+  style : chaque partie reçoit ses classes, et la période est dessinée par des `modifiers` propres
+  au composant — `selected` ne suit que les dates choisies, l'aperçu au survol ne s'annonce pas.
+- **Aucun nom accessible du calendrier ne contient un libellé de champ.** `getByLabel` compare par
+  sous-chaîne : le bouton qui ouvre le calendrier s'appelle « Ouvrir le calendrier » (le libellé du
+  champ n'est qu'en `aria-describedby`), sans quoi `getByLabel('Arrivée')` désignerait deux éléments.
+  Même raison pour les jours : aucun « aujourd'hui » dans leur nom, car `getByLabel('Jour')` le
+  trouverait sur la page de publication.
+- **Le calendrier de la fiche n'offre que les jours où la place est ouverte** (`min`/`max` tirés de
+  `availability`) ; `isListingAvailableOn` reste le juge. Il s'ouvre **à gauche** de la carte de
+  réservation sur grand écran : la carte est collante, un calendrier ouvert vers le bas sortirait de
+  l'écran sans que la page puisse défiler pour le montrer. Sa hauteur est bornée entre l'en-tête et
+  le bas de l'écran par une mesure en `useLayoutEffect`, écrite directement sur le nœud.
+- **Sur un téléphone, le calendrier est une feuille `fixed` en bas de l'écran.** Elle n'a tenu que
+  le jour où les animations d'entrée sont passées en `animation-fill-mode: backwards` : une
+  animation qui reste « remplie » sur `transform` fait de son élément le bloc conteneur de ses
+  descendants `fixed`, et la feuille s'ancrait à la carte au lieu de l'écran.
+- **Les polices partent de `index.html`**, en `<link>` avec `preconnect`, et non d'un `@import` en
+  tête de CSS qui attendait la feuille de style pour commencer à les demander.
 
 ## L'administration du site vit ici, et pas ailleurs
 

@@ -28,7 +28,7 @@ export const VehicleBadges = ({
   const known = acceptedVehicles.filter(isVehicleType);
 
   if (known.length === 0)
-    return <p className={cn('text-xs text-fg-subtle', className)}>{t('criteria.notDeclared')}</p>;
+    return <p className={cn('text-xs text-fg-subtle italic', className)}>{t('criteria.notDeclared')}</p>;
 
   return (
     <ul className={cn('flex flex-wrap gap-1.5', className)}>
@@ -39,9 +39,9 @@ export const VehicleBadges = ({
           <li
             key={vehicle}
             className={cn(
-              'flex items-center gap-1.5 rounded-[2px] border px-2 py-1 text-xs',
+              'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs leading-none transition-colors',
               marked
-                ? 'border-accent bg-accent text-on-accent'
+                ? 'border-brand bg-brand text-on-brand'
                 : 'border-line bg-bg-sunken text-fg-muted',
             )}
           >

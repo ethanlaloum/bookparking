@@ -1,27 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 /* ------------------------------------------------------------------------ */
-/* Bookparking — systeme de design                                          */
+/* Bookparking — systeme de design « Signal Riviera »                       */
 /*                                                                          */
-/* Direction : la signaletique de stationnement europeenne. Le bleu panneau, */
-/* le blanc des marquages au sol, le gris du bitume. Style Swiss Modernism   */
-/* 2.0 : grille 12 colonnes, unite de base 8px, un seul accent, contraste    */
-/* eleve, aucune decoration. Les couleurs semantiques viennent du motif      */
-/* « Booking » : vert disponible, ardoise reserve, rouge destructif.         */
+/* Trois matieres, prises a la rue niçoise :                                 */
+/*  - le bleu du panneau de stationnement, l'ancre de la marque ;           */
+/*  - l'encre du bitume, pour les surfaces sombres qui portent le propos     */
+/*    (hero, appel aux proprietaires, panneau d'authentification) ;         */
+/*  - le jaune des marquages au sol, rare, reserve a ce qui doit sauter aux  */
+/*    yeux sur l'encre.                                                     */
+/* Typographie : Bricolage Grotesque pour la voix, Geist pour le texte,     */
+/* Geist Mono pour les chiffres et les etiquettes « ticket d'horodateur ».   */
+/* Les polices sont chargees par index.html, pas par un @import bloquant.   */
 /* ------------------------------------------------------------------------ */
 
 @theme {
-  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-  /* Bleu panneau — l'accent unique. 600 est la teinte de reference. */
+  /* Bleu panneau. 600 est la teinte du panneau lui-meme. */
   --color-signal-50: #eef4ff;
   --color-signal-100: #d9e6ff;
   --color-signal-200: #bcd3ff;
   --color-signal-300: #8eb6ff;
   --color-signal-400: #598eff;
-  --color-signal-500: #3366f5;
+  --color-signal-500: #3a64f8;
   --color-signal-600: #1f46e0;
   --color-signal-700: #1a37b4;
   --color-signal-800: #1b318f;
@@ -29,28 +33,38 @@
   --color-signal-950: #141e45;
 
   /* Bitume — neutres froids, jamais de noir pur. */
-  --color-asphalt-50: #f6f7f9;
-  --color-asphalt-100: #ebedf1;
-  --color-asphalt-200: #d3d8e1;
-  --color-asphalt-300: #acb5c6;
-  --color-asphalt-400: #7f8ca6;
+  --color-asphalt-50: #f4f5f8;
+  --color-asphalt-100: #eceef2;
+  --color-asphalt-200: #dde1e8;
+  --color-asphalt-300: #c3cad6;
+  --color-asphalt-400: #8a95ab;
   --color-asphalt-500: #5f6d8b;
   --color-asphalt-600: #4b5672;
   --color-asphalt-700: #3e465d;
-  --color-asphalt-800: #363c4f;
-  --color-asphalt-900: #303544;
-  --color-asphalt-950: #14161d;
+  --color-asphalt-800: #232836;
+  --color-asphalt-900: #141821;
+  --color-asphalt-950: #0b0d12;
 
-  /* Marquage au sol — le jaune des lignes, reserve aux etats rares. */
-  --color-marking-400: #f5b73d;
-  --color-marking-500: #e09b14;
+  /* Marquage au sol. */
+  --color-marking-300: #ffe38a;
+  --color-marking-400: #ffd23f;
+  --color-marking-500: #f5b700;
+  --color-marking-600: #e09b14;
 
-  --radius-panel: 0.125rem;
+  /* La mer, pour la seule illustration qui la montre. */
+  --color-riviera-400: #3fb6e8;
+  --color-riviera-500: #1f9bd1;
+
   --ease-signal: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Tokens semantiques : un seul endroit definit une couleur de role. */
+/* Tokens semantiques : un seul endroit definit une couleur de role.
+   `accent` est une couleur de TEXTE (liens, icones) ; `brand` est une couleur
+   de FOND (boutons, pastilles). En sombre, les deux divergent : le bleu qui se
+   lit sur l'encre est trop clair pour porter du blanc, et inversement. */
 :root {
+  color-scheme: light;
   --bg: var(--color-asphalt-50);
   --bg-raised: #ffffff;
   --bg-sunken: var(--color-asphalt-100);
@@ -61,61 +75,91 @@
   --line-strong: var(--color-asphalt-300);
   --accent: var(--color-signal-600);
   --accent-hover: var(--color-signal-700);
-  --on-accent: #ffffff;
+  --accent-soft: rgb(31 70 224 / 0.08);
+  --brand: var(--color-signal-600);
+  --brand-hover: var(--color-signal-700);
+  --on-brand: #ffffff;
   --ok: #15803d;
   --ok-bg: #dcfce7;
-  --warn: var(--color-marking-500);
-  --warn-bg: #fef6e0;
+  /* Ambre 700 et non le jaune des marquages : sur fond pale, le jaune tombait
+     a 2,3:1 de contraste, loin des 4,5:1 exiges pour du texte. */
+  --warn: #a16207;
+  --warn-bg: #fef3c7;
   --danger: #b91c1c;
   --danger-bg: #fee2e2;
-  --shadow-panel: 0 1px 2px rgb(20 22 29 / 0.06), 0 1px 3px rgb(20 22 29 / 0.04);
-  --shadow-lift: 0 8px 24px -8px rgb(20 22 29 / 0.18), 0 2px 6px rgb(20 22 29 / 0.06);
+  --highlight: var(--color-marking-400);
+  /* L'encre ne change pas avec le theme : c'est une matiere, pas un fond. */
+  --ink: var(--color-asphalt-950);
+  --ink-raised: #151924;
+  --on-ink: #f4f5f8;
+  --on-ink-muted: #a9b2c5;
+  --ink-line: rgb(255 255 255 / 0.09);
+  --shadow-panel: 0 1px 2px rgb(11 13 18 / 0.05), 0 1px 3px rgb(11 13 18 / 0.04);
+  --shadow-lift: 0 18px 40px -18px rgb(11 13 18 / 0.28), 0 4px 10px -4px rgb(11 13 18 / 0.08);
+  --shadow-float: 0 30px 60px -24px rgb(11 13 18 / 0.45), 0 10px 20px -10px rgb(11 13 18 / 0.2);
+  --shadow-brand: 0 10px 24px -10px rgb(31 70 224 / 0.65);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    color-scheme: dark;
     --bg: var(--color-asphalt-950);
-    --bg-raised: #1b1e27;
-    --bg-sunken: #101219;
+    --bg-raised: var(--color-asphalt-900);
+    --bg-sunken: #0f1218;
     --fg: var(--color-asphalt-50);
     --fg-muted: var(--color-asphalt-300);
     --fg-subtle: var(--color-asphalt-400);
-    --line: #2b303d;
-    --line-strong: #3b4252;
-    --accent: var(--color-signal-400);
-    --accent-hover: var(--color-signal-300);
-    --on-accent: var(--color-asphalt-950);
+    --line: var(--color-asphalt-800);
+    --line-strong: #323949;
+    --accent: #7fa3ff;
+    --accent-hover: #a9c2ff;
+    --accent-soft: rgb(127 163 255 / 0.1);
+    --brand: var(--color-signal-500);
+    --brand-hover: #5078ff;
+    --on-brand: #ffffff;
     --ok: #4ade80;
     --ok-bg: #0c2c1a;
     --warn: var(--color-marking-400);
-    --warn-bg: #33270a;
+    --warn-bg: #2f2408;
     --danger: #fca5a5;
     --danger-bg: #3a1417;
+    --ink: #07080c;
+    --ink-raised: #10131b;
     --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.5);
-    --shadow-lift: 0 8px 28px -8px rgb(0 0 0 / 0.7);
+    --shadow-lift: 0 18px 40px -18px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.03);
+    --shadow-float: 0 30px 60px -24px rgb(0 0 0 / 0.9);
+    --shadow-brand: 0 10px 28px -10px rgb(58 100 248 / 0.8);
   }
 }
 
-[data-theme='dark'] {
+:root[data-theme='dark'] {
+  color-scheme: dark;
   --bg: var(--color-asphalt-950);
-  --bg-raised: #1b1e27;
-  --bg-sunken: #101219;
+  --bg-raised: var(--color-asphalt-900);
+  --bg-sunken: #0f1218;
   --fg: var(--color-asphalt-50);
   --fg-muted: var(--color-asphalt-300);
   --fg-subtle: var(--color-asphalt-400);
-  --line: #2b303d;
-  --line-strong: #3b4252;
-  --accent: var(--color-signal-400);
-  --accent-hover: var(--color-signal-300);
-  --on-accent: var(--color-asphalt-950);
+  --line: var(--color-asphalt-800);
+  --line-strong: #323949;
+  --accent: #7fa3ff;
+  --accent-hover: #a9c2ff;
+  --accent-soft: rgb(127 163 255 / 0.1);
+  --brand: var(--color-signal-500);
+  --brand-hover: #5078ff;
+  --on-brand: #ffffff;
   --ok: #4ade80;
   --ok-bg: #0c2c1a;
   --warn: var(--color-marking-400);
-  --warn-bg: #33270a;
+  --warn-bg: #2f2408;
   --danger: #fca5a5;
   --danger-bg: #3a1417;
+  --ink: #07080c;
+  --ink-raised: #10131b;
   --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.5);
-  --shadow-lift: 0 8px 28px -8px rgb(0 0 0 / 0.7);
+  --shadow-lift: 0 18px 40px -18px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.03);
+  --shadow-float: 0 30px 60px -24px rgb(0 0 0 / 0.9);
+  --shadow-brand: 0 10px 28px -10px rgb(58 100 248 / 0.8);
 }
 
 @theme inline {
@@ -129,13 +173,22 @@
   --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
-  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-brand: var(--on-brand);
   --color-ok: var(--ok);
   --color-ok-bg: var(--ok-bg);
   --color-warn: var(--warn);
   --color-warn-bg: var(--warn-bg);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
+  --color-highlight: var(--highlight);
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
+  --color-ink-line: var(--ink-line);
 }
 
 @layer base {
@@ -147,6 +200,7 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -156,6 +210,8 @@
     font-size: 16px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'ss01', 'cv11';
   }
 
   h1,
@@ -163,8 +219,12 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   /* Un anneau de focus visible partout : la checklist le rend obligatoire et
@@ -172,42 +232,205 @@
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 1px;
+    border-radius: 6px;
   }
 
   ::selection {
-    background-color: var(--accent);
-    color: var(--on-accent);
+    background-color: var(--brand);
+    color: var(--on-brand);
+  }
+
+  /* Le pictogramme natif du calendrier suit la couleur du texte. */
+  input[type='date']::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
   }
 }
 
-@layer utilities {
-  /* Hachures de bordure de chaussee — utilise avec parcimonie, en bandeau. */
-  .bg-hatch {
-    background-image: repeating-linear-gradient(
-      -45deg,
-      var(--line) 0 1px,
-      transparent 1px 9px
-    );
-  }
+/* ------------------------------------------------------------------------ */
+/* Utilitaires                                                              */
+/* ------------------------------------------------------------------------ */
 
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
 
-  .animate-rise {
-    animation: rise 0.42s var(--ease-signal) both;
+/* Hachures de bordure de chaussee — en bandeau, avec parcimonie. */
+@utility bg-hatch {
+  background-image: repeating-linear-gradient(-45deg, var(--line) 0 1px, transparent 1px 9px);
+}
+
+/* Etiquette « ticket » : petite capitale en chasse fixe, espacee. */
+@utility label-ticket {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* La surface d'encre : bitume nuit, halo bleu panneau en haut a droite,
+   reflet de marquage en bas a gauche. */
+@utility surface-ink {
+  color: var(--on-ink);
+  background:
+    radial-gradient(55% 75% at 88% 0%, rgb(58 100 248 / 0.38), transparent 62%),
+    radial-gradient(45% 55% at 0% 100%, rgb(255 210 63 / 0.1), transparent 62%),
+    var(--ink);
+}
+
+/* Quadrillage de plan, qui s'efface vers les bords. */
+@utility bg-blueprint {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 70% at 70% 30%, black, transparent 78%);
+}
+
+/* Grain photographique, pose en pseudo-element au-dessus d'une surface. */
+@utility grain {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.09;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+}
+
+/* Ligne discontinue de marquage au sol. */
+@utility road-dash {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--highlight) 0 26px,
+    transparent 26px 44px
+  );
+}
+
+@utility text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px currentColor;
+}
+
+/* `backwards` et non `both` : une animation qui reste « remplie » sur
+   `transform` fait de son élément le bloc conteneur de ses descendants
+   `fixed` — la feuille de calendrier mobile, posée dans une carte animée,
+   s'ancrait à la carte au lieu de l'écran. Une fois jouée, l'animation ne
+   doit plus rien laisser derrière elle. */
+@utility animate-rise {
+  animation: rise 0.7s var(--ease-signal) backwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@utility animate-fade {
+  animation: fade 0.5s var(--ease-signal) backwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@utility animate-drop {
+  animation: drop 0.7s var(--ease-spring) backwards;
+  animation-delay: calc(var(--i, 0) * 120ms + 300ms);
+}
+
+@utility animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@utility animate-march {
+  animation: march 1.4s linear infinite;
+}
+
+@utility animate-pulse-ring {
+  animation: pulse-ring 2.2s var(--ease-signal) infinite;
+}
+
+@utility animate-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--fg) 6%, transparent) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.985);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.75;
+  }
+  80%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes march {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
   }
 }
 
@@ -218,6 +441,7 @@
   ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
@@ -231,7 +455,11 @@
 /* avec elle.                                                                */
 /* ------------------------------------------------------------------------ */
 .bookparking-dark-tiles {
-  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.7);
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.86) saturate(0.6);
+}
+
+.bookparking-light-tiles {
+  filter: saturate(0.55) contrast(1.02);
 }
 
 .leaflet-container {
@@ -243,18 +471,164 @@
   background-color: color-mix(in srgb, var(--bg-raised) 88%, transparent) !important;
   color: var(--fg-subtle) !important;
   font-size: 10px;
+  border-top-left-radius: 8px;
 }
 
 .leaflet-control-attribution a {
   color: var(--accent) !important;
 }
 
-.leaflet-popup-content-wrapper,
+.leaflet-bar {
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: var(--shadow-lift) !important;
+}
+
+.leaflet-bar a {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 34px !important;
+  background-color: var(--bg-raised) !important;
+  color: var(--fg) !important;
+  border-bottom-color: var(--line) !important;
+  transition: background-color 0.15s;
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--bg-sunken) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: var(--shadow-float);
+}
+
 .leaflet-popup-tip {
-  border-radius: 2px;
+  box-shadow: none;
 }
 
 .leaflet-popup-content {
-  margin: 0.75rem 0.9rem;
-  min-width: 13rem;
+  margin: 0.9rem 1rem 1rem;
+  min-width: 14rem;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  top: 6px;
+  right: 6px;
+}
+
+/* Marqueur en pastille de prix. L'icone Leaflet garde une taille fixe — c'est
+   elle que Playwright clique, et une boite vide n'est jamais « visible » — et
+   la pastille se centre dedans, en debordant si le prix est long. */
+.bp-marker {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: visible;
+}
+
+.bp-pin {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0b0d12;
+  font: 650 13px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 8px 18px -6px rgb(11 13 18 / 0.45),
+    0 0 0 1px rgb(11 13 18 / 0.08);
+  transform-origin: 50% 100%;
+  transition:
+    transform 0.25s var(--ease-spring),
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.bp-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 0 0 2px 0;
+  z-index: -1;
+}
+
+.bp-pin--bare {
+  padding-right: 4px;
+}
+
+.bp-pin__mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: #1f46e0;
+  color: #ffffff;
+  font: 800 12px/1 var(--font-display);
+}
+
+.bp-pin--approx .bp-pin__mark {
+  background: #e09b14;
+}
+
+.bp-marker:hover .bp-pin {
+  transform: scale(1.08);
+}
+
+.bp-pin--focused {
+  background: #1f46e0;
+  color: #ffffff;
+  transform: scale(1.14);
+}
+
+.bp-pin--focused .bp-pin__mark {
+  background: #ffffff;
+  color: #1f46e0;
+}
+
+.bp-pin--focused.bp-pin--approx {
+  background: #e09b14;
+  color: #0b0d12;
+}
+
+.bp-pin--focused.bp-pin--approx .bp-pin__mark {
+  color: #a16207;
+}
+
+.bp-search-dot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.bp-search-dot::before,
+.bp-search-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+}
+
+.bp-search-dot::before {
+  background: rgb(21 128 61 / 0.35);
+  animation: pulse-ring 2.2s var(--ease-signal) infinite;
+}
+
+.bp-search-dot::after {
+  inset: 4px;
+  background: #15803d;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.35);
 }

@@ -19,7 +19,8 @@
     "ownerHint": "These actions only succeed if the listing is yours.",
     "unpublish": "Unpublish",
     "editPricing": "Edit pricing",
-    "unpublished": "The listing has been unpublished."
+    "unpublished": "The listing has been unpublished.",
+    "photosHint": "References supplied by the owner."
   },
   "pricing": {
     "day": "Day",
@@ -41,7 +42,10 @@
     },
     "submit": "Publish the listing",
     "published": "Your listing is live.",
-    "seeIt": "See the spaces"
+    "seeIt": "See the spaces",
+    "preview": "Preview",
+    "previewHint": "What drivers will see, updated as you type.",
+    "previewAddress": "Address of the space"
   },
   "field": {
     "address": "Address",
@@ -134,6 +138,45 @@
     "undeclaredKept_other": "{{count}} spaces stated nothing and stay visible."
   },
   "home": {
+    "live": "Right now in Nice",
+    "heroLead": "Parking spaces,",
+    "heroAccent": "between neighbors.",
+    "ticket": {
+      "title": "Starting rate",
+      "caption": "The lowest published price, brought down to one night."
+    },
+    "visual": {
+      "free": "Space available",
+      "confirmed": "Request confirmed"
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "Book in three moves.",
+      "step": {
+        "search": {
+          "title": "Search around an address",
+          "body": "Type a street in Nice: every space shows up on the map, closest first."
+        },
+        "dates": {
+          "title": "Pick your dates",
+          "body": "The price is worked out before you send, from the owner’s rates: by the day, the week or the month."
+        },
+        "park": {
+          "title": "Park",
+          "body": "Once the request is confirmed, you receive the access instructions: door code, level, landmarks."
+        }
+      }
+    },
+    "why": {
+      "eyebrow": "Why here",
+      "title": "One city, neighbors, a price that holds.",
+      "noFees": "in fees added once the price is shown"
+    },
+    "owner": {
+      "eyebrow": "Owners",
+      "title": "A space sitting idle? Rent it to your neighbors.",
+      "body": "Set a price by the day, the week or the month, pick the period, and confirm every request yourself."
+    },
     "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map.",
     "available_one": "{{count}} space available",
     "available_other": "{{count}} spaces available",

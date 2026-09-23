@@ -54,12 +54,36 @@ export class SearchPage {
     await expect(this.page.getByText(text)).toBeVisible();
   }
 
+  // Le véhicule et la durée ne sont plus des `<select>` natifs mais des
+  // listes déroulantes au motif ARIA « select-only combobox » : un déclencheur
+  // `role="combobox"` nommé par son libellé, une liste de `role="option"`. On
+  // les manœuvre comme un utilisateur — ouvrir, puis choisir l'option par son
+  // nom — et on lit la valeur retenue dans le texte du déclencheur.
+  // `exact` : « Voiture » est un préfixe de « Voiture électrique ».
   vehicleSelect(): Locator {
-    return this.page.getByLabel('Véhicule');
+    return this.page.getByRole('combobox', { name: 'Véhicule', exact: true });
   }
 
   durationSelect(): Locator {
-    return this.page.getByLabel('Durée');
+    return this.page.getByRole('combobox', { name: 'Durée', exact: true });
+  }
+
+  async chooseVehicle(label: string): Promise<void> {
+    await this.vehicleSelect().click();
+    await this.page.getByRole('option', { name: label, exact: true }).click();
+  }
+
+  async chooseDuration(label: string): Promise<void> {
+    await this.durationSelect().click();
+    await this.page.getByRole('option', { name: label, exact: true }).click();
+  }
+
+  async expectVehicle(label: string): Promise<void> {
+    await expect(this.vehicleSelect()).toHaveText(label);
+  }
+
+  async expectDuration(label: string): Promise<void> {
+    await expect(this.durationSelect()).toHaveText(label);
   }
 
   async submit(): Promise<void> {

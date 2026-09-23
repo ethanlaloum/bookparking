@@ -15,6 +15,12 @@ Rien n'est simulé entre eux. `page.route()` n'apparaît nulle part sous
   le page object qui s'aligne sur l'interface, jamais l'inverse, parce que
   l'apostrophe courbe est la forme correcte en français.
 
+- **« Véhicule » et « Durée » ne sont plus des `<select>`.** Ce sont des combobox ARIA maison :
+  `selectOption()` y échoue et `toHaveValue()` n'a rien à lire. `SearchPage` expose
+  `chooseVehicle` / `chooseDuration` (ouvrir, puis cliquer l'option par son nom, `exact: true`) et
+  `expectVehicle` / `expectDuration`, qui lisent le libellé affiché par le déclencheur. Les champs de
+  date, eux, restent des `<input>` : `fill()` y écrit un jour ISO, que le front accepte comme saisie.
+
 - **Playwright lit la signature des fixtures : le motif `{}` est obligatoire.**
   Une fixture qui ne consomme rien s'écrit `async ({}, use) => {}`. La remplacer
   par un paramètre nommé pour satisfaire `no-empty-pattern` fait échouer le

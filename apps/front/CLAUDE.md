@@ -217,6 +217,21 @@ change côté api casse la compilation du front plutôt que sa production.
 - **La page `/recherche` s'appelait `/carte`.** Le composant de carte, lui, reste `ListingsMap` : c'est
   la page qui a changé de rôle, pas la carte.
 
+- **Le défilement remonte en haut à chaque changement de chemin, pour tout le site.**
+  `useScrollToTopOnNavigation`, appelé dans `App` et nulle part ailleurs : sans lui, `BrowserRouter`
+  garde la position, et un lien du pied de page ouvrait la page suivante sur sa fin. Trois choses le
+  tiennent. Il compare au dernier **chemin** : la recherche réécrit ses paramètres, ce qui fait passer
+  la navigation de `POP` à `PUSH` sans changer de page. Il laisse `POP` (précédent, suivant) au
+  navigateur. Et il passe `behavior: 'instant'` : avec `scroll-behavior: smooth` sur `html`, un
+  `scrollTo(0, 0)` nu devenait une glissade, qui dans un onglet en arrière-plan ne bougeait pas du
+  tout. Un effet ne rend jamais la valeur de `scrollTo` : React l'a prise pour une fonction de
+  nettoyage, et l'application entière est tombée au démontage.
+
+- **La page 404 pose `noindex` et son propre titre d'onglet, et les retire en partant.** Une
+  application monopage répond 200 à toute adresse : c'est la seule façon, côté navigateur, d'empêcher
+  un moteur d'indexer une page qui n'existe pas. L'hébergeur devra servir `index.html` pour toute
+  adresse inconnue, sans quoi un lien profond (`/place/…`) afficherait sa 404 à lui, pas celle-ci.
+
 ## Le système de design « Signal Riviera »
 
 Trois matières, prises à la rue niçoise : le **bleu du panneau P** (la marque), l'**encre du
@@ -356,11 +371,6 @@ Le pied de page les lie depuis chaque page, et le formulaire d'inscription renvo
 - **Ce que le code ne sait pas s'écrit `<ToComplete>`, jamais inventé.** Identité de l'éditeur,
   hébergeur, adresses de contact et de signalement, médiateur, modalités de reversement au loueur.
   Tant qu'il en reste un, la page passe `draft` et s'ouvre sur « Document de travail ».
-- **`LegalPage` remonte en haut de page à l'ouverture, en `behavior: 'instant'`.** Le routeur garde le
-  défilement et l'on arrive depuis le pied de page. Avec `scroll-behavior: smooth` sur `html`, un
-  `scrollTo(0, 0)` nu devenait une glissade, qui dans un onglet en arrière-plan ne bougeait pas du
-  tout. Et l'effet ne rend jamais la valeur de `scrollTo` : React l'a prise pour une fonction de
-  nettoyage, et l'application entière est tombée au démontage.
 - **Le bouton de `PrivacyPage` s'appelle « Revoir mon choix », pas « Gérer les cookies ».** Le page
   object e2e `CookieConsent` désigne le bouton du pied de page par ce nom : un second bouton homonyme
   le rendrait ambigu.

@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { ConsentManager } from './components/ConsentManager';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
+import { useScrollToTopOnNavigation } from './hooks/useScrollToTopOnNavigation';
 import { Routes } from './routes/Routes';
 
 export const App = () => {
   const { t } = useTranslation('common');
+  useScrollToTopOnNavigation();
 
   return (
     <div className="flex min-h-dvh flex-col">

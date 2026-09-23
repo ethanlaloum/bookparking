@@ -343,6 +343,28 @@ les polices (Google Fonts, finalité `fonts`). L'hexagone est `src/app/consent/`
 - **L'horloge est une dépendance (`clock`)**, pour que `decidedAt` se prouve au rung `unit`. C'est
   la première : `SystemClock` en production, `FixedClock` dans `InMemoryDependencies`.
 
+## Les pages légales
+
+Trois pages publiques, en français seulement et hors i18n (c'est en français qu'elles font foi) :
+`/mentions-legales`, `/donnees-personnelles`, `/conditions-d-utilisation`, sous `src/pages/legal/`.
+Le pied de page les lie depuis chaque page, et le formulaire d'inscription renvoie aux deux dernières.
+
+- **Une page légale décrit le code, jamais l'intention.** Le tableau des traitements de
+  `PrivacyPage` et les délais de `TermsPage` — 30 minutes pour la page de paiement, 48 heures pour le
+  loueur, 24 heures d'annulation gratuite — sont ceux de l'api. Une donnée collectée, une durée de
+  conservation, un tiers appelé ou un délai qui change côté api change ici, dans la même pull request.
+- **Ce que le code ne sait pas s'écrit `<ToComplete>`, jamais inventé.** Identité de l'éditeur,
+  hébergeur, adresses de contact et de signalement, médiateur, modalités de reversement au loueur.
+  Tant qu'il en reste un, la page passe `draft` et s'ouvre sur « Document de travail ».
+- **`LegalPage` remonte en haut de page à l'ouverture, en `behavior: 'instant'`.** Le routeur garde le
+  défilement et l'on arrive depuis le pied de page. Avec `scroll-behavior: smooth` sur `html`, un
+  `scrollTo(0, 0)` nu devenait une glissade, qui dans un onglet en arrière-plan ne bougeait pas du
+  tout. Et l'effet ne rend jamais la valeur de `scrollTo` : React l'a prise pour une fonction de
+  nettoyage, et l'application entière est tombée au démontage.
+- **Le bouton de `PrivacyPage` s'appelle « Revoir mon choix », pas « Gérer les cookies ».** Le page
+  object e2e `CookieConsent` désigne le bouton du pied de page par ce nom : un second bouton homonyme
+  le rendrait ambigu.
+
 ## Le paiement d'une demande (SPEC-004)
 
 Demander une place ouvre une page Stripe Checkout, où le conducteur pose une **empreinte** : rien n'est

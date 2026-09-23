@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {
@@ -18,6 +18,8 @@ import { selectRegisterError, selectRegisterLoading } from '../selectors/account
 import { selectIsAuthenticated } from '../selectors/auth/authSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { registerSchema, type RegisterValues } from './registerSchema';
+
+const LEGAL_LINK = 'font-medium text-accent underline underline-offset-4';
 
 export const RegisterPage = () => {
   const { t } = useTranslation(['auth', 'common']);
@@ -97,6 +99,16 @@ export const RegisterPage = () => {
           {loading && <Spinner />}
           {t('auth:register.submit')}
         </Button>
+
+        <p className="text-center text-sm text-fg-subtle">
+          <Trans
+            i18nKey="auth:register.legal"
+            components={{
+              terms: <Link to="/conditions-d-utilisation" className={LEGAL_LINK} />,
+              privacy: <Link to="/donnees-personnelles" className={LEGAL_LINK} />,
+            }}
+          />
+        </p>
       </form>
     </AuthShell>
   );

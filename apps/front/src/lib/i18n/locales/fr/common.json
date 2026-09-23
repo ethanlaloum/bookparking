@@ -7,7 +7,7 @@
   "error": { "title": "Un problème est survenu", "unexpected": "Une erreur inattendue est survenue. Réessayez dans un instant.", "notFound": "Page introuvable", "notFoundBody": "Le lien que vous avez suivi ne mène nulle part.", "notFoundSign": "Stationnement interdit ici." },
   "form": { "required": "Ce champ est obligatoire.", "problemTitle": "Votre demande n’a pas pu être envoyée", "problemIntro": "Corrigez les points suivants :" },
   "unit": { "perNight": "par nuit", "night_one": "{{count}} nuit", "night_other": "{{count}} nuits" },
-  "footer": { "explore": "Explorer", "search": "Rechercher une place", "city": "Partout en France", "madeIn": "Pensé à Nice, pour toute la France." },
+  "footer": { "explore": "Explorer", "search": "Rechercher une place", "city": "Partout en France", "madeIn": "Pensé à Nice, pour toute la France.", "legal": "Informations légales", "legalNotice": "Mentions légales", "privacy": "Données personnelles", "terms": "Conditions d’utilisation" },
   "date": { "placeholder": "jj/mm/aaaa", "openCalendar": "Ouvrir le calendrier", "dialog": "Choisir les dates", "picking": "Choisissez : {{label}}", "clear": "Effacer", "done": "Valider", "empty": "—", "previousMonth": "Mois précédent", "nextMonth": "Mois suivant", "selectedSuffix": ", sélectionné" },
   "skipToContent": "Aller au contenu"
 }

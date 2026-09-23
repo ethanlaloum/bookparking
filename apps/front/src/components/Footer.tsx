@@ -9,6 +9,25 @@ import { BrandLink } from './BrandLink';
 const LINK =
   'group inline-flex items-center gap-1.5 rounded-md text-on-ink transition-colors hover:text-highlight';
 
+const FooterNav = ({ title, links }: { title: string; links: { to: string; label: string }[] }) => (
+  <nav aria-label={title}>
+    <p className="label-ticket text-on-ink-muted">{title}</p>
+    <ul className="mt-4 flex flex-col gap-3 text-[0.95rem]">
+      {links.map((link) => (
+        <li key={link.to}>
+          <Link to={link.to} className={LINK}>
+            {link.label}
+            <ArrowUpRight
+              className="size-4 opacity-50 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
+              aria-hidden="true"
+            />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  </nav>
+);
+
 export const Footer = () => {
   const { t } = useTranslation(['common', 'consent']);
   const dispatch = useAppDispatch();
@@ -31,29 +50,23 @@ export const Footer = () => {
               </p>
             </div>
 
-            <nav aria-label={t('footer.explore')}>
-              <p className="label-ticket text-on-ink-muted">{t('footer.explore')}</p>
-              <ul className="mt-4 flex flex-col gap-3 text-[0.95rem]">
-                <li>
-                  <Link to="/recherche" className={LINK}>
-                    {t('footer.search')}
-                    <ArrowUpRight
-                      className="size-4 opacity-50 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/publier" className={LINK}>
-                    {t('nav.publish')}
-                    <ArrowUpRight
-                      className="size-4 opacity-50 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                </li>
-              </ul>
-            </nav>
+            <div className="flex flex-col gap-12 sm:flex-row sm:gap-20">
+              <FooterNav
+                title={t('footer.explore')}
+                links={[
+                  { to: '/recherche', label: t('footer.search') },
+                  { to: '/publier', label: t('nav.publish') },
+                ]}
+              />
+              <FooterNav
+                title={t('footer.legal')}
+                links={[
+                  { to: '/mentions-legales', label: t('footer.legalNotice') },
+                  { to: '/donnees-personnelles', label: t('footer.privacy') },
+                  { to: '/conditions-d-utilisation', label: t('footer.terms') },
+                ]}
+              />
+            </div>
           </div>
 
           <p

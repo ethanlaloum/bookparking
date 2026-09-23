@@ -10,14 +10,9 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f46e0'/%3E%3Cpath d='M11 24V8h6.4c3.5 0 5.6 2 5.6 5.1s-2.1 5.2-5.6 5.2h-2.6V24H11zm3.8-8.6h2.2c1.6 0 2.6-.9 2.6-2.3s-1-2.2-2.6-2.2h-2.2v4.5z' fill='%23fff'/%3E%3C/svg%3E"
     />
-    <!-- Les polices partent avec le document, et non depuis un @import CSS qui
-         attendrait la feuille de style pour commencer a les demander. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap"
-    />
+    <!-- Aucune police de Google ici : Google recoit l'adresse IP de quiconque
+         les charge, et le visiteur doit l'avoir permis. `useGoogleFonts` pose
+         la feuille de style une fois le consentement lu. -->
     <title>Bookparking — des places de parking entre voisins, partout en France</title>
   </head>
   <body>

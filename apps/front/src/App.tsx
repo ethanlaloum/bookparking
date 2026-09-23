@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { ConsentManager } from './components/ConsentManager';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { Routes } from './routes/Routes';
@@ -20,6 +21,7 @@ export const App = () => {
         <Routes />
       </main>
       <Footer />
+      <ConsentManager />
     </div>
   );
 };

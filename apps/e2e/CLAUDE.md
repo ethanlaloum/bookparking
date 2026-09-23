@@ -21,6 +21,19 @@ Rien n'est simulé entre eux. `page.route()` n'apparaît nulle part sous
   `expectVehicle` / `expectDuration`, qui lisent le libellé affiché par le déclencheur. Les champs de
   date, eux, restent des `<input>` : `fill()` y écrit un jour ISO, que le front accepte comme saisie.
 
+- **Chaque parcours démarre avec le consentement déjà accepté.** La fixture `page` pose
+  `bookparking.consent` (carte et polices permises) avant tout script, à chaque navigation.
+  Sans cela, le bandeau collant masquerait des boutons en bas d'écran et la carte laisserait place
+  à son encart : toutes les suites de carte échoueraient. Seul
+  `tests/real/consent/` s'en retire par `test.use({ consent: 'undecided' })`. Si le front
+  incrémente `CONSENT_VERSION`, la constante de `src/fixtures/test.ts` doit suivre ; sinon
+  l'enregistrement posé ne vaut plus, et c'est toute la suite de carte qui le signale.
+
+- **Le consentement se prouve par les requêtes, pas par l'écran.** `watchThirdParties` relève
+  tout ce qui part vers `fonts.googleapis.com`, `fonts.gstatic.com` et `tile.openstreetmap.org`.
+  Il se branche **avant** la première navigation : une requête partie avant l'écoute échapperait
+  au relevé, et le test conclurait à tort qu'elle n'a pas eu lieu.
+
 - **Playwright lit la signature des fixtures : le motif `{}` est obligatoire.**
   Une fixture qui ne consomme rien s'écrit `async ({}, use) => {}`. La remplacer
   par un paramètre nommé pour satisfaire `no-empty-pattern` fait échouer le

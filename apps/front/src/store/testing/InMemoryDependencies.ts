@@ -18,6 +18,9 @@ import {
   type FailureKind,
 } from '../../app/back-office/domain/ports/BackOfficeGateway';
 import type { SessionStore } from '../../app/auth/domain/ports/SessionStore';
+import type { Consent } from '../../app/consent/domain/entities/Consent';
+import type { Clock } from '../../app/consent/domain/ports/Clock';
+import type { ConsentStore } from '../../app/consent/domain/ports/ConsentStore';
 import type {
   AddressSuggestion,
   LocatedAddress,
@@ -62,6 +65,26 @@ export class InMemorySessionStore implements SessionStore {
   clear(): void {
     this.saved = null;
     this.cleared = true;
+  }
+}
+
+export class InMemoryConsentStore implements ConsentStore {
+  public saved: Consent | null = null;
+
+  read(): Consent | null {
+    return this.saved;
+  }
+
+  save(consent: Consent): void {
+    this.saved = consent;
+  }
+}
+
+export class FixedClock implements Clock {
+  public current = new Date('2026-09-23T08:00:00.000Z');
+
+  now(): Date {
+    return new Date(this.current);
   }
 }
 
@@ -183,6 +206,8 @@ export class InMemoryGeocodingGateway implements GeocodingGateway {
 export interface InMemoryDependencies extends Dependencies {
   accountGateway: InMemoryAccountGateway;
   backOfficeGateway: InMemoryBackOfficeGateway;
+  clock: FixedClock;
+  consentStore: InMemoryConsentStore;
   geocodingGateway: InMemoryGeocodingGateway;
   listingGateway: InMemoryListingGateway;
   rentalGateway: InMemoryRentalGateway;
@@ -193,6 +218,8 @@ export interface InMemoryDependencies extends Dependencies {
 export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   accountGateway: new InMemoryAccountGateway(),
   backOfficeGateway: new InMemoryBackOfficeGateway(),
+  clock: new FixedClock(),
+  consentStore: new InMemoryConsentStore(),
   geocodingGateway: new InMemoryGeocodingGateway(),
   listingGateway: new InMemoryListingGateway(),
   rentalGateway: new InMemoryRentalGateway(),

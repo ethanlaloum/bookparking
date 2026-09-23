@@ -2,6 +2,8 @@ import { BookparkingRxAccountGateway } from '../app/account/adapters/RealAccount
 import { LocalStorageSessionStore } from '../app/auth/adapters/LocalStorageSessionStore';
 import { BookparkingRxSessionGateway } from '../app/auth/adapters/RealSessionGateway';
 import { BookparkingRxBackOfficeGateway } from '../app/back-office/adapters/RealBackOfficeGateway';
+import { LocalStorageConsentStore } from '../app/consent/adapters/LocalStorageConsentStore';
+import { SystemClock } from '../app/consent/adapters/SystemClock';
 import { BanGeocodingGateway } from '../app/listing/adapters/RealGeocodingGateway';
 import { BookparkingRxListingGateway } from '../app/listing/adapters/RealListingGateway';
 import { BookparkingRxRentalGateway } from '../app/rental/adapters/RealRentalGateway';
@@ -15,6 +17,8 @@ export const buildDependencies = (baseUrl: string): Dependencies => {
   return {
     accountGateway: new BookparkingRxAccountGateway(httpClient),
     backOfficeGateway: new BookparkingRxBackOfficeGateway(httpClient),
+    clock: new SystemClock(),
+    consentStore: new LocalStorageConsentStore(),
     geocodingGateway: new BanGeocodingGateway(),
     listingGateway: new BookparkingRxListingGateway(httpClient),
     rentalGateway: new BookparkingRxRentalGateway(httpClient),

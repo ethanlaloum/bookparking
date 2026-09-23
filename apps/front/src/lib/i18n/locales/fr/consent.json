@@ -1,0 +1,38 @@
+{
+  "banner": {
+    "eyebrow": "Vos données, votre choix",
+    "title": "Cookies et contenus tiers",
+    "body": "Bookparking ne dépose aucun cookie publicitaire ni de mesure d’audience. Deux services extérieurs attendent votre accord : la carte, servie par OpenStreetMap, et les polices, servies par Google. Ils reçoivent votre adresse IP quand ils s’affichent.",
+    "acceptAll": "Tout accepter",
+    "refuseAll": "Tout refuser",
+    "customize": "Personnaliser"
+  },
+  "settings": {
+    "eyebrow": "Vos données, votre choix",
+    "title": "Cookies et contenus tiers",
+    "intro": "Choisissez ce que vous autorisez. Votre choix est gardé six mois dans ce navigateur, et se change à tout moment depuis « Gérer les cookies », en bas de chaque page.",
+    "necessary": {
+      "title": "Strictement nécessaires",
+      "status": "Toujours actifs",
+      "body": "Votre session de connexion et ce choix, gardés dans ce navigateur : sans eux, le site ne saurait pas qui est connecté. La recherche d’adresse interroge la Base Adresse Nationale, un service de l’État, au moment où vous tapez."
+    },
+    "map": {
+      "label": "Carte (OpenStreetMap)",
+      "body": "Le fond de carte de la recherche, servi par la fondation OpenStreetMap. Refusée, la liste des places reste complète : seule la carte ne s’affiche pas."
+    },
+    "fonts": {
+      "label": "Polices (Google Fonts)",
+      "body": "Les polices du site, servies par Google. Refusées, le site s’affiche avec celles de votre appareil."
+    },
+    "save": "Enregistrer mes choix",
+    "acceptAll": "Tout accepter",
+    "refuseAll": "Tout refuser"
+  },
+  "manage": "Gérer les cookies",
+  "mapPlaceholder": {
+    "title": "La carte attend votre accord",
+    "body": "Elle est servie par OpenStreetMap, qui reçoit votre adresse IP quand elle s’affiche. La liste des places fonctionne sans elle.",
+    "show": "Afficher la carte",
+    "hint": "Ce choix se retire depuis « Gérer les cookies », en bas de page."
+  }
+}

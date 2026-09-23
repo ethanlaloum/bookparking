@@ -288,8 +288,63 @@ les étiquettes « ticket d'horodateur » (`label-ticket`). Les jetons vivent to
   le jour où les animations d'entrée sont passées en `animation-fill-mode: backwards` : une
   animation qui reste « remplie » sur `transform` fait de son élément le bloc conteneur de ses
   descendants `fixed`, et la feuille s'ancrait à la carte au lieu de l'écran.
-- **Les polices partent de `index.html`**, en `<link>` avec `preconnect`, et non d'un `@import` en
-  tête de CSS qui attendait la feuille de style pour commencer à les demander.
+- **Les polices ne partent plus de `index.html`**, ni d'un `@import` en tête de CSS : Google reçoit
+  l'adresse IP de quiconque les charge, et c'est une finalité soumise à l'accord du visiteur (voir
+  plus bas). `useGoogleFonts` pose la feuille de style une fois le consentement lu. Sans accord, les
+  piles de `--font-display` / `--font-sans` / `--font-mono` retombent sur les polices de l'appareil
+  — c'est pourquoi chacune doit garder un repli système.
+
+## Le consentement : ce qui attend l'accord du visiteur
+
+Bookparking ne dépose **aucun cookie**. Le seul stockage est `localStorage` : la session
+(`bookparking.session`) et le choix du visiteur (`bookparking.consent`), tous deux strictement
+nécessaires. Ce que le bandeau soumet à l'accord, ce sont les deux services tiers que le site
+appelle **sans que le visiteur l'ait demandé** : la carte (tuiles OpenStreetMap, finalité `map`) et
+les polices (Google Fonts, finalité `fonts`). L'hexagone est `src/app/consent/`.
+
+- **Ne jamais ajouter une finalité sans rien derrière.** Le bandeau affirme qu'il n'y a ni publicité
+  ni mesure d'audience : proposer un interrupteur « Mesure d'audience » avant qu'un outil existe
+  demanderait l'accord pour un traceur fictif. Le jour où un outil arrive : l'ajouter à
+  `CONSENT_PURPOSES`, **incrémenter `CONSENT_VERSION`** (un accord donné pour deux finalités ne
+  vaut pas pour une troisième, et la question est reposée à tous), ajouter ses textes dans les deux
+  locales, et reporter la version dans `apps/e2e/src/fixtures/test.ts`.
+- **Le silence n'est pas un accord.** `allows(null, …)` rend `false`, et `parseConsent` tient un
+  enregistrement incomplet — une finalité manquante, une réponse qui n'est pas un booléen — pour
+  **aucune** décision, jamais pour un accord partiel. Une finalité inconnue, elle, est ignorée.
+- **Une décision vaut 180 jours**, la durée que recommande la CNIL. `restoreConsent` la tient pour
+  absente au-delà, ou si elle est datée dans le futur, ou d'une autre version : le bandeau revient,
+  et rien de tiers ne se charge d'ici là. Les tests épinglent les dates (le 180ᵉ jour à la seconde
+  près), pas la constante.
+- **La recherche d'adresse n'attend aucun accord**, alors qu'elle aussi transmet l'IP à un tiers :
+  la Base Adresse Nationale n'est appelée que lorsque le visiteur tape une adresse, c'est le service
+  qu'il demande. Le panneau le dit, dans la rubrique « Strictement nécessaires ».
+- **« Tout refuser » et « Tout accepter » portent la même variante**, côte à côte, dans le bandeau
+  comme dans le panneau. Refuser doit être aussi simple qu'accepter : ne pas passer l'acceptation en
+  `primary` pour la mettre en avant.
+- **Un refus s'enregistre.** Sinon, la question serait reposée à chaque page — et c'est précisément
+  ce qui pousse à accepter pour être tranquille.
+- **L'encart de la carte n'accorde que la carte.** `grant(consent, 'map')` garde toutes les autres
+  réponses ; appelé sans décision préalable, il enregistre une décision où seule la carte est
+  permise. Le bandeau disparaît alors : le visiteur a répondu, et le texte de l'encart dit où
+  revenir sur ce choix.
+- **Se déconnecter ne repose pas la question.** `ConsentSlice` ignore `logoutSucceeded` : le choix
+  appartient au navigateur, pas au compte.
+- **Le bandeau est `sticky bottom-0` en fin de flux, pas `fixed`.** Arrivé tout en bas, il se range
+  après le pied de page au lieu d'en masquer la dernière ligne — et le lien « Gérer les cookies »
+  qu'elle porte.
+- **Le cadre de la carte est `isolate`.** Les volets de Leaflet montent jusqu'à `z-index: 1000` ;
+  sans contexte d'empilement propre, la carte passait au-dessus de l'en-tête collant (`z-40`) sur
+  mobile, et au-dessus du panneau de réglages (`z-50`).
+- **Les polices arrivent un peu plus tard qu'avant, pour ceux qui les acceptent.** La feuille ne
+  part qu'après le premier rendu, quand le store a relu le consentement : le texte s'affiche d'abord
+  dans la police de l'appareil, puis bascule (`display=swap`). C'est le prix de ne rien demander à
+  Google avant d'en avoir le droit. L'alternative qui supprimerait la finalité entière est
+  d'héberger les trois polices avec le site.
+- **Pas de `recordConsentFailed`.** `LocalStorageConsentStore` avale un stockage refusé, comme le
+  magasin de session : la décision vaut pour la page ouverte, et la question revient au
+  rechargement. L'échec retombe donc sur le refus, jamais sur un accord.
+- **L'horloge est une dépendance (`clock`)**, pour que `decidedAt` se prouve au rung `unit`. C'est
+  la première : `SystemClock` en production, `FixedClock` dans `InMemoryDependencies`.
 
 ## L'administration du site vit ici, et pas ailleurs
 

@@ -10,6 +10,8 @@ import {
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { grant } from '../app/consent/domain/entities/Consent';
+import { recordConsentRequested } from '../app/consent/domain/use-cases/record-consent/recordConsentEpic';
 import { offersTier } from '../app/listing/domain/entities/SearchCriteria';
 import { listListingsRequested } from '../app/listing/domain/use-cases/list-listings/listListingsEpic';
 import { locateListingsRequested } from '../app/listing/domain/use-cases/locate-listings/locateListingsEpic';
@@ -19,12 +21,14 @@ import {
 } from '../app/listing/domain/use-cases/search-address/searchAddressEpic';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
+import { MapConsentPlaceholder } from '../components/MapConsentPlaceholder';
 import { Notice } from '../components/Notice';
 import { SearchBar } from '../components/SearchBar';
 import { SearchResultCard } from '../components/SearchResultCard';
 import { Skeleton } from '../components/ui/skeleton';
 import { useSearchCriteria } from '../hooks/useSearchCriteria';
 import { cn } from '../lib/cn';
+import { selectConsent, selectIsPurposeAllowed } from '../selectors/consent/consentSelectors';
 import {
   selectApproximateCount,
   selectListings,
@@ -69,6 +73,9 @@ export const SearchPage = () => {
     selectVehicleTally(state, criteria.vehicle),
   );
   const [focusedId, setFocusedId] = useState<string | null>(null);
+
+  const consent = useAppSelector(selectConsent);
+  const mapAllowed = useAppSelector((state) => selectIsPurposeAllowed(state, 'map'));
 
   const barKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}`;
 
@@ -228,8 +235,15 @@ export const SearchPage = () => {
           aria-label={t('listing:map.nav')}
           className="min-w-0 lg:sticky lg:top-20"
         >
-          <div className="relative h-[60vh] overflow-hidden rounded-3xl border border-line bg-bg-sunken shadow-[var(--shadow-lift)] lg:h-[calc(100dvh-6.5rem)]">
-            {listings.length > 0 ? (
+          {/* `isolate` : les volets de Leaflet montent jusqu'à `z-index: 1000`.
+              Sans contexte d'empilement propre, la carte passait au-dessus de
+              l'en-tête collant et du panneau de consentement. */}
+          <div className="relative isolate h-[60vh] overflow-hidden rounded-3xl border border-line bg-bg-sunken shadow-[var(--shadow-lift)] lg:h-[calc(100dvh-6.5rem)]">
+            {!mapAllowed ? (
+              <MapConsentPlaceholder
+                onShow={() => dispatch(recordConsentRequested({ choices: grant(consent, 'map') }))}
+              />
+            ) : listings.length > 0 ? (
               <Suspense fallback={<Loader />}>
                 <ListingsMap
                   mapped={results}
@@ -245,14 +259,16 @@ export const SearchPage = () => {
                 <EmptyState title={t('listing:map.empty')} />
               </div>
             )}
-            {locating && (
+            {mapAllowed && locating && (
               <p className="absolute top-4 left-1/2 z-[500] inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-bg-raised px-3.5 py-2 text-xs font-medium text-fg shadow-[var(--shadow-lift)]">
                 <span className="size-3 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                 {t('listing:map.locating')}
               </p>
             )}
           </div>
-          <p className="mt-3 text-xs text-fg-subtle">{t('listing:map.attribution')}</p>
+          {mapAllowed && (
+            <p className="mt-3 text-xs text-fg-subtle">{t('listing:map.attribution')}</p>
+          )}
         </section>
       </div>
     </div>

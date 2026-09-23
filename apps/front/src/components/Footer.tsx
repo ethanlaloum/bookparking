@@ -2,13 +2,16 @@ import { ArrowUpRight, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+import { consentSettingsOpened } from '../app/consent/store/consentSettings';
+import { useAppDispatch } from '../store/redux';
 import { BrandLink } from './BrandLink';
 
 const LINK =
   'group inline-flex items-center gap-1.5 rounded-md text-on-ink transition-colors hover:text-highlight';
 
 export const Footer = () => {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'consent']);
+  const dispatch = useAppDispatch();
 
   return (
     <footer className="mt-auto px-3 pt-16 pb-3 sm:px-4">
@@ -64,6 +67,16 @@ export const Footer = () => {
             <span>
               © {new Date().getFullYear()} {t('brand')}
             </span>
+            {/* Retirer son accord doit être aussi simple que le donner : le
+                panneau se rouvre depuis chaque page, pas seulement depuis le
+                bandeau qui a disparu une fois la décision prise. */}
+            <button
+              type="button"
+              onClick={() => dispatch(consentSettingsOpened())}
+              className="cursor-pointer self-start rounded-md underline decoration-on-ink-muted/40 underline-offset-4 transition-colors hover:text-highlight hover:decoration-highlight sm:self-auto"
+            >
+              {t('consent:manage')}
+            </button>
             <span>{t('footer.madeIn')}</span>
           </div>
         </div>

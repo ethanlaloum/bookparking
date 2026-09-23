@@ -16,7 +16,16 @@ interface TestFixtures {
   api: ApiClient;
   seed: Seeder;
   app: AppFixture;
+  consent: ConsentOption;
 }
+
+/**
+ * `accepted` : le visiteur a déjà tout accepté — le bandeau ne masque aucun
+ * bouton et la carte s'affiche, comme avant que le consentement n'existe.
+ * `undecided` : première visite, rien n'est posé. Seul le parcours du
+ * consentement s'en sert, par `test.use({ consent: 'undecided' })`.
+ */
+export type ConsentOption = 'accepted' | 'undecided';
 
 export interface AppFixture {
   openAs(user: SeededUser): Promise<Page>;
@@ -25,7 +34,36 @@ export interface AppFixture {
 
 const SESSION_STORAGE_KEY = 'bookparking.session';
 
+// Le format et la version de `Consent.ts` côté front. Si `CONSENT_VERSION`
+// change, ce qui est posé ici ne vaut plus : chaque parcours verrait le
+// bandeau et l'encart de carte, et les suites de carte échoueraient.
+const CONSENT_STORAGE_KEY = 'bookparking.consent';
+const CONSENT_VERSION = 1;
+
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  consent: ['accepted', { option: true }],
+
+  // Posé avant tout script de la page, à chaque navigation : les parcours qui
+  // n'ont rien à dire du consentement ne le voient jamais.
+  page: async ({ page, consent }, use) => {
+    if (consent === 'accepted') {
+      await page.addInitScript(
+        ([key, value]) => {
+          window.localStorage.setItem(key, value);
+        },
+        [
+          CONSENT_STORAGE_KEY,
+          JSON.stringify({
+            version: CONSENT_VERSION,
+            decidedAt: new Date().toISOString(),
+            choices: { map: true, fonts: true },
+          }),
+        ] as const,
+      );
+    }
+    await use(page);
+  },
+
   stack: [
     // Playwright lit la signature de la fonction pour resoudre les fixtures
     // dont elle depend : le motif de destructuration est obligatoire, meme

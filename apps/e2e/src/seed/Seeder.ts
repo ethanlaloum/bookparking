@@ -15,8 +15,8 @@ export const inDays = (days: number): string =>
 export const dayInDays = (days: number): string =>
   new Date(Date.now() + days * DAY).toISOString().slice(0, 10);
 
-// Bookparking ne couvre que Nice : une adresse d'une autre commune serait
-// refusée par le géocodage, et un parcours de carte n'aurait rien à placer.
+// Des rues réelles, avec leur code postal et leur ville : la carte géocode
+// chaque annonce, et une adresse inventée ressortirait non située.
 const NICE_STREETS = [
   'rue Barla',
   'avenue Malausséna',

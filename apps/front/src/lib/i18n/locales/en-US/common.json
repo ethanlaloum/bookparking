@@ -7,7 +7,7 @@
   "error": { "title": "Something went wrong", "unexpected": "An unexpected error occurred. Try again in a moment.", "notFound": "Page not found", "notFoundBody": "The link you followed leads nowhere.", "notFoundSign": "No parking here." },
   "form": { "required": "This field is required.", "problemTitle": "Your request could not be sent", "problemIntro": "Fix the following:" },
   "unit": { "perNight": "per night", "night_one": "{{count}} night", "night_other": "{{count}} nights" },
-  "footer": { "explore": "Explore", "search": "Find a space", "city": "Nice, Alpes-Maritimes", "madeIn": "Designed in Nice, for Nice." },
+  "footer": { "explore": "Explore", "search": "Find a space", "city": "Everywhere in France", "madeIn": "Designed in Nice, for all of France." },
   "date": { "placeholder": "dd/mm/yyyy", "openCalendar": "Open the calendar", "dialog": "Pick the dates", "picking": "Pick: {{label}}", "clear": "Clear", "done": "Done", "empty": "—", "previousMonth": "Previous month", "nextMonth": "Next month", "selectedSuffix": ", selected" },
   "skipToContent": "Skip to content"
 }

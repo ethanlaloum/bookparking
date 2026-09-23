@@ -16,7 +16,7 @@ import {
 } from '../app/listing/domain/entities/SearchCriteria';
 import { listListingsRequested } from '../app/listing/domain/use-cases/list-listings/listListingsEpic';
 import { ParkingLotIllustration } from '../components/art/ParkingLotIllustration';
-import { RivieraMap } from '../components/art/RivieraMap';
+import { FranceMap } from '../components/art/FranceMap';
 import { ParkingMark } from '../components/ParkingMark';
 import { SearchBar } from '../components/SearchBar';
 import { Badge } from '../components/ui/badge';
@@ -164,7 +164,7 @@ export const HomePage = () => {
                         </div>
                         <div className="relative flex flex-col items-center justify-center gap-1.5 border-l-2 border-dashed border-asphalt-300 px-4 before:absolute before:-top-2 before:-left-[9px] before:size-4 before:rounded-full before:bg-ink after:absolute after:-bottom-2 after:-left-[9px] after:size-4 after:rounded-full after:bg-ink">
                           <ParkingMark className="size-8" />
-                          <span className="label-ticket text-[0.6rem] text-asphalt-500">Nice</span>
+                          <span className="label-ticket text-[0.6rem] text-asphalt-500">France</span>
                         </div>
                       </div>
                     </div>
@@ -245,7 +245,7 @@ export const HomePage = () => {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Trois promesses, en bento : la ville, le prix, la confirmation.    */}
+      {/* Trois promesses, en bento : le pays, le prix, la confirmation.     */}
       {/* ------------------------------------------------------------------ */}
       <section className="mx-auto max-w-[1320px] px-4 pt-24 sm:px-6 lg:pt-32">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -259,13 +259,13 @@ export const HomePage = () => {
 
         <ul className="mt-14 grid gap-5 lg:grid-cols-12 lg:grid-rows-2 lg:gap-6">
           <li className="surface-ink grain relative flex min-h-[28rem] flex-col overflow-hidden rounded-3xl p-7 ring-1 ring-white/[0.06] ring-inset sm:p-9 lg:col-span-7 lg:row-span-2">
-            <RivieraMap className="absolute inset-x-0 bottom-0 !h-[72%]" />
+            <FranceMap className="absolute inset-x-0 bottom-0 !h-[72%]" />
             <div
               aria-hidden="true"
               className="absolute inset-x-0 top-0 h-3/5 bg-gradient-to-b from-ink via-ink/85 to-transparent"
             />
             <div className="relative">
-              <p className="label-ticket text-highlight">43,70° N · 7,27° E</p>
+              <p className="label-ticket text-highlight">46,60° N · 2,40° E</p>
               <h3 className="mt-3 font-display text-3xl font-bold text-on-ink sm:text-4xl">
                 {t('listing:home.argument.local.title')}
               </h3>

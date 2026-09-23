@@ -70,11 +70,20 @@ change côté api casse la compilation du front plutôt que sa production.
 - **Le libellé du DOM n'est pas celui de l'écran.** `uppercase` est une règle CSS : le DOM contient
   « Places publiées ». Écrire un locator depuis une capture d'écran donne un test qui ne trouve rien.
 
-- **Bookparking ne couvre que Nice, et trois endroits en dépendent.**
-  `NICE` et `NICE_INSEE_CODE` vivent dans `Coordinates.ts` : le géocodage restreint sa recherche à
-  `citycode=06088`, le cadrage retombe sur la ville quand rien n'est situé, et les paliers de zoom sont
-  calibrés à l'échelle d'une agglomération, pas d'un pays. Une adresse d'une autre commune ressort
-  **non située**, ce qui est le comportement voulu et non un bug de géocodage.
+- **Bookparking couvre toute la France, et le géocodage n'a plus aucun filtre.**
+  Jusqu'au 23/09/2026, `citycode=06088` restreignait la BAN à Nice. Il n'y a plus ni filtre de commune
+  ni biais de proximité : ce sont le code postal et la ville, que le formulaire de publication
+  demande, qui départagent deux rues homonymes — et le score qui dit quand ils manquaient. Trois
+  conséquences :
+  - l'autocomplétion classe à l'échelle du pays : « place mass » propose d'abord les places Massenet
+    de Saint-Étienne et d'ailleurs. D'où l'aide du champ, qui invite à taper la ville, et les parcours
+    e2e, qui tapent « place masséna nice » ;
+  - une carte vide s'ouvre sur `FRANCE` au `COUNTRY_ZOOM` (5) par `frameOf`. `centerOf` seul
+    garderait le zoom d'une rue, et montrerait un champ du Cher ;
+  - `zoomForSpan` va du quartier (14) au pays (5), puis 2 au-delà : la BAN couvre aussi l'outre-mer.
+
+  Les tests épinglent les valeurs (le zoom 5, la distance au centre de la métropole), jamais les
+  constantes : comparer à `COUNTRY_ZOOM` laissait survivre une mutation qui le passait à 13.
 
 - **La Base Adresse Nationale rend toujours un résultat, même pour une adresse qui n'existe pas.**
   Elle retombe sur la voie la plus proche et le dit par un score. « 12 rue des Lilas 75011 Paris »
@@ -215,7 +224,7 @@ change côté api casse la compilation du front plutôt que sa production.
 
 Trois matières, prises à la rue niçoise : le **bleu du panneau P** (la marque), l'**encre du
 bitume** (les surfaces sombres qui portent le propos : hero, pied de page, panneau
-d'authentification, carte « uniquement à Nice »), le **jaune des marquages au sol** (rare, et
+d'authentification, carte « partout en France »), le **jaune des marquages au sol** (rare, et
 seulement sur l'encre). Bricolage Grotesque pour les titres, Geist pour le texte, Geist Mono pour
 les étiquettes « ticket d'horodateur » (`label-ticket`). Les jetons vivent tous dans `index.css`.
 

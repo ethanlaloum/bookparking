@@ -34,7 +34,7 @@ export class SearchPage {
   }
 
   searchField(): Locator {
-    return this.page.getByRole('combobox', { name: 'Rechercher une adresse à Nice' });
+    return this.page.getByRole('combobox', { name: 'Rechercher une adresse', exact: true });
   }
 
   suggestion(label: string): Locator {

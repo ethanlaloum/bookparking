@@ -71,7 +71,7 @@
   },
   "map": {
     "title": "Find a space",
-    "subtitle": "Every space published in Nice, on the map.",
+    "subtitle": "Every space published in France, on the map.",
     "nav": "Search",
     "located_one": "{{count}} space placed",
     "located_other": "{{count}} spaces placed",
@@ -92,9 +92,9 @@
     "mapTab": "Map"
   },
   "mapSearch": {
-    "label": "Search an address in Nice",
-    "placeholder": "Start typing a street in Nice…",
-    "hint": "At least 3 characters. Only addresses in Nice are offered.",
+    "label": "Search an address",
+    "placeholder": "An address, with its city…",
+    "hint": "At least 3 characters. Add the city to narrow the suggestions.",
     "clear": "Clear the address",
     "noResult": "No address matches.",
     "suggestions": "Address suggestions",
@@ -138,7 +138,7 @@
     "undeclaredKept_other": "{{count}} spaces stated nothing and stay visible."
   },
   "home": {
-    "live": "Right now in Nice",
+    "live": "Right now in France",
     "heroLead": "Parking spaces,",
     "heroAccent": "between neighbors.",
     "ticket": {
@@ -155,7 +155,7 @@
       "step": {
         "search": {
           "title": "Search around an address",
-          "body": "Type a street in Nice: every space shows up on the map, closest first."
+          "body": "Type an address anywhere in France: every space shows up on the map, closest first."
         },
         "dates": {
           "title": "Pick your dates",
@@ -168,8 +168,8 @@
       }
     },
     "why": {
-      "eyebrow": "Why here",
-      "title": "One city, neighbors, a price that holds.",
+      "eyebrow": "Why Bookparking",
+      "title": "Neighbors everywhere, a price that holds.",
       "noFees": "in fees added once the price is shown"
     },
     "owner": {
@@ -177,14 +177,14 @@
       "title": "A space sitting idle? Rent it to your neighbors.",
       "body": "Set a price by the day, the week or the month, pick the period, and confirm every request yourself."
     },
-    "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map.",
+    "pitch": "Search an address anywhere in France, say which vehicle and for how long. Available spaces show up on the map.",
     "available_one": "{{count}} space available",
     "available_other": "{{count}} spaces available",
     "seeAll": "See every space on the map",
     "argument": {
       "local": {
-        "title": "Nice only",
-        "body": "Every space is in the city, listed by someone who lives there. No result three hundred kilometres away."
+        "title": "Everywhere in France",
+        "body": "Every space is listed by someone who lives in the neighborhood. Around the address you search, the closest come first."
       },
       "price": {
         "title": "The quoted price is the price paid",

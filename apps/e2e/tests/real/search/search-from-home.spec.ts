@@ -31,7 +31,7 @@ test.describe('Search', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const search = new SearchPage(page);
-    await search.searchField().fill('place mass');
+    await search.searchField().fill('place masséna nice');
     await search.suggestion('Place Masséna 06000 Nice').click();
     await search.chooseVehicle('Voiture électrique');
     await search.chooseDuration('À la semaine');

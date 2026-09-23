@@ -6,11 +6,11 @@ import {
 import { createTestStore } from '../../../../../store/testing/createTestStore';
 import {
   selectApproximateCount,
-  selectMapCenter,
+  selectMapFocus,
   selectMappedListings,
   selectUnmappableCount,
 } from '../../../../../selectors/listing/listingSelectors';
-import { NICE, type LocationPrecision } from '../../entities/Coordinates';
+import { COUNTRY_ZOOM, FRANCE, type LocationPrecision } from '../../entities/Coordinates';
 import { listListingsRequested } from '../list-listings/listListingsEpic';
 import { locateListingsRequested } from './locateListingsEpic';
 
@@ -52,10 +52,16 @@ export const createLocateListingsSut = () => {
       const actual = selectApproximateCount(store.getState());
       if (actual !== count) throw new Error(`Approximatives attendues ${count}, obtenues ${actual}`);
     },
-    thenTheMapFallsBackOnNice(): void {
-      const center = selectMapCenter(store.getState());
-      if (center.latitude !== NICE.latitude || center.longitude !== NICE.longitude)
-        throw new Error(`Repli attendu sur Nice, obtenu ${JSON.stringify(center)}`);
+    thenTheMapOpensOnFrance(): void {
+      const { center, zoom } = selectMapFocus(store.getState());
+      if (
+        center.latitude !== FRANCE.latitude ||
+        center.longitude !== FRANCE.longitude ||
+        zoom !== COUNTRY_ZOOM
+      )
+        throw new Error(
+          `Repli attendu sur la France entière, obtenu ${JSON.stringify({ center, zoom })}`,
+        );
     },
     thenTheGeocoderWasAskedTimes(count: number): void {
       const actual = dependencies.geocodingGateway.asked.length;

@@ -24,11 +24,22 @@ import { UnpublishListing } from './listing/domain/usecases/unpublish-listing/Un
 import { UpdateListingPricing } from './listing/domain/usecases/update-listing-pricing/UpdateListingPricing';
 import { KnexPublishedListingReader } from './rental/adapters/repositories/published-listing/KnexPublishedListingReader';
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
+import { RentalSweepScheduler } from './rental/adapters/cron/RentalSweepScheduler';
+import { PaymentWebhookController } from './rental/adapters/rest/controllers/payment-webhook/payment-webhook.controller';
 import { RentalRequestController } from './rental/adapters/rest/controllers/rental-request/rental-request.controller';
+import { StripePaymentGateway } from './rental/adapters/services/payment-gateway/StripePaymentGateway';
+import {
+  createStripeClient,
+  StripeClient,
+} from './rental/adapters/services/stripe/stripeSdk';
+import { StripeWebhookReader } from './rental/adapters/services/stripe-webhook/StripeWebhookReader';
+import { AbandonRentalRequest } from './rental/domain/usecases/abandon-rental-request/AbandonRentalRequest';
 import { ConfirmRentalRequest } from './rental/domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { ListOwnerRentalRequests } from './rental/domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from './rental/domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
+import { RecordPaymentEvent } from './rental/domain/usecases/record-payment-event/RecordPaymentEvent';
 import { RequestRental } from './rental/domain/usecases/request-rental/RequestRental';
+import { SweepRentalRequests } from './rental/domain/usecases/sweep-rental-requests/SweepRentalRequests';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
 import { SessionController } from './user-management/adapters/rest/controllers/session/session.controller';
@@ -41,6 +52,8 @@ import { RegisterAccount } from './user-management/domain/usecases/register-acco
 import { SignIn } from './user-management/domain/usecases/sign-in/SignIn';
 
 const DATABASE_CONNECTION = 'DATABASE_CONNECTION';
+const STRIPE_CLIENT = 'STRIPE_CLIENT';
+const PAYMENT_GATEWAY = 'PaymentGateway';
 
 type DatabaseConnection = ReturnType<typeof knex>;
 
@@ -53,6 +66,7 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
     SessionController,
     ListingController,
     RentalRequestController,
+    PaymentWebhookController,
     BackOfficeController,
   ],
   providers: [
@@ -136,22 +150,92 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       inject: [DATABASE_CONNECTION],
     },
     {
+      provide: STRIPE_CLIENT,
+      useFactory: () => createStripeClient(environment.stripeSecretKey()),
+    },
+    {
+      provide: PAYMENT_GATEWAY,
+      useFactory: (stripe: StripeClient) =>
+        new StripePaymentGateway(stripe, environment.frontBaseUrl()),
+      inject: [STRIPE_CLIENT],
+    },
+    {
+      provide: StripeWebhookReader,
+      useFactory: (stripe: StripeClient) =>
+        new StripeWebhookReader(stripe, environment.stripeWebhookSecret()),
+      inject: [STRIPE_CLIENT],
+    },
+    {
       provide: RequestRental,
-      useFactory: (connection: DatabaseConnection) =>
+      useFactory: (
+        connection: DatabaseConnection,
+        paymentGateway: StripePaymentGateway,
+      ) =>
         new RequestRental(
           new KnexPublishedListingReader(typedAs(connection)),
           new KnexRentalRequestRepository(typedAs(connection)),
+          paymentGateway,
           environment.rentalRequestExpiryInHours(),
         ),
-      inject: [DATABASE_CONNECTION],
+      inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
     },
     {
       provide: ConfirmRentalRequest,
-      useFactory: (connection: DatabaseConnection) =>
+      useFactory: (
+        connection: DatabaseConnection,
+        paymentGateway: StripePaymentGateway,
+      ) =>
         new ConfirmRentalRequest(
           new KnexRentalRequestRepository(typedAs(connection)),
+          paymentGateway,
         ),
-      inject: [DATABASE_CONNECTION],
+      inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
+    },
+    {
+      provide: AbandonRentalRequest,
+      useFactory: (
+        connection: DatabaseConnection,
+        paymentGateway: StripePaymentGateway,
+      ) =>
+        new AbandonRentalRequest(
+          new KnexRentalRequestRepository(typedAs(connection)),
+          paymentGateway,
+        ),
+      inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
+    },
+    {
+      provide: RecordPaymentEvent,
+      useFactory: (
+        connection: DatabaseConnection,
+        paymentGateway: StripePaymentGateway,
+      ) =>
+        new RecordPaymentEvent(
+          new KnexRentalRequestRepository(typedAs(connection)),
+          paymentGateway,
+        ),
+      inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
+    },
+    {
+      provide: SweepRentalRequests,
+      useFactory: (
+        connection: DatabaseConnection,
+        paymentGateway: StripePaymentGateway,
+      ) =>
+        new SweepRentalRequests(
+          new KnexRentalRequestRepository(typedAs(connection)),
+          paymentGateway,
+          environment.rentalRequestExpiryInHours(),
+        ),
+      inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
+    },
+    {
+      provide: RentalSweepScheduler,
+      useFactory: (sweepRentalRequests: SweepRentalRequests) =>
+        new RentalSweepScheduler(
+          sweepRentalRequests,
+          environment.rentalSweepIntervalInSeconds() * 1000,
+        ),
+      inject: [SweepRentalRequests],
     },
     {
       provide: ListRenterRentalRequests,

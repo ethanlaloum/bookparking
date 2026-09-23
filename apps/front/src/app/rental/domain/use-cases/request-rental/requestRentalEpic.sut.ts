@@ -4,7 +4,6 @@ import {
 } from '../../../../../store/testing/InMemoryDependencies';
 import { createTestStore } from '../../../../../store/testing/createTestStore';
 import {
-  selectLastRequestedRental,
   selectRequestRentalError,
   selectRequestRentalSuccess,
 } from '../../../../../selectors/rental/rentalSelectors';
@@ -26,11 +25,16 @@ export const createRequestRentalSut = () => {
       if (!selectRequestRentalSuccess(store.getState()))
         throw new Error('La demande n est pas marquee comme reussie');
     },
-    thenTheSubmittedPeriodIsKept(fromDay: string, toDay: string): void {
-      const kept = selectLastRequestedRental(store.getState());
-      if (kept === null) throw new Error('Aucune demande conservee');
-      if (kept.fromDay !== fromDay || kept.toDay !== toDay)
-        throw new Error(`Periode conservee inattendue : ${JSON.stringify(kept)}`);
+    givenTheApiOpensThePaymentPage(checkoutUrl: string): void {
+      dependencies.rentalGateway.requestedRental = {
+        id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
+        checkoutUrl,
+      };
+    },
+    thenThePaymentPagesOpenedAre(expected: string[]): void {
+      const actual = dependencies.paymentPageNavigator.opened;
+      if (JSON.stringify(actual) !== JSON.stringify(expected))
+        throw new Error(`Pages ouvertes ${JSON.stringify(actual)}, attendues ${JSON.stringify(expected)}`);
     },
     thenTheErrorShownIs(expected: string): void {
       const actual = selectRequestRentalError(store.getState());

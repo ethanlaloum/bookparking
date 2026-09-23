@@ -20,7 +20,7 @@ import {
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
 import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
-import { rentedNightCount } from '../app/rental/domain/entities/RentalRequestView';
+import { moneyLabelOf, rentedNightCount } from '../app/rental/domain/entities/RentalRequestView';
 import { confirmRentalRequestRequested } from '../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import { listReceivedRentalRequestsRequested } from '../app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
@@ -375,9 +375,16 @@ export const AccountPage = () => {
           ) : (
             <Card className="overflow-hidden">
               <ul>
-                {mine.map((request) => (
-                  <RentalRequestRow key={request.id} request={request} />
-                ))}
+                {mine.map((request) => {
+                  const money = moneyLabelOf(request);
+                  return (
+                    <RentalRequestRow
+                      key={request.id}
+                      request={request}
+                      moneyLabel={t(`account:money.${money.key}`, { amount: money.amount })}
+                    />
+                  );
+                })}
               </ul>
             </Card>
           )}

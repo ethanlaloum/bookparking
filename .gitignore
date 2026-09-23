@@ -9,3 +9,6 @@ dist/
 
 # graphify — graphe de connaissance généré localement
 graphify-out/
+
+# Clés Stripe de test, posées à la main, jamais commitées (SPEC-004)
+.env.stripe.local

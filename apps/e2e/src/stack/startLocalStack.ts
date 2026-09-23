@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 
+import { readStripeSecretKey, startStripeListener, type StripeListener } from './stripe';
 import { apiPort, readTarget, STACK_FILE, type StackHandle } from './target';
 
 const REPO_ROOT = resolve(process.cwd(), '..', '..');
@@ -15,6 +16,7 @@ const ACCESS_TOKEN_SECRET = 'e2e-secret-local-ephemere-32-caracteres';
 
 let container: StartedPostgreSqlContainer | null = null;
 let api: ChildProcess | null = null;
+let stripeListener: StripeListener | null = null;
 
 const run = (command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): Promise<void> =>
   new Promise((done, fail) => {
@@ -64,11 +66,20 @@ export const startLocalStack = async (): Promise<void> => {
   // migration et repond « Already up to date » sur une base vide.
   await run('pnpm', ['--filter', 'bookparking-api', 'build'], REPO_ROOT, process.env);
 
+  const stripeSecretKey = await readStripeSecretKey(REPO_ROOT);
+  stripeListener = await startStripeListener(
+    stripeSecretKey,
+    `${target.apiUrl}/payment/stripe-webhook`,
+  );
+
   const apiEnv: NodeJS.ProcessEnv = {
     ...process.env,
     DATABASE_URL: databaseUrl,
     ACCESS_TOKEN_SECRET,
     PORT: String(apiPort()),
+    STRIPE_SECRET_KEY: stripeSecretKey,
+    STRIPE_WEBHOOK_SECRET: stripeListener.webhookSecret,
+    FRONT_BASE_URL: target.frontUrl,
   };
 
   await run('pnpm', ['exec', 'knex', 'migrate:latest'], API_DIR, apiEnv);
@@ -87,6 +98,8 @@ export const startLocalStack = async (): Promise<void> => {
 export const stopLocalStack = async (): Promise<void> => {
   api?.kill('SIGTERM');
   api = null;
+  stripeListener?.stop();
+  stripeListener = null;
   await container?.stop();
   container = null;
 };

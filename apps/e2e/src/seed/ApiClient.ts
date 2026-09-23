@@ -68,8 +68,19 @@ export class ApiClient {
   async requestRental(
     token: string,
     input: { address: string; box: string; fromDay: string; toDay: string },
-  ): Promise<void> {
-    await this.expectOk('POST', '/rental-request', input, token);
+  ): Promise<{ id: string; checkoutUrl: string }> {
+    return (await this.expectOk('POST', '/rental-request', input, token)) as {
+      id: string;
+      checkoutUrl: string;
+    };
+  }
+
+  async myRequests(token: string): Promise<{ id: string; status: string; money: string }[]> {
+    return (await this.expectOk('GET', '/rental-request', undefined, token)) as {
+      id: string;
+      status: string;
+      money: string;
+    }[];
   }
 
   // Seule route qui rende l'identifiant d'une demande a un client : sans elle,

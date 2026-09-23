@@ -65,14 +65,35 @@
     "awaiting": "En attente de la réponse du propriétaire."
   },
   "status": {
+    "AWAITING_PAYMENT": "À payer",
     "PENDING": "En attente",
     "CONFIRMED": "Confirmée",
-    "EXPIRED": "Expirée"
+    "EXPIRED": "Expirée",
+    "CANCELLED": "Annulée",
+    "ABANDONED": "Abandonnée",
+    "PAYMENT_FAILED": "Refusée"
   },
   "row": {
     "period": "Du {{from}} au {{to}}",
     "nights_one": "{{count}} nuit",
     "nights_other": "{{count}} nuits",
     "requestedOn": "Demandée le {{date}}"
+  },
+  "money": {
+    "awaitingPayment": "Paiement en cours de vérification",
+    "abandoned": "Paiement abandonné",
+    "paymentFailed": "Paiement refusé par la banque",
+    "holdAwaitingOwner": "Empreinte de {{amount}} · en attente du loueur",
+    "captured": "Confirmée · {{amount}} prélevés",
+    "expiredReleasing": "Expirée · empreinte en cours de levée",
+    "expiredReleased": "Expirée · rien n’a été prélevé",
+    "cancelledReleasing": "Annulée · empreinte en cours de levée",
+    "cancelledReleased": "Annulée · rien n’a été prélevé",
+    "cancelledRefunding": "Annulée · remboursement en cours",
+    "cancelledRefunded": "Annulée · {{amount}} remboursés",
+    "pendingWithoutPayment": "En attente du loueur",
+    "confirmedWithoutPayment": "Confirmée",
+    "expiredWithoutPayment": "Expirée",
+    "cancelledWithoutPayment": "Annulée"
   }
 }

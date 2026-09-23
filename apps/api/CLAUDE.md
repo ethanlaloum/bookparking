@@ -116,14 +116,10 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   seule ligne `EXPIRED` subsiste. Décider du sort de ces lignes avant tout rollback — le `down()` ne le
   fait pas à votre place.
 
-- **L'expiration est paresseuse : `RequestRental` est son seul déclencheur, il n'existe aucun ordonnanceur.**
-  `RequestRental.execute` appelle `expireRequestsPendingSince` avant de lire les locations confirmées, avec
-  `requestedAt - RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 h par défaut, `infra/config/environment.ts`).
-  Conséquence à connaître : une demande périmée que personne ne bouscule reste `PENDING` en base
-  indéfiniment — son statut ment jusqu'à la prochaine demande, sur n'importe quelle place. Le gel, lui,
-  est bien levé, parce qu'il n'y a de gel que face à une demande concurrente.
-  Ne pas lire un `PENDING` en base comme « encore vivante » sans comparer `requested_at` au délai. Le jour
-  où un ordonnanceur existera, il appellera ce même port ; ne pas dupliquer la règle ailleurs.
+- ~~**L'expiration est paresseuse : `RequestRental` est son seul déclencheur, il n'existe aucun ordonnanceur.**~~
+  — **périmé depuis SPEC-004.** `RentalSweepScheduler` fait passer `SweepRentalRequests` toutes les cinq
+  minutes ; `RequestRental` garde l'expiration à la demande comme filet, pour libérer des dates échues à
+  l'instant précis où quelqu'un les veut. Voir « L'encaissement » plus bas.
 
 - **Le délai d'expiration est un réglage, pas une constante du domaine — et la question qui le fixe est ouverte.**
   `environment.rentalRequestExpiryInHours()` lit `RENTAL_REQUEST_EXPIRY_IN_HOURS`, 48 h par défaut, et le
@@ -171,8 +167,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   Ne pas lire AUTO-23 seule comme « aucune demande ne coexiste jamais avec une annonce dépubliée » — le
   sort d'une demande déjà insérée au moment de la dépublication reste ouvert, renvoyé à SPEC-002 (AUTO-25).
 
-- **Une demande `PENDING` jamais confirmée gèle la place sur toute sa période, jusqu'à 366 jours — rien
-  ne l'expire encore.**
+- ~~**Une demande `PENDING` jamais confirmée gèle la place sur toute sa période, jusqu'à 366 jours — rien
+  ne l'expire encore.**~~ — **périmé** : l'expiration existe depuis SPEC-002 et le balayage depuis SPEC-004.
   La contrainte d'exclusion ci-dessus ne distingue pas `status` : une ligne `PENDING` bloque une nouvelle
   demande sur la même place exactement comme une ligne `CONFIRMED` (AUTO-26, `docs/autonomous/SPEC-001.md`).
   L'expiration d'une demande est hors périmètre de SPEC-001 (`docs/specs/SPEC-001-publier-une-place.md`,
@@ -383,6 +379,60 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   Ajouter un champ obligatoire à un `Props` de cas d'usage compile donc sans rien dire, et n'échoue
   qu'à l'exécution de jest, sur des messages qui ne ressemblent pas à une erreur de type. Après tout
   élargissement d'un `Props`, lancer la suite `unit` avant de conclure.
+
+## L'encaissement (SPEC-004)
+
+Stripe Checkout, en **empreinte** : la carte est autorisée à la demande (`capture_method: manual`), prélevée
+quand le loueur confirme, levée sinon. Le contexte `rental` porte le port `PaymentGateway`, son adaptateur
+`StripePaymentGateway`, le webhook et le balayage ; le back-office n'appelle jamais Stripe.
+
+- **Le SDK de Stripe ne s'importe que depuis `rental/adapters/services/stripe/stripeSdk.ts`.**
+  Il s'exporte par `export =`, et l'api compile en CommonJS sans `esModuleInterop` : `import Stripe from
+  'stripe'` compile, puis plante au démarrage sur un `.default` absent. `import … = require(…)` est la
+  seule forme juste, et la règle `no-require-imports` la refuse : elle vit dans ce seul fichier, avec
+  sa dérogation commentée.
+- **Trois variables sans repli : `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONT_BASE_URL`.**
+  `main.ts` les exige au démarrage, comme `ACCESS_TOKEN_SECRET`. Pour lancer l'api en local :
+  `set -a; source ../../.env.stripe.local; set +a` (fichier ignoré par git), puis le secret que rend
+  `stripe listen --print-secret`. `FRONT_BASE_URL` fabrique les adresses de retour de Stripe — jamais un
+  en-tête de la requête, qui ferait de la page de paiement une redirection ouverte.
+  `RENTAL_SWEEP_INTERVAL_IN_SECONDS` (300 par défaut) règle le balayage.
+- **`NestFactory.create(AppModule, { rawBody: true })` n'est pas décoratif.** La signature du webhook
+  porte sur les octets reçus ; relue depuis le JSON décodé, elle échoue toujours. `createControllerTestApp`
+  active déjà `rawBody`.
+- **Une demande naît `AWAITING_PAYMENT`, et c'est le webhook qui la fait passer `PENDING`.**
+  Elle retient ses dates dès sa naissance — la contrainte d'exclusion ne libère que `EXPIRED`,
+  `CANCELLED`, `ABANDONED` et `PAYMENT_FAILED` — pour que deux conducteurs ne puissent jamais payer la
+  même période. Le loueur ne la voit pas : c'est `hasReachedTheOwner` dans `ListOwnerRentalRequests`
+  et `ConfirmRentalRequest`, pas un filtre SQL, qui la lui cache.
+- **Le retour du navigateur ne vaut jamais paiement.** Seul `payment_intent.amount_capturable_updated`,
+  signé, pose l'empreinte ; `checkout.session.expired` abandonne. Tout autre événement, ou un
+  identifiant de demande qui n'est pas un UUID, est accusé `200` sans effet : un refus ferait renvoyer
+  l'événement par Stripe pendant trois jours.
+- **Le statut et l'argent changent dans le même `UPDATE`, et chaque transition filtre sur l'état
+  qu'elle quitte.** `expireHoldsPlacedSince` écrit `EXPIRED` et `RELEASE_DUE` ensemble ;
+  `KnexBackOfficeRepository.cancelRentalRequest` passe l'argent à `RELEASE_DUE` ou `REFUND_DUE` par un
+  `CASE` dans l'écriture même de l'annulation. Une annulation ne peut pas exister sans sa dette ; c'est
+  le balayage qui l'éteint chez Stripe. Rejouée, une transition ne trouve plus de ligne et rend `false` :
+  c'est là, et nulle part ailleurs, qu'est l'idempotence face aux événements dupliqués.
+- **Une clé d'idempotence par demande et par opération, jamais par tentative** (`idempotencyKeyOf`).
+  Une clé qui changerait à chaque essai ferait d'un prélèvement rejoué après une coupure un second
+  prélèvement.
+- **`ConfirmRentalRequest` prélève avant d'écrire.** Si l'écriture échoue ensuite, la confirmation
+  rejouée rend le même prélèvement ; sinon, le balayage expire la demande, la levée répond « déjà
+  prélevé », et `settleMoneyOwed` la relit **confirmée**. Seule une demande `EXPIRED` est relue ainsi :
+  annulée, abandonnée ou refusée, ce qui a été pris est remboursé — le loueur seul prélève, en
+  confirmant, et l'exploitant a pu annuler entre-temps (EX-41).
+- **Stripe refuse une page qui expire moins de trente minutes après sa création, à la seconde près.**
+  L'échéance du domaine (`paymentPageExpiryOf`, trente minutes après la demande) part de quelques
+  millisecondes plus tôt : `StripePaymentGateway` impose une minute de marge.
+- **Une empreinte de carte ne vit que quelques jours** (sept pour la plupart des cartes). Porter
+  `RENTAL_REQUEST_EXPIRY_IN_HOURS` au-delà de 96 ferait prélever des empreintes déjà mortes.
+- **Les demandes d'avant l'encaissement ont `money_status = 'NONE'`.** Elles gardent l'expiration de
+  SPEC-002 (depuis `requested_at`, `expireRequestsPendingSince`) et n'ont jamais rien à rendre ; les
+  demandes payées expirent depuis `hold_placed_at` (`expireHoldsPlacedSince`).
+- **Aucune clé `sk_live_…` avant la spec du reversement.** Sans Stripe Connect, l'exploitant encaisserait
+  sur son propre compte de l'argent dû aux loueurs — une activité réglementée (SPEC-004 §11).
 
 ## Frozen versions — do not bump without reading the reason
 

@@ -277,10 +277,20 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
   ): Promise<boolean> {
     // Une demande déjà expirée ou annulée ne se ré-annule pas : le filtre rend
     // l'opération idempotente et libère la place par la contrainte partielle.
+    // L'argent du conducteur change dans le même UPDATE que le statut : une
+    // annulation ne peut pas être écrite sans la dette qu'elle fait naître
+    // envers lui. C'est le balayage du contexte `rental` qui l'éteint chez
+    // Stripe — levée si rien n'a été prélevé, remboursement sinon.
     const query = this.connection('rental_requests')
       .where({ id: requestId })
       .whereIn('status', ['PENDING', 'CONFIRMED'])
-      .update({ status: 'CANCELLED', updated_at: new Date() });
+      .update({
+        status: 'CANCELLED',
+        money_status: this.connection.raw(
+          "CASE money_status WHEN 'AUTHORIZED' THEN 'RELEASE_DUE' WHEN 'CAPTURED' THEN 'REFUND_DUE' ELSE money_status END",
+        ),
+        updated_at: new Date(),
+      });
     if (trx) query.transacting(trx);
     return (await query) > 0;
   }

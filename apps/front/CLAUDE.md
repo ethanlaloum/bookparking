@@ -31,13 +31,10 @@ change côté api casse la compilation du front plutôt que sa production.
   pourquoi `centsFromInput()` rend `undefined` et non `null` — `JSON.stringify` omet alors la
   clé. Ne pas « normaliser » ce `undefined` en `null` en croyant aligner sur le DTO de lecture.
 
-- **Trois routes ne rendent aucun identifiant, et l'UI est construite autour.**
-  `POST /listing` et `POST /rental-request` répondent 201 sans corps, et aucune route ne liste
-  les demandes de location. Conséquences assumées : `publishListingEpic` re-dispatche
-  `listListingsRequested` faute de pouvoir insérer l'annonce créée ; `requestRentalEpic`
-  conserve la charge soumise, seule trace exploitable ; et l'écran de confirmation
-  (`/demande/:requestId/confirmation`) n'est atteignable que par lien profond, puisque le
-  client n'apprend jamais l'identifiant d'une demande.
+- **`POST /rental-request` rend désormais l'identifiant de la demande et l'adresse de sa page de paiement**
+  (SPEC-004). `POST /listing` répond toujours 201 sans corps, d'où `publishListingEpic`, qui
+  re-dispatche `listListingsRequested` faute de pouvoir insérer l'annonce créée. `requestRentalEpic`
+  ne garde plus la charge soumise comme seule trace : il envoie le navigateur vers Stripe.
 
 - **Le DTO `Listing` ne porte pas d'`ownerId`.** « Mes annonces » est donc infiltrable côté
   client. Les actions propriétaire (dépublier, modifier les tarifs) sont offertes à tout
@@ -345,6 +342,33 @@ les polices (Google Fonts, finalité `fonts`). L'hexagone est `src/app/consent/`
   rechargement. L'échec retombe donc sur le refus, jamais sur un accord.
 - **L'horloge est une dépendance (`clock`)**, pour que `decidedAt` se prouve au rung `unit`. C'est
   la première : `SystemClock` en production, `FixedClock` dans `InMemoryDependencies`.
+
+## Le paiement d'une demande (SPEC-004)
+
+Demander une place ouvre une page Stripe Checkout, où le conducteur pose une **empreinte** : rien n'est
+prélevé avant que le propriétaire confirme. Le front ne voit jamais une carte.
+
+- **Le front ne quitte bookparking que pour `https://checkout.stripe.com`, et le vérifie par l'origine.**
+  `isStripeCheckoutUrl` analyse l'adresse : une comparaison de préfixe laisserait passer
+  `https://checkout.stripe.com.exemple.fr`. La sortie du site passe par le port `PaymentPageNavigator` —
+  un sixième registre à tenir dans `dependencies.interface.ts`, `buildDependencies.ts` et
+  `InMemoryDependencies.ts` — pour que l'epic reste testable sans navigateur.
+- **Le retour de Stripe ne vaut pas paiement.** `/demande/:id/paiement` relit la demande toutes les deux
+  secondes, une minute au plus, jusqu'à la voir quitter `AWAITING_PAYMENT` : c'est l'événement signé,
+  reçu par l'api, qui pose l'empreinte, et il peut arriver après le navigateur. Le compteur de relectures
+  est un état incrémenté dans le rappel du `setTimeout`, jamais dans le corps de l'effet.
+- **`?abandon=1` est l'adresse d'annulation de Stripe.** La page abandonne la demande (les dates sont
+  rendues aussitôt), puis renvoie sur la fiche avec `?paiement=abandonne`. Elle n'y renvoie qu'une fois
+  que `abandonedRequestId` désigne **cette** demande : un succès d'abandon resté en mémoire d'une visite
+  précédente ferait sinon partir la page avant son propre abandon.
+- **L'argent se lit à deux décimales, le reste du site à l'euro rond.** `moneyLabelOf` utilise
+  `formatCentsPrecisely` (« 45,00 € »), comme la page de Stripe que le conducteur vient de quitter ;
+  `formatCents` (« 45 € ») reste la règle partout ailleurs. Le statut seul ne dit pas où en est
+  l'argent : une demande expirée dont l'empreinte est à lever et une demande expirée dont rien n'a jamais
+  été pris ne se lisent pas pareil.
+- **Sept statuts et sept états d'argent viennent du contrat.** Toute table indexée par statut
+  (`TONE`, `countByStatus`, les libellés `account:status` et `admin:requests.status`) doit les couvrir
+  tous — `tsc` le rappelle, à condition que la table soit typée `Record<RentalRequestStatus, …>`.
 
 ## L'administration du site vit ici, et pas ailleurs
 

@@ -65,14 +65,35 @@
     "awaiting": "Waiting for the owner to answer."
   },
   "status": {
+    "AWAITING_PAYMENT": "To pay",
     "PENDING": "Pending",
     "CONFIRMED": "Confirmed",
-    "EXPIRED": "Expired"
+    "EXPIRED": "Expired",
+    "CANCELLED": "Cancelled",
+    "ABANDONED": "Abandoned",
+    "PAYMENT_FAILED": "Declined"
   },
   "row": {
     "period": "From {{from}} to {{to}}",
     "nights_one": "{{count}} night",
     "nights_other": "{{count}} nights",
     "requestedOn": "Requested on {{date}}"
+  },
+  "money": {
+    "awaitingPayment": "Payment being verified",
+    "abandoned": "Payment abandoned",
+    "paymentFailed": "Payment declined by the bank",
+    "holdAwaitingOwner": "{{amount}} hold · awaiting the owner",
+    "captured": "Confirmed · {{amount}} charged",
+    "expiredReleasing": "Expired · hold being released",
+    "expiredReleased": "Expired · nothing was charged",
+    "cancelledReleasing": "Cancelled · hold being released",
+    "cancelledReleased": "Cancelled · nothing was charged",
+    "cancelledRefunding": "Cancelled · refund in progress",
+    "cancelledRefunded": "Cancelled · {{amount}} refunded",
+    "pendingWithoutPayment": "Awaiting the owner",
+    "confirmedWithoutPayment": "Confirmed",
+    "expiredWithoutPayment": "Expired",
+    "cancelledWithoutPayment": "Cancelled"
   }
 }

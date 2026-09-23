@@ -2,6 +2,7 @@ import * as request from 'supertest';
 
 import { createControllerTestApp } from '../../../../../shared/test/http/createControllerTestApp';
 import {
+  A_CHECKOUT_URL,
   A_REQUEST_ID,
   createRentalRequestControllerSUT,
   LEA_ACCOUNT_ID,
@@ -116,6 +117,55 @@ describe('RentalRequestController @SPEC-002', () => {
 
       expect(response.status).toEqual(404);
       sut.thenNoConfirmationWasAttempted();
+    });
+  });
+});
+
+describe('RentalRequestController @SPEC-004', () => {
+  let sut: ReturnType<typeof createRentalRequestControllerSUT>;
+  let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
+
+  const http = () => request(testApp.app.getHttpServer());
+
+  afterEach(async () => {
+    await testApp.close();
+  });
+
+  it('never passes a price sent in the body to the use-case @EX-004-02', async () => {
+    sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+    sut.givenRentalRequestSucceeds();
+
+    const response = await http()
+      .post('/rental-request')
+      .set('Authorization', 'Bearer token-of-lea')
+      .send({ ...RENTAL_REQUEST_BODY, priceInCents: 1 });
+
+    expect(response.status).toEqual(201);
+    sut.thenTheUseCaseReceivedOnly({
+      renterId: LEA_ACCOUNT_ID,
+      address: RENTAL_REQUEST_BODY.address,
+      box: RENTAL_REQUEST_BODY.box,
+      fromDay: RENTAL_REQUEST_BODY.fromDay,
+      toDay: RENTAL_REQUEST_BODY.toDay,
+      requestedAt: expect.any(Date),
+    });
+  });
+
+  it('answers 201 with the request id and the payment page address @EX-004-04', async () => {
+    sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+    const { requestId } = sut.givenRentalRequestSucceeds();
+
+    const response = await http()
+      .post('/rental-request')
+      .set('Authorization', 'Bearer token-of-lea')
+      .send(RENTAL_REQUEST_BODY);
+
+    expect(response.status).toEqual(201);
+    expect(response.body).toEqual({
+      id: requestId,
+      checkoutUrl: A_CHECKOUT_URL,
     });
   });
 });

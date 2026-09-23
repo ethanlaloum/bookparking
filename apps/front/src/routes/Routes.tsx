@@ -28,6 +28,9 @@ const AccountPage = lazy(async () => ({
 const ConfirmRequestPage = lazy(async () => ({
   default: (await import('../pages/ConfirmRequestPage')).ConfirmRequestPage,
 }));
+const PaymentReturnPage = lazy(async () => ({
+  default: (await import('../pages/PaymentReturnPage')).PaymentReturnPage,
+}));
 const NotFoundPage = lazy(async () => ({
   default: (await import('../pages/NotFoundPage')).NotFoundPage,
 }));
@@ -44,6 +47,7 @@ export const Routes = () => (
         <Route path="/publier" element={<PublishPage />} />
         <Route path="/compte" element={<AccountPage />} />
         <Route path="/demande/:requestId/confirmation" element={<ConfirmRequestPage />} />
+        <Route path="/demande/:requestId/paiement" element={<PaymentReturnPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </RouterRoutes>

@@ -13,17 +13,23 @@ import { Badge } from './ui/badge';
 import type { BadgeVariantProps } from './ui/badgeVariants';
 
 const TONE: Record<RentalRequestStatus, NonNullable<BadgeVariantProps['tone']>> = {
+  AWAITING_PAYMENT: 'neutral',
   PENDING: 'warn',
   CONFIRMED: 'ok',
   EXPIRED: 'neutral',
+  CANCELLED: 'danger',
+  ABANDONED: 'neutral',
+  PAYMENT_FAILED: 'danger',
 };
 
 export const RentalRequestRow = ({
   request,
   action,
+  moneyLabel,
 }: {
   request: RentalRequestView;
   action?: ReactNode;
+  moneyLabel?: string;
 }) => {
   const { t } = useTranslation('account');
   const nights = rentedNightCount(request);
@@ -48,6 +54,9 @@ export const RentalRequestRow = ({
               {t('row.nights', { count: nights })}
             </span>
           </p>
+          {moneyLabel !== undefined && (
+            <p className="mt-1.5 text-sm font-medium text-fg-muted">{moneyLabel}</p>
+          )}
         </div>
       </div>
 

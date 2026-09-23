@@ -15,6 +15,11 @@ import {
   resetRequestRentalState,
 } from '../domain/use-cases/request-rental/requestRentalEpic';
 import type { RequestRentalPayload } from '../domain/ports/RentalGateway';
+import {
+  abandonRentalRequestFailed,
+  abandonRentalRequestRequested,
+  abandonRentalRequestSucceeded,
+} from '../domain/use-cases/abandon-rental-request/abandonRentalRequestEpic';
 import type { RentalRequestView } from '../domain/entities/RentalRequestView';
 import {
   listMyRentalRequestsFailed,
@@ -28,11 +33,13 @@ import {
 } from '../domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
 
 export interface RentalState {
-  lastRequested: RequestRentalPayload | null;
+  lastRequested: (RequestRentalPayload & { requestId: string }) | null;
   myRequests: RentalRequestView[];
   receivedRequests: RentalRequestView[];
   request: CommonState;
   confirm: CommonState;
+  abandon: CommonState;
+  abandonedRequestId: string | null;
   listMine: CommonState;
   listReceived: CommonState;
 }
@@ -43,6 +50,8 @@ const initialState: RentalState = {
   receivedRequests: [],
   request: initialCommonState,
   confirm: initialCommonState,
+  abandon: initialCommonState,
+  abandonedRequestId: null,
   listMine: initialCommonState,
   listReceived: initialCommonState,
 };
@@ -62,6 +71,16 @@ export const rentalReducer = createReducer(initialState, (builder) => {
     .addCase(resetRequestRentalState, (state) => {
       state.request = initialCommonState;
       state.lastRequested = null;
+    })
+    .addCase(abandonRentalRequestRequested, (state) => {
+      state.abandon = { state: 'pending' };
+    })
+    .addCase(abandonRentalRequestSucceeded, (state, action) => {
+      state.abandon = { state: 'succeeded' };
+      state.abandonedRequestId = action.payload.requestId;
+    })
+    .addCase(abandonRentalRequestFailed, (state, action) => {
+      state.abandon = { state: 'failed', errorCode: action.payload.errorCode };
     })
     .addCase(confirmRentalRequestRequested, (state) => {
       state.confirm = { state: 'pending' };

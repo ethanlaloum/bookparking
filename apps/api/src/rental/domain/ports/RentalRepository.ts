@@ -2,6 +2,11 @@ import { GenericTransaction } from '../../../shared/unit-of-work/GenericTransact
 import { ConfirmedRental } from '../entities/ConfirmedRental';
 import { RentalPlace } from '../entities/RentalPlace';
 import { RentalRequest } from '../entities/RentalRequest';
+import {
+  MoneyOwed,
+  MoneyState,
+  RentalRequestStatus,
+} from '../entities/RentalMoney';
 
 // Ce que la confirmation a besoin de savoir d'une demande, et rien de plus :
 // qui possède l'annonce visée, qui a demandé, et si c'est déjà confirmé. Le
@@ -13,6 +18,10 @@ export interface RentalRequestSummary {
   renterId: string;
   isConfirmed: boolean;
   isExpired: boolean;
+  status: RentalRequestStatus;
+  money: MoneyState;
+  paymentId: string | null;
+  checkoutSessionId: string | null;
 }
 
 // Ce qu'un tableau de bord montre d'une demande, et qu'aucune entité ne porte :
@@ -30,7 +39,8 @@ export interface RentalRequestView {
   fromDay: string;
   toDay: string;
   priceInCents: number;
-  status: string;
+  status: RentalRequestStatus;
+  money: MoneyState;
   requestedAt: Date;
   confirmedAt: Date | null;
 }
@@ -67,4 +77,54 @@ export interface RentalRepository {
     ownerId: string,
     trx?: GenericTransaction,
   ): Promise<RentalRequestView[]>;
+
+  // Chaque transition ci-dessous filtre sur l'état qu'elle quitte : rejouée,
+  // elle ne trouve plus rien à changer et rend `false`. C'est là, et non dans
+  // les cas d'usage, qu'est l'idempotence face aux événements que Stripe
+  // renvoie et aux balayages qui se chevauchent.
+  attachPaymentPage(
+    requestId: string,
+    checkoutSessionId: string,
+    trx?: GenericTransaction,
+  ): Promise<void>;
+  markHoldPlaced(
+    requestId: string,
+    paymentId: string,
+    placedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  markAbandoned(requestId: string, trx?: GenericTransaction): Promise<boolean>;
+  oweReleaseOfLateHold(
+    requestId: string,
+    paymentId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  markPaymentFailed(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  abandonUnpaidRequestsSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number>;
+  expireHoldsPlacedSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number>;
+  findMoneyOwed(trx?: GenericTransaction): Promise<MoneyOwed[]>;
+  markReleased(requestId: string, trx?: GenericTransaction): Promise<boolean>;
+  markRefunded(
+    requestId: string,
+    refundId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  recordMissedCapture(
+    requestId: string,
+    confirmedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  oweRefundOfMissedCapture(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
 }

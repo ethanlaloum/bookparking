@@ -34,7 +34,12 @@ import type {
   UpdatePricingPayload,
 } from '../../app/listing/domain/ports/ListingGateway';
 import type { RentalRequestView } from '../../app/rental/domain/entities/RentalRequestView';
-import type { RentalGateway, RequestRentalPayload } from '../../app/rental/domain/ports/RentalGateway';
+import type { PaymentPageNavigator } from '../../app/rental/domain/ports/PaymentPageNavigator';
+import type {
+  RentalGateway,
+  RequestedRental,
+  RequestRentalPayload,
+} from '../../app/rental/domain/ports/RentalGateway';
 import type { Dependencies } from '../dependencies.interface';
 
 const fail = <T>(message: string): Observable<T> => throwError(() => new Error(message));
@@ -144,12 +149,22 @@ export class InMemoryRentalGateway implements RentalGateway {
   public rejection: string | null = null;
   public readonly requested: RequestRentalPayload[] = [];
   public readonly confirmed: string[] = [];
+  public readonly abandoned: string[] = [];
+  public requestedRental: RequestedRental = {
+    id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
+    checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_lea',
+  };
   public myRequests: RentalRequestView[] = [];
   public receivedRequests: RentalRequestView[] = [];
   public listReceivedCallCount = 0;
 
-  request(payload: RequestRentalPayload): Observable<void> {
+  request(payload: RequestRentalPayload): Observable<RequestedRental> {
     this.requested.push(payload);
+    return this.rejection === null ? of(this.requestedRental) : fail(this.rejection);
+  }
+
+  abandon(requestId: string): Observable<void> {
+    this.abandoned.push(requestId);
     return this.rejection === null ? of(undefined) : fail(this.rejection);
   }
 
@@ -165,6 +180,14 @@ export class InMemoryRentalGateway implements RentalGateway {
   confirm(requestId: string): Observable<void> {
     this.confirmed.push(requestId);
     return this.rejection === null ? of(undefined) : fail(this.rejection);
+  }
+}
+
+export class InMemoryPaymentPageNavigator implements PaymentPageNavigator {
+  public readonly opened: string[] = [];
+
+  open(url: string): void {
+    this.opened.push(url);
   }
 }
 
@@ -210,6 +233,7 @@ export interface InMemoryDependencies extends Dependencies {
   consentStore: InMemoryConsentStore;
   geocodingGateway: InMemoryGeocodingGateway;
   listingGateway: InMemoryListingGateway;
+  paymentPageNavigator: InMemoryPaymentPageNavigator;
   rentalGateway: InMemoryRentalGateway;
   sessionGateway: InMemorySessionGateway;
   sessionStore: InMemorySessionStore;
@@ -222,6 +246,7 @@ export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   consentStore: new InMemoryConsentStore(),
   geocodingGateway: new InMemoryGeocodingGateway(),
   listingGateway: new InMemoryListingGateway(),
+  paymentPageNavigator: new InMemoryPaymentPageNavigator(),
   rentalGateway: new InMemoryRentalGateway(),
   sessionGateway: new InMemorySessionGateway(),
   sessionStore: new InMemorySessionStore(),
@@ -254,6 +279,7 @@ export const aRentalRequestView = (
   requestedAt: '2026-09-20T09:00:00.000Z',
   confirmedAt: null,
   ...overrides,
+  money: overrides.money ?? 'NONE',
 });
 
 export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerListing => ({

@@ -1,4 +1,6 @@
 import { InvalidRequestedPeriodError } from '../../errors/InvalidRequestedPeriodError';
+import { NoPriceForRequestedPeriodError } from '../../errors/NoPriceForRequestedPeriodError';
+import { PaymentUnavailableError } from '../../errors/PaymentUnavailableError';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
 import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
@@ -215,7 +217,7 @@ describe('RequestRental @SPEC-002', () => {
 
     it('keeps a request made exactly at the deadline alive', async () => {
       const sut = arrange();
-      await sut.whenRequestedAtInstantBy('Léa T.', FIRST_REQUEST_AT);
+      await sut.givenRequestWithoutPaymentAt('Léa T.', FIRST_REQUEST_AT);
 
       await sut.whenRequestedAtInstantBy(
         'Karim B.',
@@ -228,7 +230,7 @@ describe('RequestRental @SPEC-002', () => {
 
     it('expires a request one millisecond past the deadline', async () => {
       const sut = arrange();
-      await sut.whenRequestedAtInstantBy('Léa T.', FIRST_REQUEST_AT);
+      await sut.givenRequestWithoutPaymentAt('Léa T.', FIRST_REQUEST_AT);
 
       await sut.whenRequestedAtInstantBy(
         'Karim B.',
@@ -238,5 +240,81 @@ describe('RequestRental @SPEC-002', () => {
 
       sut.thenPendingRequestsExpired(1);
     });
+  });
+});
+
+describe('RequestRental @SPEC-004', () => {
+  const BARLA = { address: '12 rue Barla, 06300 Nice', box: '12' };
+  const LEA_ASKS_AT = new Date('2026-10-01T07:00:00.000Z');
+  const THREE_DAYS = { from: '2026-10-10', to: '2026-10-12' } as const;
+
+  it('opens a card hold for the price the api froze @EX-004-01', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenPaymentPageOpenedFor(result, { amountInCents: 4500 });
+  });
+
+  it('opens no payment page for a period no price covers @EX-004-03', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: null, week: 8000, month: null },
+    });
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenRequestIsRefusedWith(result, NoPriceForRequestedPeriodError);
+    sut.thenNoPaymentPageOpened();
+  });
+
+  it('lets the payment page expire thirty minutes after the request @EX-004-08', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenPaymentPageOpenedFor(result, {
+      amountInCents: 4500,
+      expiresAt: '2026-10-01T07:30:00.000Z',
+    });
+  });
+
+  it('abandons the request and frees its dates when Stripe does not answer @EX-004-09', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+    sut.givenStripeDoesNotAnswer();
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenRequestIsRefusedWith(result, PaymentUnavailableError);
+    sut.thenTheOnlyRequestIs('ABANDONED');
   });
 });

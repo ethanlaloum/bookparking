@@ -6,6 +6,7 @@ import { LocalStorageConsentStore } from '../app/consent/adapters/LocalStorageCo
 import { SystemClock } from '../app/consent/adapters/SystemClock';
 import { BanGeocodingGateway } from '../app/listing/adapters/RealGeocodingGateway';
 import { BookparkingRxListingGateway } from '../app/listing/adapters/RealListingGateway';
+import { BrowserPaymentPageNavigator } from '../app/rental/adapters/BrowserPaymentPageNavigator';
 import { BookparkingRxRentalGateway } from '../app/rental/adapters/RealRentalGateway';
 import { FetchHttpClient } from '../lib/http/FetchHttpClient';
 import type { Dependencies } from './dependencies.interface';
@@ -21,6 +22,7 @@ export const buildDependencies = (baseUrl: string): Dependencies => {
     consentStore: new LocalStorageConsentStore(),
     geocodingGateway: new BanGeocodingGateway(),
     listingGateway: new BookparkingRxListingGateway(httpClient),
+    paymentPageNavigator: new BrowserPaymentPageNavigator(),
     rentalGateway: new BookparkingRxRentalGateway(httpClient),
     sessionGateway: new BookparkingRxSessionGateway(httpClient),
     sessionStore,

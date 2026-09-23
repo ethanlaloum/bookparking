@@ -695,7 +695,7 @@
         ],
         "operationId": "requestRental",
         "summary": "Demander une location",
-        "description": "Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton.\n\nUne demande non confirmée expire au bout du délai configuré par `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut).",
+        "description": "Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton, et ouvre la page de paiement Stripe au prix que l'api a figé.\n\nLa demande reste en attente de paiement jusqu'à ce que Stripe annonce l'empreinte ; le délai de `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut) court ensuite depuis l'empreinte. Une page de paiement vaut trente minutes.",
         "requestBody": {
           "required": true,
           "content": {
@@ -718,7 +718,14 @@
         },
         "responses": {
           "201": {
-            "description": "Demande enregistrée. Aucun corps de réponse."
+            "description": "Demande enregistrée, en attente de paiement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestRentalResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Corps de requête invalide.",
@@ -773,6 +780,16 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Stripe ne répond pas : la demande est abandonnée et ses dates rendues.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -857,7 +874,7 @@
         ],
         "operationId": "confirmRentalRequest",
         "summary": "Confirmer une demande de location",
-        "description": "Confirme une demande de location. Seul le propriétaire de la place peut confirmer.\n\nUn identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.",
+        "description": "Confirme une demande de location. Seul le propriétaire de la place peut confirmer.\n\nUn identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.\n\nConfirmer prélève l'empreinte du conducteur. Si sa banque refuse le prélèvement, la confirmation répond `409` et la demande passe en `PAYMENT_FAILED`.",
         "responses": {
           "204": {
             "description": "Demande confirmée. Aucun corps de réponse."
@@ -903,6 +920,16 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Stripe ne répond pas : rien n'est prélevé ni confirmé, la confirmation peut être rejouée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1315,6 +1342,75 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-request/{id}/abandonment": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Identifiant de la demande de location (UUID).",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "example": "9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c"
+        }
+      ],
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "abandonRentalRequest",
+        "summary": "Abandonner sa demande avant de payer",
+        "description": "Appelée quand le conducteur revient de Stripe sans payer : la page de paiement est fermée et les dates rendues aussitôt. Seul l'auteur de la demande peut l'abandonner.",
+        "responses": {
+          "204": {
+            "description": "Demande abandonnée, ou déjà abandonnée."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Demande inexistante, identifiant mal formé, ou demande d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "L'empreinte est déjà posée : la demande attend le propriétaire.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment/stripe-webhook": {
+      "post": {
+        "tags": [
+          "payment"
+        ],
+        "operationId": "receiveStripeWebhook",
+        "summary": "Recevoir un événement de Stripe",
+        "description": "Appelée par Stripe seul, jamais par un client. Aucune garde de jeton : l'en-tête `Stripe-Signature` est vérifié sur le corps brut avec `STRIPE_WEBHOOK_SECRET`. Événements lus : `payment_intent.amount_capturable_updated` (empreinte posée) et `checkout.session.expired` (page de paiement expirée).",
+        "responses": {
+          "200": {
+            "description": "Événement accusé, qu'il ait changé une demande ou non."
+          },
+          "400": {
+            "description": "Signature absente ou invalide."
           }
         }
       }
@@ -1824,6 +1920,7 @@
           "toDay",
           "priceInCents",
           "status",
+          "money",
           "requestedAt",
           "confirmedAt"
         ],
@@ -1858,10 +1955,28 @@
           "status": {
             "type": "string",
             "enum": [
+              "AWAITING_PAYMENT",
               "PENDING",
               "CONFIRMED",
-              "EXPIRED"
-            ]
+              "EXPIRED",
+              "CANCELLED",
+              "ABANDONED",
+              "PAYMENT_FAILED"
+            ],
+            "description": "`AWAITING_PAYMENT` : la page de paiement est ouverte, l'empreinte n'est pas constatée ; la demande retient ses dates mais le propriétaire ne la voit pas. `ABANDONED` : le paiement n'a jamais eu lieu. `PAYMENT_FAILED` : la banque a refusé le prélèvement à la confirmation."
+          },
+          "money": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "AUTHORIZED",
+              "CAPTURED",
+              "RELEASE_DUE",
+              "RELEASED",
+              "REFUND_DUE",
+              "REFUNDED"
+            ],
+            "description": "Où en est l'argent du conducteur. `AUTHORIZED` : empreinte posée, rien de prélevé. `CAPTURED` : prélevé à la confirmation. `RELEASE_DUE` / `REFUND_DUE` : l'empreinte est en cours de levée, le remboursement en cours. `NONE` : demande faite avant l'encaissement."
           },
           "requestedAt": {
             "type": "string",
@@ -2110,10 +2225,13 @@
           "status": {
             "type": "string",
             "enum": [
+              "AWAITING_PAYMENT",
               "PENDING",
               "CONFIRMED",
               "EXPIRED",
-              "CANCELLED"
+              "CANCELLED",
+              "ABANDONED",
+              "PAYMENT_FAILED"
             ]
           },
           "requestedAt": {
@@ -2140,6 +2258,25 @@
           "reason": {
             "type": "string",
             "minLength": 10
+          }
+        }
+      },
+      "RequestRentalResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "checkoutUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "L'identifiant de la demande, en attente de paiement."
+          },
+          "checkoutUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "La page de paiement Stripe Checkout où le conducteur pose son empreinte. Toujours sur `https://checkout.stripe.com/`."
           }
         }
       }

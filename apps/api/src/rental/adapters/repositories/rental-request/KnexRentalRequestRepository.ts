@@ -2,6 +2,11 @@ import type { Knex } from 'knex';
 
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
 import { ConfirmedRental } from '../../../domain/entities/ConfirmedRental';
+import {
+  MoneyOwed,
+  MoneyState,
+  RentalRequestStatus as DomainStatus,
+} from '../../../domain/entities/RentalMoney';
 import { placeKeyOf, RentalPlace } from '../../../domain/entities/RentalPlace';
 import { RentalRequest } from '../../../domain/entities/RentalRequest';
 import {
@@ -28,6 +33,7 @@ interface ViewRow {
   to_day: string;
   price_in_cents: number | string;
   status: string;
+  money_status: string;
   requested_at: Date | string;
   confirmed_at: Date | string | null;
   owner_id: string;
@@ -117,7 +123,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
         period_from: state.period.from,
         period_to: state.period.to,
         price_in_cents: state.priceInCents,
-        status: RentalRequestStatus.PENDING,
+        status: RentalRequestStatus.AWAITING_PAYMENT,
         requested_at: state.requestedAt,
       });
     } catch (error: unknown) {
@@ -147,12 +153,23 @@ export class KnexRentalRequestRepository implements RentalRepository {
         `${this.tableName}.id as id`,
         `${this.tableName}.renter_id as renter_id`,
         `${this.tableName}.status as status`,
+        `${this.tableName}.money_status as money_status`,
+        `${this.tableName}.payment_id as payment_id`,
+        `${this.tableName}.checkout_session_id as checkout_session_id`,
         `${LISTINGS_TABLE}.owner_id as owner_id`,
       );
     if (trx) query.transacting(trx);
 
     const row = (await query) as
-      | { id: string; renter_id: string; status: string; owner_id: string }
+      | {
+          id: string;
+          renter_id: string;
+          status: string;
+          money_status: string;
+          payment_id: string | null;
+          checkout_session_id: string | null;
+          owner_id: string;
+        }
       | undefined;
     if (!row) return null;
 
@@ -162,6 +179,10 @@ export class KnexRentalRequestRepository implements RentalRepository {
       renterId: row.renter_id,
       isConfirmed: row.status === RentalRequestStatus.CONFIRMED,
       isExpired: row.status === RentalRequestStatus.EXPIRED,
+      status: row.status as DomainStatus,
+      money: row.money_status as MoneyState,
+      paymentId: row.payment_id,
+      checkoutSessionId: row.checkout_session_id,
     };
   }
 
@@ -179,6 +200,9 @@ export class KnexRentalRequestRepository implements RentalRepository {
       .update({
         status: RentalRequestStatus.CONFIRMED,
         confirmed_at: confirmedAt,
+        money_status: this.connection.raw(
+          "CASE WHEN money_status = 'AUTHORIZED' THEN 'CAPTURED' ELSE money_status END",
+        ) as unknown as string,
         updated_at: new Date(),
       });
     if (trx) query.transacting(trx);
@@ -196,6 +220,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
   ): Promise<number> {
     const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
       .where('status', RentalRequestStatus.PENDING)
+      .andWhere('money_status', 'NONE')
       .andWhere('requested_at', '<', deadline)
       .update({
         status: RentalRequestStatus.EXPIRED,
@@ -209,11 +234,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
     renterId: string,
     trx?: GenericTransaction,
   ): Promise<RentalRequestView[]> {
-    return this.findViews(
-      `${this.tableName}.renter_id`,
-      renterId,
-      trx,
-    );
+    return this.findViews(`${this.tableName}.renter_id`, renterId, trx);
   }
 
   public async findAllForOwner(
@@ -248,6 +269,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
         `${this.tableName}.to_day as to_day`,
         `${this.tableName}.price_in_cents as price_in_cents`,
         `${this.tableName}.status as status`,
+        `${this.tableName}.money_status as money_status`,
         `${this.tableName}.requested_at as requested_at`,
         `${this.tableName}.confirmed_at as confirmed_at`,
         `${LISTINGS_TABLE}.owner_id as owner_id`,
@@ -267,11 +289,216 @@ export class KnexRentalRequestRepository implements RentalRepository {
       fromDay: row.from_day,
       toDay: row.to_day,
       priceInCents: Number(row.price_in_cents),
-      status: row.status,
+      status: row.status as DomainStatus,
+      money: row.money_status as MoneyState,
       requestedAt: new Date(row.requested_at),
       confirmedAt:
         row.confirmed_at === null ? null : new Date(row.confirmed_at),
     }));
+  }
+
+  public async attachPaymentPage(
+    requestId: string,
+    checkoutSessionId: string,
+    trx?: GenericTransaction,
+  ): Promise<void> {
+    await this.transition(
+      trx,
+      { id: requestId },
+      { checkout_session_id: checkoutSessionId },
+    );
+  }
+
+  public async markHoldPlaced(
+    requestId: string,
+    paymentId: string,
+    placedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        { id: requestId, status: RentalRequestStatus.AWAITING_PAYMENT },
+        {
+          status: RentalRequestStatus.PENDING,
+          money_status: 'AUTHORIZED',
+          payment_id: paymentId,
+          hold_placed_at: placedAt,
+        },
+      )) > 0
+    );
+  }
+
+  public async markAbandoned(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        { id: requestId, status: RentalRequestStatus.AWAITING_PAYMENT },
+        { status: RentalRequestStatus.ABANDONED },
+      )) > 0
+    );
+  }
+
+  public async oweReleaseOfLateHold(
+    requestId: string,
+    paymentId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        {
+          id: requestId,
+          status: RentalRequestStatus.ABANDONED,
+          money_status: 'NONE',
+        },
+        { money_status: 'RELEASE_DUE', payment_id: paymentId },
+      )) > 0
+    );
+  }
+
+  public async markPaymentFailed(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        {
+          id: requestId,
+          status: RentalRequestStatus.PENDING,
+          money_status: 'AUTHORIZED',
+        },
+        {
+          status: RentalRequestStatus.PAYMENT_FAILED,
+          money_status: 'RELEASE_DUE',
+        },
+      )) > 0
+    );
+  }
+
+  public async abandonUnpaidRequestsSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .where('status', RentalRequestStatus.AWAITING_PAYMENT)
+      .andWhere('requested_at', '<=', deadline)
+      .update({
+        status: RentalRequestStatus.ABANDONED,
+        updated_at: new Date(),
+      });
+    if (trx) query.transacting(trx);
+    return await query;
+  }
+
+  // Le statut et la dette envers le conducteur changent dans le même UPDATE :
+  // aucune lecture, pas même celle d'un balayage concurrent, ne peut trouver
+  // une demande expirée dont l'empreinte ne serait pas marquée à lever.
+  public async expireHoldsPlacedSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .where('status', RentalRequestStatus.PENDING)
+      .andWhere('money_status', 'AUTHORIZED')
+      .andWhere('hold_placed_at', '<=', deadline)
+      .update({
+        status: RentalRequestStatus.EXPIRED,
+        money_status: 'RELEASE_DUE',
+        updated_at: new Date(),
+      });
+    if (trx) query.transacting(trx);
+    return await query;
+  }
+
+  public async findMoneyOwed(trx?: GenericTransaction): Promise<MoneyOwed[]> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .whereIn('money_status', ['RELEASE_DUE', 'REFUND_DUE'])
+      .whereNotNull('payment_id')
+      .orderBy('updated_at', 'asc')
+      .select('id', 'payment_id', 'money_status', 'status');
+    if (trx) query.transacting(trx);
+    const rows = await query;
+    return rows.map((row) => ({
+      requestId: row.id,
+      paymentId: row.payment_id as string,
+      owed: row.money_status as MoneyOwed['owed'],
+      status: row.status as DomainStatus,
+    }));
+  }
+
+  public async markReleased(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        { id: requestId, money_status: 'RELEASE_DUE' },
+        { money_status: 'RELEASED' },
+      )) > 0
+    );
+  }
+
+  public async markRefunded(
+    requestId: string,
+    refundId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        { id: requestId, money_status: 'REFUND_DUE' },
+        { money_status: 'REFUNDED', refund_id: refundId },
+      )) > 0
+    );
+  }
+
+  public async recordMissedCapture(
+    requestId: string,
+    confirmedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        { id: requestId, money_status: 'RELEASE_DUE' },
+        {
+          status: RentalRequestStatus.CONFIRMED,
+          money_status: 'CAPTURED',
+          confirmed_at: confirmedAt,
+        },
+      )) > 0
+    );
+  }
+
+  public async oweRefundOfMissedCapture(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    return (
+      (await this.transition(
+        trx,
+        { id: requestId, money_status: 'RELEASE_DUE' },
+        { money_status: 'REFUND_DUE' },
+      )) > 0
+    );
+  }
+
+  private async transition(
+    trx: GenericTransaction | undefined,
+    from: Partial<SchemaRentalRequestRepository>,
+    to: Partial<SchemaRentalRequestRepository>,
+  ): Promise<number> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .where(from)
+      .update({ ...to, updated_at: new Date() });
+    if (trx) query.transacting(trx);
+    return await query;
   }
 
   // The row stores no address and no box on purpose: copying them here would put

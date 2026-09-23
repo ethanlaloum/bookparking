@@ -187,9 +187,9 @@ export interface paths {
         put?: never;
         /**
          * Demander une location
-         * @description Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton.
+         * @description Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton, et ouvre la page de paiement Stripe au prix que l'api a figé.
          *
-         *     Une demande non confirmée expire au bout du délai configuré par `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut).
+         *     La demande reste en attente de paiement jusqu'à ce que Stripe annonce l'empreinte ; le délai de `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut) court ensuite depuis l'empreinte. Une page de paiement vaut trente minutes.
          */
         post: operations["requestRental"];
         delete?: never;
@@ -238,6 +238,8 @@ export interface paths {
          * @description Confirme une demande de location. Seul le propriétaire de la place peut confirmer.
          *
          *     Un identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.
+         *
+         *     Confirmer prélève l'empreinte du conducteur. Si sa banque refuse le prélèvement, la confirmation répond `409` et la demande passe en `PAYMENT_FAILED`.
          */
         post: operations["confirmRentalRequest"];
         delete?: never;
@@ -410,6 +412,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rental-request/{id}/abandonment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abandonner sa demande avant de payer
+         * @description Appelée quand le conducteur revient de Stripe sans payer : la page de paiement est fermée et les dates rendues aussitôt. Seul l'auteur de la demande peut l'abandonner.
+         */
+        post: operations["abandonRentalRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment/stripe-webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recevoir un événement de Stripe
+         * @description Appelée par Stripe seul, jamais par un client. Aucune garde de jeton : l'en-tête `Stripe-Signature` est vérifié sur le corps brut avec `STRIPE_WEBHOOK_SECRET`. Événements lus : `payment_intent.amount_capturable_updated` (empreinte posée) et `checkout.session.expired` (page de paiement expirée).
+         */
+        post: operations["receiveStripeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -569,8 +617,16 @@ export interface components {
             toDay: string;
             /** @description Le montant figé au moment de la demande. */
             priceInCents: number;
-            /** @enum {string} */
-            status: "PENDING" | "CONFIRMED" | "EXPIRED";
+            /**
+             * @description `AWAITING_PAYMENT` : la page de paiement est ouverte, l'empreinte n'est pas constatée ; la demande retient ses dates mais le propriétaire ne la voit pas. `ABANDONED` : le paiement n'a jamais eu lieu. `PAYMENT_FAILED` : la banque a refusé le prélèvement à la confirmation.
+             * @enum {string}
+             */
+            status: "AWAITING_PAYMENT" | "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "ABANDONED" | "PAYMENT_FAILED";
+            /**
+             * @description Où en est l'argent du conducteur. `AUTHORIZED` : empreinte posée, rien de prélevé. `CAPTURED` : prélevé à la confirmation. `RELEASE_DUE` / `REFUND_DUE` : l'empreinte est en cours de levée, le remboursement en cours. `NONE` : demande faite avant l'encaissement.
+             * @enum {string}
+             */
+            money: "NONE" | "AUTHORIZED" | "CAPTURED" | "RELEASE_DUE" | "RELEASED" | "REFUND_DUE" | "REFUNDED";
             /** Format: date-time */
             requestedAt: string;
             /** Format: date-time */
@@ -644,7 +700,7 @@ export interface components {
             toDay: string;
             priceInCents: number;
             /** @enum {string} */
-            status: "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED";
+            status: "AWAITING_PAYMENT" | "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "ABANDONED" | "PAYMENT_FAILED";
             /** Format: date-time */
             requestedAt: string;
             /** Format: date-time */
@@ -653,6 +709,18 @@ export interface components {
         /** @description Toute action de modération exige un motif. Ce n'est pas une formalité : c'est ce qui permet de répondre, six mois plus tard, à un propriétaire qui demande pourquoi son annonce a disparu. */
         ModerationRequest: {
             reason: string;
+        };
+        RequestRentalResponse: {
+            /**
+             * Format: uuid
+             * @description L'identifiant de la demande, en attente de paiement.
+             */
+            id: string;
+            /**
+             * Format: uri
+             * @description La page de paiement Stripe Checkout où le conducteur pose son empreinte. Toujours sur `https://checkout.stripe.com/`.
+             */
+            checkoutUrl: string;
         };
     };
     responses: {
@@ -1091,12 +1159,14 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Demande enregistrée. Aucun corps de réponse. */
+            /** @description Demande enregistrée, en attente de paiement. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RequestRentalResponse"];
+                };
             };
             /** @description Corps de requête invalide. */
             400: {
@@ -1118,6 +1188,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas : la demande est abandonnée et ses dates rendues. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listReceivedRentalRequests: {
@@ -1184,6 +1263,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas : rien n'est prélevé ni confirmé, la confirmation peut être rejouée. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     confirmAdminAccess: {
@@ -1476,6 +1564,74 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    abandonRentalRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Demande abandonnée, ou déjà abandonnée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inexistante, identifiant mal formé, ou demande d'un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description L'empreinte est déjà posée : la demande attend le propriétaire. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    receiveStripeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Événement accusé, qu'il ait changé une demande ou non. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signature absente ou invalide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

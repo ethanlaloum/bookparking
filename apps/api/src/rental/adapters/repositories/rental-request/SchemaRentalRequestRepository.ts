@@ -1,7 +1,11 @@
 export enum RentalRequestStatus {
+  AWAITING_PAYMENT = 'AWAITING_PAYMENT',
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
   EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
+  ABANDONED = 'ABANDONED',
+  PAYMENT_FAILED = 'PAYMENT_FAILED',
 }
 
 export interface SchemaRentalRequestRepository {
@@ -17,6 +21,11 @@ export interface SchemaRentalRequestRepository {
   status: string;
   requested_at: Date | string;
   confirmed_at: Date | string | null;
+  money_status: string;
+  checkout_session_id: string | null;
+  payment_id: string | null;
+  hold_placed_at: Date | string | null;
+  refund_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }

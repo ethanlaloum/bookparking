@@ -10,7 +10,9 @@ import {
 } from '../../app/rental/domain/entities/RentalRequestView';
 import type { AppState } from '../../store/AppState';
 
-export const selectLastRequestedRental = (state: AppState): RequestRentalPayload | null =>
+export const selectLastRequestedRental = (
+  state: AppState,
+): (RequestRentalPayload & { requestId: string }) | null =>
   state.core.rental.lastRequested;
 
 export const selectRequestRentalLoading = (state: AppState): boolean =>
@@ -23,6 +25,12 @@ export const selectRequestRentalError = (state: AppState): string | null =>
 
 export const selectRequestRentalSuccess = (state: AppState): boolean =>
   state.core.rental.request.state === 'succeeded';
+
+export const selectAbandonRentalRequestFailed = (state: AppState): boolean =>
+  state.core.rental.abandon.state === 'failed';
+
+export const selectAbandonedRentalRequestId = (state: AppState): string | null =>
+  state.core.rental.abandonedRequestId;
 
 export const selectConfirmRentalLoading = (state: AppState): boolean =>
   state.core.rental.confirm.state === 'pending';

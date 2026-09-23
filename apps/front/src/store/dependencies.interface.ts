@@ -6,6 +6,7 @@ import type { Clock } from '../app/consent/domain/ports/Clock';
 import type { ConsentStore } from '../app/consent/domain/ports/ConsentStore';
 import type { GeocodingGateway } from '../app/listing/domain/ports/GeocodingGateway';
 import type { ListingGateway } from '../app/listing/domain/ports/ListingGateway';
+import type { PaymentPageNavigator } from '../app/rental/domain/ports/PaymentPageNavigator';
 import type { RentalGateway } from '../app/rental/domain/ports/RentalGateway';
 
 export interface Dependencies {
@@ -15,6 +16,7 @@ export interface Dependencies {
   consentStore: ConsentStore;
   geocodingGateway: GeocodingGateway;
   listingGateway: ListingGateway;
+  paymentPageNavigator: PaymentPageNavigator;
   rentalGateway: RentalGateway;
   sessionGateway: SessionGateway;
   sessionStore: SessionStore;

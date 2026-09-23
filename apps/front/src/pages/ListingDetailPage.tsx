@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   cheapestNightlyRateInCents,
@@ -68,6 +68,8 @@ const laterDay = (first: string, second: string): string => (first > second ? fi
 
 export const ListingDetailPage = () => {
   const { id = '' } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const paymentAbandoned = searchParams.get('paiement') === 'abandonne';
   const { t } = useTranslation(['listing', 'rental', 'common']);
   const dispatch = useAppDispatch();
 
@@ -338,6 +340,12 @@ export const ListingDetailPage = () => {
             >
               {t('rental:book.title')}
             </h2>
+
+            {paymentAbandoned && !booked && (
+              <Notice tone="info" className="mt-4">
+                {t('rental:book.abandoned')}
+              </Notice>
+            )}
 
             {booked ? (
               <Notice tone="success" title={t('rental:book.requested')} className="mt-5">

@@ -5,13 +5,32 @@ import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { ConfirmRentalRequest } from '../../../../domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RentalRequestExpiredError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestExpiredError';
-import { RentalRequestNotFoundError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestNotFoundError';
+import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequestNotFoundError';
+import { RentalRequest } from '../../../../domain/entities/RentalRequest';
+import { AbandonRentalRequest } from '../../../../domain/usecases/abandon-rental-request/AbandonRentalRequest';
+import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
+import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
 import { RentalRequestController } from './rental-request.controller';
 
 export const LEA_ACCOUNT_ID = 'account-lea';
 export const MARC_ACCOUNT_ID = 'account-marc';
 export const A_REQUEST_ID = 'b9a1c2d3-1111-4111-8111-111111111111';
+export const A_CHECKOUT_URL = 'https://checkout.stripe.com/c/pay/cs_test_lea';
+
+const aRequestedRental = () => {
+  const rentalRequest = RentalRequest.request({
+    renterId: LEA_ACCOUNT_ID,
+    address: '12 rue Barla, 06300 Nice',
+    box: '12',
+    days: { from: '2026-10-10', to: '2026-10-12' },
+    pricing: { dayInCents: 1500, weekInCents: null, monthInCents: null },
+    requestedAt: new Date('2026-10-01T07:00:00.000Z'),
+  });
+  if (Either.isLeft(rentalRequest))
+    throw new Error('failed to arrange a requested rental');
+  return { rentalRequest: rentalRequest.right, checkoutUrl: A_CHECKOUT_URL };
+};
 
 export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
   const requestRental = new UseCaseDouble();
@@ -20,11 +39,16 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     Either.Either<void, RentalRequestExpiredError | RentalRequestNotFoundError>
   >();
 
+  const abandonRentalRequest = new UseCaseDouble();
+
   const metadata: ModuleMetadata = {
     controllers: [RentalRequestController],
     providers: [
       { provide: RequestRental, useValue: requestRental },
       { provide: ConfirmRentalRequest, useValue: confirmRentalRequest },
+      { provide: ListRenterRentalRequests, useValue: new UseCaseDouble() },
+      { provide: ListOwnerRentalRequests, useValue: new UseCaseDouble() },
+      { provide: AbandonRentalRequest, useValue: abandonRentalRequest },
     ],
   };
 
@@ -60,7 +84,13 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     },
 
     givenRentalRequestSucceeds() {
-      requestRental.willResolve(Either.right(undefined));
+      const requested = aRequestedRental();
+      requestRental.willResolve(Either.right(requested));
+      return { requestId: requested.rentalRequest.id };
+    },
+
+    thenTheUseCaseReceivedOnly(expected: Record<string, unknown>) {
+      expect(requestRental.calls).toEqual([expected]);
     },
 
     thenNoRentalRequestWasMade() {

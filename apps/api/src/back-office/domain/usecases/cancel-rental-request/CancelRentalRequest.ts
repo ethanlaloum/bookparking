@@ -20,9 +20,10 @@ interface Props {
 }
 
 /**
- * Annule une demande de location, confirmée ou non. **Aucun remboursement
- * n'est émis** : le produit ne sait pas encore encaisser, donc il ne sait pas
- * rendre. L'écran d'administration le dit à celui qui annule.
+ * Annule une demande de location, confirmée ou non, et rend au conducteur tout
+ * son argent : l'empreinte est levée si rien n'a été prélevé, le prélèvement
+ * remboursé sinon. L'écriture ne fait que noter la dette ; c'est le balayage
+ * du contexte `rental` qui la règle chez Stripe, au plus cinq minutes après.
  *
  * L'ordre des gardes est chargé de sens : administrateur d'abord, motif
  * ensuite, cible en dernier. Vérifier l'existence avant le droit ferait de

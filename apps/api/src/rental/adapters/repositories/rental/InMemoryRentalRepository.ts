@@ -1,4 +1,9 @@
 import { ConfirmedRental } from '../../../domain/entities/ConfirmedRental';
+import {
+  MoneyOwed,
+  MoneyState,
+  RentalRequestStatus,
+} from '../../../domain/entities/RentalMoney';
 import { RentalPlace } from '../../../domain/entities/RentalPlace';
 import { RentalRequest } from '../../../domain/entities/RentalRequest';
 import {
@@ -20,9 +25,47 @@ export class InMemoryRentalRepository implements RentalRepository {
     string,
     { listingId: string; address: string; box: string }
   >();
+  // Une demande que le test pousse directement dans `rentalRequestList`, sans
+  // passer par `createRequest`, n'a pas d'entrée ici : elle se lit comme une
+  // demande d'avant l'encaissement, en attente du loueur et sans paiement.
+  public statusById = new Map<string, RentalRequestStatus>();
+  public moneyById = new Map<string, MoneyState>();
+  public paymentIdById = new Map<string, string>();
+  public checkoutSessionIdById = new Map<string, string>();
+  public holdPlacedAtById = new Map<string, Date>();
+  public refundIdById = new Map<string, string>();
 
   public async createRequest(rentalRequest: RentalRequest): Promise<void> {
     this.rentalRequestList.push(rentalRequest);
+    this.statusById.set(rentalRequest.id, 'AWAITING_PAYMENT');
+  }
+
+  public placeWithoutPayment(requestId: string): void {
+    this.statusById.set(requestId, 'PENDING');
+  }
+
+  public statusOf(requestId: string): RentalRequestStatus {
+    if (this.confirmedRequestIds.has(requestId)) return 'CONFIRMED';
+    if (this.expiredRequestIds.has(requestId)) return 'EXPIRED';
+    return this.statusById.get(requestId) ?? 'PENDING';
+  }
+
+  public moneyOf(requestId: string): MoneyState {
+    return this.moneyById.get(requestId) ?? 'NONE';
+  }
+
+  private setStatus(requestId: string, status: RentalRequestStatus): void {
+    this.confirmedRequestIds.delete(requestId);
+    this.expiredRequestIds.delete(requestId);
+    if (status === 'CONFIRMED') this.confirmedRequestIds.add(requestId);
+    else if (status === 'EXPIRED') this.expiredRequestIds.add(requestId);
+    this.statusById.set(requestId, status);
+  }
+
+  private requestedAtOf(requestId: string): Date | undefined {
+    return this.rentalRequestList
+      .find((request) => request.id === requestId)
+      ?.toState().requestedAt;
   }
 
   public async findConfirmedByPlace(
@@ -44,12 +87,17 @@ export class InMemoryRentalRepository implements RentalRepository {
     const ownerId = this.ownerIdByRequestId.get(requestId);
     if (ownerId === undefined) return null;
 
+    const status = this.statusOf(requestId);
     return {
       id: requestId,
       ownerId,
       renterId: request.toState().renterId,
-      isConfirmed: this.confirmedRequestIds.has(requestId),
-      isExpired: this.expiredRequestIds.has(requestId),
+      isConfirmed: status === 'CONFIRMED',
+      isExpired: status === 'EXPIRED',
+      status,
+      money: this.moneyOf(requestId),
+      paymentId: this.paymentIdById.get(requestId) ?? null,
+      checkoutSessionId: this.checkoutSessionIdById.get(requestId) ?? null,
     };
   }
 
@@ -57,7 +105,10 @@ export class InMemoryRentalRepository implements RentalRepository {
     requestId: string,
     confirmedAt: Date,
   ): Promise<void> {
-    this.confirmedRequestIds.add(requestId);
+    if (this.statusOf(requestId) !== 'PENDING') return;
+    this.setStatus(requestId, 'CONFIRMED');
+    if (this.moneyOf(requestId) === 'AUTHORIZED')
+      this.moneyById.set(requestId, 'CAPTURED');
     this.confirmations.push({ requestId, confirmedAt });
   }
 
@@ -83,11 +134,8 @@ export class InMemoryRentalRepository implements RentalRepository {
         fromDay: state.days.from,
         toDay: state.days.to,
         priceInCents: state.priceInCents,
-        status: this.confirmedRequestIds.has(request.id)
-          ? 'CONFIRMED'
-          : this.expiredRequestIds.has(request.id)
-            ? 'EXPIRED'
-            : 'PENDING',
+        status: this.statusOf(request.id),
+        money: this.moneyOf(request.id),
         requestedAt: state.requestedAt,
         confirmedAt:
           this.confirmations.find(
@@ -100,16 +148,133 @@ export class InMemoryRentalRepository implements RentalRepository {
   public async expireRequestsPendingSince(deadline: Date): Promise<number> {
     let expired = 0;
     for (const request of this.rentalRequestList) {
-      if (
-        this.confirmedRequestIds.has(request.id) ||
-        this.expiredRequestIds.has(request.id)
-      )
-        continue;
+      if (this.statusOf(request.id) !== 'PENDING') continue;
+      if (this.moneyOf(request.id) !== 'NONE') continue;
       if (request.toState().requestedAt.getTime() >= deadline.getTime())
         continue;
-      this.expiredRequestIds.add(request.id);
+      this.setStatus(request.id, 'EXPIRED');
       expired += 1;
     }
     return expired;
+  }
+
+  public async attachPaymentPage(
+    requestId: string,
+    checkoutSessionId: string,
+  ): Promise<void> {
+    this.checkoutSessionIdById.set(requestId, checkoutSessionId);
+  }
+
+  public async markHoldPlaced(
+    requestId: string,
+    paymentId: string,
+    placedAt: Date,
+  ): Promise<boolean> {
+    if (this.statusOf(requestId) !== 'AWAITING_PAYMENT') return false;
+    this.setStatus(requestId, 'PENDING');
+    this.moneyById.set(requestId, 'AUTHORIZED');
+    this.paymentIdById.set(requestId, paymentId);
+    this.holdPlacedAtById.set(requestId, placedAt);
+    return true;
+  }
+
+  public async markAbandoned(requestId: string): Promise<boolean> {
+    if (this.statusOf(requestId) !== 'AWAITING_PAYMENT') return false;
+    this.setStatus(requestId, 'ABANDONED');
+    return true;
+  }
+
+  public async oweReleaseOfLateHold(
+    requestId: string,
+    paymentId: string,
+  ): Promise<boolean> {
+    if (this.statusOf(requestId) !== 'ABANDONED') return false;
+    if (this.moneyOf(requestId) !== 'NONE') return false;
+    this.moneyById.set(requestId, 'RELEASE_DUE');
+    this.paymentIdById.set(requestId, paymentId);
+    return true;
+  }
+
+  public async markPaymentFailed(requestId: string): Promise<boolean> {
+    if (this.statusOf(requestId) !== 'PENDING') return false;
+    this.setStatus(requestId, 'PAYMENT_FAILED');
+    if (this.moneyOf(requestId) === 'AUTHORIZED')
+      this.moneyById.set(requestId, 'RELEASE_DUE');
+    return true;
+  }
+
+  public async abandonUnpaidRequestsSince(deadline: Date): Promise<number> {
+    let abandoned = 0;
+    for (const request of this.rentalRequestList) {
+      if (this.statusOf(request.id) !== 'AWAITING_PAYMENT') continue;
+      const requestedAt = this.requestedAtOf(request.id);
+      if (!requestedAt || requestedAt.getTime() > deadline.getTime()) continue;
+      this.setStatus(request.id, 'ABANDONED');
+      abandoned += 1;
+    }
+    return abandoned;
+  }
+
+  public async expireHoldsPlacedSince(deadline: Date): Promise<number> {
+    let expired = 0;
+    for (const request of this.rentalRequestList) {
+      if (this.statusOf(request.id) !== 'PENDING') continue;
+      if (this.moneyOf(request.id) !== 'AUTHORIZED') continue;
+      const placedAt = this.holdPlacedAtById.get(request.id);
+      if (!placedAt || placedAt.getTime() > deadline.getTime()) continue;
+      this.setStatus(request.id, 'EXPIRED');
+      this.moneyById.set(request.id, 'RELEASE_DUE');
+      expired += 1;
+    }
+    return expired;
+  }
+
+  public async findMoneyOwed(): Promise<MoneyOwed[]> {
+    const owed: MoneyOwed[] = [];
+    for (const [requestId, money] of this.moneyById) {
+      const paymentId = this.paymentIdById.get(requestId);
+      if (paymentId === undefined) continue;
+      if (money === 'RELEASE_DUE' || money === 'REFUND_DUE')
+        owed.push({
+          requestId,
+          paymentId,
+          owed: money,
+          status: this.statusOf(requestId),
+        });
+    }
+    return owed;
+  }
+
+  public async markReleased(requestId: string): Promise<boolean> {
+    if (this.moneyOf(requestId) !== 'RELEASE_DUE') return false;
+    this.moneyById.set(requestId, 'RELEASED');
+    return true;
+  }
+
+  public async markRefunded(
+    requestId: string,
+    refundId: string,
+  ): Promise<boolean> {
+    if (this.moneyOf(requestId) !== 'REFUND_DUE') return false;
+    this.moneyById.set(requestId, 'REFUNDED');
+    this.refundIdById.set(requestId, refundId);
+    return true;
+  }
+
+  public async recordMissedCapture(
+    requestId: string,
+    confirmedAt: Date,
+  ): Promise<boolean> {
+    if (this.moneyOf(requestId) !== 'RELEASE_DUE') return false;
+    this.setStatus(requestId, 'CONFIRMED');
+    this.moneyById.set(requestId, 'CAPTURED');
+    this.confirmations.push({ requestId, confirmedAt });
+    return true;
+  }
+
+  public async oweRefundOfMissedCapture(requestId: string): Promise<boolean> {
+    if (this.moneyOf(requestId) !== 'RELEASE_DUE') return false;
+    this.moneyById.set(requestId, 'REFUND_DUE');
+    return true;
   }
 }

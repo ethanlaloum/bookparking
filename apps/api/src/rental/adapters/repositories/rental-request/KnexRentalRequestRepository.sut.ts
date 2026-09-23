@@ -15,6 +15,7 @@ import {
 } from '../../../domain/entities/CalendarDay';
 import { placeKeyOf, RentalPlace } from '../../../domain/entities/RentalPlace';
 import { ConfirmRentalRequest } from '../../../domain/usecases/confirm-rental-request/ConfirmRentalRequest';
+import { InMemoryPaymentGateway } from '../../services/payment-gateway/InMemoryPaymentGateway';
 import { RequestRental } from '../../../domain/usecases/request-rental/RequestRental';
 import { DatesAlreadyRentedError } from '../../../domain/usecases/request-rental/errors/DatesAlreadyRentedError';
 import { KnexPublishedListingReader } from '../published-listing/KnexPublishedListingReader';
@@ -118,7 +119,9 @@ export const createKnexRentalRequestRepositorySUT = () => {
     testConstants,
   };
 
-  const executeRequest = (
+  const paymentGateway = new InMemoryPaymentGateway();
+
+  const requestWithoutPaying = (
     connection: Knex,
     input: RequestInput,
     requestedAt: Date,
@@ -126,6 +129,7 @@ export const createKnexRentalRequestRepositorySUT = () => {
     new RequestRental(
       new KnexPublishedListingReader(connection),
       new KnexRentalRequestRepository(connection),
+      paymentGateway,
       testConstants.requestExpiryInHoursForTest,
     ).execute({
       renterId: toAccountId(input.renter),
@@ -135,6 +139,27 @@ export const createKnexRentalRequestRepositorySUT = () => {
       toDay: input.to,
       requestedAt,
     });
+
+  // Ce que ferait Stripe juste après la demande : poser l'empreinte. Les
+  // exemples de SPEC-001 et SPEC-002 parlent d'une demande en attente du
+  // loueur, c'est-à-dire, depuis SPEC-004, d'une demande dont l'empreinte est
+  // posée.
+  const executeRequest = async (
+    connection: Knex,
+    input: RequestInput,
+    requestedAt: Date,
+  ): Promise<RequestOutcome> => {
+    const outcome = await requestWithoutPaying(connection, input, requestedAt);
+    if (Either.isRight(outcome)) {
+      const id = outcome.right.rentalRequest.id;
+      await new KnexRentalRequestRepository(connection).markHoldPlaced(
+        id,
+        `pi_${id}`,
+        requestedAt,
+      );
+    }
+    return outcome;
+  };
 
   return {
     context,
@@ -236,11 +261,43 @@ export const createKnexRentalRequestRepositorySUT = () => {
     async whenConfirming(input: { requestId: string; owner: string }) {
       return new ConfirmRentalRequest(
         new KnexRentalRequestRepository(context.testDbConnection),
+        paymentGateway,
       ).execute({
         requestId: input.requestId,
         ownerId: toAccountId(input.owner),
         confirmedAt: testConstants.confirmationInstant,
       });
+    },
+
+    async whenRequestingWithoutPaying(
+      input: RequestInput,
+      requestedAt: Date,
+    ): Promise<RequestOutcome> {
+      return requestWithoutPaying(context.testDbConnection, input, requestedAt);
+    },
+
+    repository() {
+      return new KnexRentalRequestRepository(context.testDbConnection);
+    },
+
+    async thenStoredMoneyRowIs(
+      requestId: string,
+      expected: { status: string; money: string },
+    ) {
+      const rows = await context
+        .testDbConnection<SchemaRentalRequestRepository>('rental_requests')
+        .where({ id: requestId })
+        .select('status', 'money_status');
+      expect(rows).toEqual([
+        { status: expected.status, money_status: expected.money },
+      ]);
+    },
+
+    async thenRequestRowsFor(place: RentalPlace) {
+      return context
+        .testDbConnection<SchemaRentalRequestRepository>('rental_requests')
+        .where({ place_key: placeKeyOf(place) })
+        .select('renter_id', 'status');
     },
 
     async whenReadingSummaryOf(requestId: string) {

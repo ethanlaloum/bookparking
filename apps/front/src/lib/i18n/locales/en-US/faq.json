@@ -1,0 +1,89 @@
+{
+  "label": "Help",
+  "title": "Frequently asked questions",
+  "subtitle": "Booking, renting out your space, paying, cancelling: what to know before you start.",
+  "jumpTo": "Jump to a section",
+  "section": {
+    "drivers": "Booking a space",
+    "owners": "Renting out your space",
+    "account": "Account and data"
+  },
+  "q": {
+    "howToBook": {
+      "question": "How do I book a space?",
+      "answer": "Search for an address, open a space, pick your dates and continue to payment. You then place a card hold on a Stripe page, and the owner receives your request: they have 48 hours to confirm it."
+    },
+    "whenCharged": {
+      "question": "When is my money taken?",
+      "answer": "Only when the owner confirms. Until then, the amount is reserved on your card, not charged. If the owner does not confirm within 48 hours, the request expires, the hold is released and you pay nothing."
+    },
+    "finalPrice": {
+      "question": "Is the price shown the price I will pay?",
+      "answer": "Yes. It is computed from the owner’s rates — per day, week or month — and frozen when you send the request: it no longer moves, even if the owner changes their rates afterwards."
+    },
+    "card": {
+      "question": "Does Bookparking see my card?",
+      "answer": "No. You enter it on Stripe’s payment page, and it never goes through Bookparking. That page expires after 30 minutes: past that, simply send the request again."
+    },
+    "driverCancels": {
+      "question": "Can I cancel?",
+      "answer": "Yes, from “My bookings”, as long as the rental has not started. Up to 24 hours before it starts, you are refunded in full; after that, you can still cancel, but the amount charged is not refunded. Before you confirm, the cancellation window tells you what will happen."
+    },
+    "ownerCancelsForDriver": {
+      "question": "What if the owner cancels?",
+      "answer": "You are refunded in full, whenever the cancellation happens."
+    },
+    "vehicles": {
+      "question": "Will my car fit?",
+      "answer": "Each owner states which vehicles their space accepts, and you can filter the search by vehicle type. Spaces whose owner said nothing stay listed: the search tells you how many explicitly accept your vehicle, and how many did not say."
+    },
+    "account": {
+      "question": "Do I need an account to search?",
+      "answer": "No: the search and the space pages are open to everyone. You only need an account to request a space or to list one."
+    },
+    "howToPublish": {
+      "question": "How do I list my space?",
+      "answer": "Create an account, then choose “List a space”: address, bay number, access instructions, rates, availability and accepted vehicles. The listing goes live as soon as you submit it."
+    },
+    "whoSeesAddress": {
+      "question": "Who sees my space’s address?",
+      "answer": "Everyone: the exact address and the bay are shown as soon as the listing is published, so drivers know where they are going. Your access instructions, however, are never published."
+    },
+    "pricing": {
+      "question": "How do I set my rates?",
+      "answer": "You choose a price per day, per week or per month — at least one of the three — and you can change them at any time. A request already sent keeps the price of the day it was made."
+    },
+    "acceptRequests": {
+      "question": "Do I have to accept every request?",
+      "answer": "No. You confirm the ones that suit you, from “Requests received”. A request you do not confirm expires after 48 hours, and the driver pays nothing."
+    },
+    "ownerCancels": {
+      "question": "Can I cancel a rental I already confirmed?",
+      "answer": "Yes, as long as it has not started. The driver is then refunded in full."
+    },
+    "unpublish": {
+      "question": "Can I take my space down?",
+      "answer": "Yes, at any time: once unpublished, it disappears from the search. Rentals already confirmed remain due."
+    },
+    "taxes": {
+      "question": "Do I have to declare what I earn?",
+      "answer": "Yes: what you receive for renting out your space is income to declare. The <terms>terms of use</terms> point to the applicable rules."
+    },
+    "cookies": {
+      "question": "Does Bookparking set cookies?",
+      "answer": "None. Your session and your consent choice are kept in your browser. The map and the fonts, which call third-party services, only load with your consent, and you can <settings>review your choice</settings> at any time."
+    },
+    "data": {
+      "question": "What do you do with my data?",
+      "answer": "Only what the service needs to work: nothing is sold, and there is no advertising and no audience measurement. The details, item by item, are on the <privacy>personal data</privacy> page."
+    },
+    "deleteAccount": {
+      "question": "How do I delete my account?",
+      "answer": "Deletion is requested in writing, as explained on the <privacy>personal data</privacy> page: it is not yet available from the site."
+    },
+    "contact": {
+      "question": "How do I contact you?",
+      "answer": "Bookparking’s point of contact is listed in the <notice>legal notice</notice>."
+    }
+  }
+}

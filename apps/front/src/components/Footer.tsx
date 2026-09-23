@@ -56,6 +56,7 @@ export const Footer = () => {
                 links={[
                   { to: '/recherche', label: t('footer.search') },
                   { to: '/publier', label: t('nav.publish') },
+                  { to: '/faq', label: t('footer.faq') },
                 ]}
               />
               <FooterNav

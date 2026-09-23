@@ -232,6 +232,14 @@ change côté api casse la compilation du front plutôt que sa production.
   un moteur d'indexer une page qui n'existe pas. L'hébergeur devra servir `index.html` pour toute
   adresse inconnue, sans quoi un lien profond (`/place/…`) afficherait sa 404 à lui, pas celle-ci.
 
+- **La FAQ (`/faq`) répond comme les pages légales : ce que le code fait, pas ce qu'on voudrait.**
+  Ses délais (48 heures, 30 minutes, 24 heures) sont ceux de l'api, et les libellés d'écran qu'elle
+  cite (« Mes réservations », « Demandes reçues », « Publier une place ») doivent rester ceux des
+  namespaces `account` et `common` : renommer un onglet sans la relire fait mentir une réponse. Deux
+  questions manquent exprès — comment le conducteur accède à la place (les consignes d'accès ne lui
+  sont transmises nulle part) et quand le loueur est payé (le reversement n'existe pas). À l'inverse
+  des pages légales, elle est traduite : namespace `faq`, dans les deux locales.
+
 ## Le système de design « Signal Riviera »
 
 Trois matières, prises à la rue niçoise : le **bleu du panneau P** (la marque), l'**encre du

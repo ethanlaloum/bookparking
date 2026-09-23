@@ -31,6 +31,9 @@ const ConfirmRequestPage = lazy(async () => ({
 const PaymentReturnPage = lazy(async () => ({
   default: (await import('../pages/PaymentReturnPage')).PaymentReturnPage,
 }));
+const FaqPage = lazy(async () => ({
+  default: (await import('../pages/FaqPage')).FaqPage,
+}));
 const LegalNoticePage = lazy(async () => ({
   default: (await import('../pages/legal/LegalNoticePage')).LegalNoticePage,
 }));
@@ -52,6 +55,7 @@ export const Routes = () => (
       <Route path="/place/:id" element={<ListingDetailPage />} />
       <Route path="/connexion" element={<SignInPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/faq" element={<FaqPage />} />
       <Route path="/mentions-legales" element={<LegalNoticePage />} />
       <Route path="/donnees-personnelles" element={<PrivacyPage />} />
       <Route path="/conditions-d-utilisation" element={<TermsPage />} />

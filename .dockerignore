@@ -1,0 +1,17 @@
+# Contexte des images Railway (apps/api/Dockerfile, apps/front/Dockerfile).
+# Les secrets locaux ne doivent jamais entrer dans une image : Railway fournit
+# les variables à l'exécution.
+.env
+.env.*
+!.env.example
+
+.git
+**/node_modules
+**/dist
+**/.expo
+**/test-results
+**/playwright-report
+graphify-out
+.claude
+.vscode
+.DS_Store

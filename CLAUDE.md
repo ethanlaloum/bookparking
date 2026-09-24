@@ -26,3 +26,11 @@ quatre onglets de `/compte`, ouverts au seul compte pour lequel `GET /admin/acce
   et a besoin de son binaire de plateforme, quand `@parcel/watcher` ne sert qu'au mode watch de
   `jest-haste-map` (banni ici) et se contente de son repli JS pur.
   Ne pas retirer ces deux lignes lors d'un nettoyage de dépendances sans relire `pnpm-workspace.yaml:5-6`.
+
+- **Railway : deux services Docker, jamais Railpack à la racine.** Railpack ne trouve aucune commande
+  de démarrage dans le `package.json` racine, et installerait Expo et Playwright. Chaque service garde
+  la racine du dépôt comme répertoire (pnpm a besoin du lockfile) et pointe son fichier de config :
+  `/apps/api/railway.json` (migrations en `preDeployCommand`) et `/apps/front/railway.json` (Caddy
+  sert le build et relaie `/api` vers `$API_INTERNAL_URL` sur le réseau privé — l'api n'a pas de CORS).
+  `.dockerignore` tient `.env` et `.env.stripe.local` hors des images : ne pas l'alléger.
+

@@ -14,7 +14,19 @@ import {
   registerAccountSucceeded,
   resetRegisterAccountState,
 } from '../domain/use-cases/register-account/registerAccountEpic';
-import type { Account } from '../domain/entities/Account';
+import type { Account, OwnAccount } from '../domain/entities/Account';
+import type { Avatar } from '../domain/entities/Avatar';
+import {
+  chooseAvatarFailed,
+  chooseAvatarRequested,
+  chooseAvatarSucceeded,
+  resetChooseAvatarState,
+} from '../domain/use-cases/choose-avatar/chooseAvatarEpic';
+import {
+  readOwnAccountFailed,
+  readOwnAccountRequested,
+  readOwnAccountSucceeded,
+} from '../domain/use-cases/read-own-account/readOwnAccountEpic';
 import type { HumanProof } from '../domain/entities/HumanProof';
 import {
   humanProofFailed,
@@ -28,6 +40,12 @@ export interface AccountState {
   changePassword: CommonState;
   humanProof: CommonState;
   proof: HumanProof | null;
+  // Le compte connecté, lu par `GET /account` : l'adresse et l'avatar.
+  ownAccount: OwnAccount | null;
+  readOwnAccount: CommonState;
+  chooseAvatar: CommonState;
+  // Le pilote d'avant un choix en cours, rendu si l'api le refuse.
+  avatarBeforeChoice: Avatar | null;
 }
 
 const initialState: AccountState = {
@@ -36,6 +54,10 @@ const initialState: AccountState = {
   changePassword: initialCommonState,
   humanProof: initialCommonState,
   proof: null,
+  ownAccount: null,
+  readOwnAccount: initialCommonState,
+  chooseAvatar: initialCommonState,
+  avatarBeforeChoice: null,
 };
 
 export const accountReducer = createReducer(initialState, (builder) => {
@@ -79,6 +101,40 @@ export const accountReducer = createReducer(initialState, (builder) => {
     })
     .addCase(resetChangePasswordState, (state) => {
       state.changePassword = initialCommonState;
+    })
+    .addCase(readOwnAccountRequested, (state) => {
+      state.readOwnAccount = { state: 'pending' };
+    })
+    .addCase(readOwnAccountSucceeded, (state, action) => {
+      state.readOwnAccount = { state: 'succeeded' };
+      state.ownAccount = action.payload;
+    })
+    // Une lecture ratée ne garde pas l'avatar d'un autre compte : l'icône
+    // générique vaut mieux qu'un visage qui n'est pas le sien.
+    .addCase(readOwnAccountFailed, (state, action) => {
+      state.readOwnAccount = { state: 'failed', errorCode: action.payload.errorCode };
+      state.ownAccount = null;
+    })
+    // Le pilote touché s'affiche aussitôt : attendre la réponse de l'api
+    // laisserait le clic sans effet visible. Un refus rend le précédent.
+    .addCase(chooseAvatarRequested, (state, action) => {
+      state.chooseAvatar = { state: 'pending' };
+      if (state.ownAccount === null) return;
+      state.avatarBeforeChoice = state.ownAccount.avatar;
+      state.ownAccount.avatar = action.payload;
+    })
+    .addCase(chooseAvatarSucceeded, (state) => {
+      state.chooseAvatar = { state: 'succeeded' };
+      state.avatarBeforeChoice = null;
+    })
+    .addCase(chooseAvatarFailed, (state, action) => {
+      state.chooseAvatar = { state: 'failed', errorCode: action.payload.errorCode };
+      if (state.ownAccount !== null && state.avatarBeforeChoice !== null)
+        state.ownAccount.avatar = state.avatarBeforeChoice;
+      state.avatarBeforeChoice = null;
+    })
+    .addCase(resetChooseAvatarState, (state) => {
+      state.chooseAvatar = initialCommonState;
     })
     .addCase(logoutSucceeded, () => initialState);
 });

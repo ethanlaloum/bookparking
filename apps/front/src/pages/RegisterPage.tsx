@@ -1,15 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { DEFAULT_AVATAR } from '../app/account/domain/entities/Avatar';
 import { humanProofRequested } from '../app/account/domain/use-cases/human-proof/humanProofEpic';
 import {
   registerAccountRequested,
   resetRegisterAccountState,
 } from '../app/account/domain/use-cases/register-account/registerAccountEpic';
 import { AuthShell } from '../components/AuthShell';
+import { AvatarPicker } from '../components/AvatarPicker';
 import { HumanCheck } from '../components/HumanCheck';
 import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
 import { Notice } from '../components/Notice';
@@ -42,7 +44,13 @@ export const RegisterPage = () => {
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', acceptsTerms: false },
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      acceptsTerms: false,
+      avatar: DEFAULT_AVATAR,
+    },
   });
   const password = useWatch({ control: form.control, name: 'password' });
 
@@ -81,6 +89,7 @@ export const RegisterPage = () => {
                 password: values.password,
                 humanProof,
                 acceptsTerms: values.acceptsTerms,
+                avatar: values.avatar,
               }),
             );
           })(event)
@@ -140,6 +149,14 @@ export const RegisterPage = () => {
             />
           )}
         </Field>
+
+        <Controller
+          control={form.control}
+          name="avatar"
+          render={({ field }) => (
+            <AvatarPicker name="register-avatar" value={field.value} onChange={field.onChange} />
+          )}
+        />
 
         <div className="flex flex-col gap-2">
           <label className="flex cursor-pointer items-start gap-2.5 text-sm text-fg">

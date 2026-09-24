@@ -54,6 +54,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: MARC_EMAIL,
         password: OTHER_PASSWORD,
       });
@@ -65,6 +66,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: LEA_EMAIL,
         password: SEVEN_CHAR_PASSWORD,
       });
@@ -79,6 +81,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: LEA_EMAIL,
         password: EIGHT_CHAR_PASSWORD,
       });
@@ -91,6 +94,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: LEA_EMAIL,
         password: '',
       });
@@ -103,6 +107,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: ADDRESS_WITHOUT_AT_SIGN,
         password: MARC_PASSWORD,
       });
@@ -115,6 +120,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: '',
         password: MARC_PASSWORD,
       });
@@ -126,6 +132,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: LEA_EMAIL,
         password: MISTYPED_PASSWORD,
       });
@@ -150,6 +157,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: ADDRESS_OF_255_CHARACTERS,
         password: MARC_PASSWORD,
       });
@@ -164,6 +172,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: ADDRESS_OF_254_CHARACTERS,
         password: MARC_PASSWORD,
       });
@@ -175,6 +184,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER,
         password: MARC_PASSWORD,
       });
@@ -188,6 +198,7 @@ describe('AccountController @SPEC-002', () => {
       const response = await http().post('/account').send({
         humanProof: HUMAN_PROOF,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: ACCENTED_ADDRESS,
         password: MARC_PASSWORD,
       });
@@ -227,9 +238,12 @@ describe('AccountController @SPEC-007', () => {
     sut.givenChallenge(HUMAN_CHALLENGE);
 
     const challenge = await http().get('/account/human-challenge');
-    const withoutProof = await http()
-      .post('/account')
-      .send({ email: MARC_EMAIL, password: MARC_PASSWORD, acceptsTerms: true });
+    const withoutProof = await http().post('/account').send({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+      acceptsTerms: true,
+      avatar: 'SIGNAL',
+    });
 
     expect(challenge.status).toEqual(200);
     expect(challenge.body).toEqual(HUMAN_CHALLENGE);
@@ -261,9 +275,115 @@ describe('AccountController @SPEC-008', () => {
       humanProof: HUMAN_PROOF,
       email: MARC_EMAIL,
       password: MARC_PASSWORD,
+      avatar: 'SIGNAL',
     });
 
     expect(response.status).toEqual(400);
     sut.thenNoAccountWasRegistered();
+  });
+});
+
+describe('AccountController — avatar and own account', () => {
+  const LEA = {
+    id: '7c2e5b1a-4d3f-4a8e-9b6c-2e1f0a9d8c7b',
+    email: LEA_EMAIL,
+    avatar: 'RIVIERA' as const,
+  };
+
+  let sut: ReturnType<typeof createAccountControllerSUT>;
+  let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
+
+  const http = () => request(testApp.app.getHttpServer());
+  const registration = {
+    humanProof: HUMAN_PROOF,
+    acceptsTerms: true,
+    email: LEA_EMAIL,
+    password: MARC_PASSWORD,
+  };
+
+  beforeEach(async () => {
+    sut = createAccountControllerSUT();
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+  });
+
+  afterEach(async () => {
+    await testApp.close();
+  });
+
+  it('passes the chosen avatar on to the registration', async () => {
+    sut.givenRegistrationSucceedsFor(LEA_EMAIL);
+
+    const response = await http()
+      .post('/account')
+      .send({ ...registration, avatar: 'RIVIERA' });
+
+    expect(response.status).toEqual(201);
+    sut.thenAccountWasRegisteredWithAvatar('RIVIERA');
+  });
+
+  it('refuses a registration without an avatar, or outside the five', async () => {
+    sut.givenRegistrationSucceedsFor(LEA_EMAIL);
+
+    const withoutAvatar = await http().post('/account').send(registration);
+    const outsideTheFive = await http()
+      .post('/account')
+      .send({ ...registration, avatar: 'OTHER' });
+
+    expect(withoutAvatar.status).toEqual(400);
+    expect(outsideTheFive.status).toEqual(400);
+    sut.thenNoAccountWasRegistered();
+  });
+
+  it('returns only the id, the address and the avatar', async () => {
+    sut.givenSignedInAs(LEA);
+
+    const response = await http()
+      .get('/account')
+      .set('Authorization', 'Bearer token');
+
+    expect(response.status).toEqual(200);
+    expect(response.body).toEqual(LEA);
+    sut.thenAccountWasReadFor(LEA.id);
+  });
+
+  it('reads no account without a token', async () => {
+    const response = await http().get('/account');
+
+    expect(response.status).toEqual(401);
+    sut.thenNoAccountWasRead();
+  });
+
+  it('changes the avatar of the signed-in account', async () => {
+    sut.givenSignedInAs(LEA);
+    sut.givenAvatarChangeSucceeds();
+
+    const response = await http()
+      .patch('/account/avatar')
+      .set('Authorization', 'Bearer token')
+      .send({ avatar: 'CHECKERED' });
+
+    expect(response.status).toEqual(204);
+    sut.thenAvatarWasChosen(LEA.id, 'CHECKERED');
+  });
+
+  it('refuses an avatar outside the five', async () => {
+    sut.givenSignedInAs(LEA);
+
+    const response = await http()
+      .patch('/account/avatar')
+      .set('Authorization', 'Bearer token')
+      .send({ avatar: 'OTHER' });
+
+    expect(response.status).toEqual(400);
+    sut.thenNoAvatarWasChosen();
+  });
+
+  it('changes no avatar without a token', async () => {
+    const response = await http()
+      .patch('/account/avatar')
+      .send({ avatar: 'CHECKERED' });
+
+    expect(response.status).toEqual(401);
+    sut.thenNoAvatarWasChosen();
   });
 });

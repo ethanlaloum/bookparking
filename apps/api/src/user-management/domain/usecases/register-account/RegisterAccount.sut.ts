@@ -5,7 +5,7 @@ import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnit
 import { InMemoryAccountRepository } from '../../../adapters/repositories/account/InMemoryAccountRepository';
 import { InMemoryHumanProof } from '../../../adapters/services/human-proof/InMemoryHumanProof';
 import { HumanProofSolution } from '../../ports/HumanProof';
-import { Account } from '../../entities/Account';
+import { Account, Avatar } from '../../entities/Account';
 import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
 import { RegisterAccount } from './RegisterAccount';
 
@@ -15,6 +15,7 @@ interface RegistrationInput {
   registeredAt: Date;
   humanProof: HumanProofSolution;
   acceptsTerms: boolean;
+  avatar: Avatar;
 }
 
 // Une preuve de forme valide ; c'est `InMemoryHumanProof` qui décide si elle
@@ -110,6 +111,7 @@ export const createRegisterAccountSUT = () => {
           ),
           registeredAt: context.testConstants.registeredAtForTest,
           termsAcceptedAt: context.testConstants.registeredAtForTest,
+          avatar: 'SIGNAL',
         }),
       );
     },
@@ -121,6 +123,7 @@ export const createRegisterAccountSUT = () => {
         registeredAt: context.testConstants.registeredAtForTest,
         humanProof: HUMAN_PROOF_FOR_TEST,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
       };
 
       return context.registerAccount.execute({ ...defaults, ...overrides });
@@ -199,6 +202,10 @@ export const createRegisterAccountSUT = () => {
       );
     },
 
+    thenAccountAvatarIs(email: string, avatar: Avatar) {
+      expect(storedAccountFor(email).avatar).toEqual(avatar);
+    },
+
     thenNoAccountCreated() {
       expect(context.accountRepository.accountList).toHaveLength(0);
     },
@@ -210,6 +217,7 @@ export const createRegisterAccountSUT = () => {
         registeredAt: context.testConstants.registeredAtForTest,
         humanProof: HUMAN_PROOF_FOR_TEST,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
       });
       if (Either.isLeft(result)) {
         throw new Error('failed to arrange an existing account');
@@ -235,6 +243,7 @@ export const createRegisterAccountSUT = () => {
         'passwordHash',
         'registeredAt',
         'termsAcceptedAt',
+        'avatar',
         'id',
         'suspendedAt',
       ]);

@@ -52,6 +52,7 @@ export class ApiClient {
       password: PASSWORD,
       humanProof,
       acceptsTerms: true,
+      avatar: 'SIGNAL',
     });
     const session = await this.signIn(email, PASSWORD);
     return { email, password: PASSWORD, ...session };

@@ -20,7 +20,7 @@ interface Processing {
 // pull request : une politique qui ment est une infraction, pas une coquille.
 const PROCESSINGS: Processing[] = [
   {
-    data: 'Adresse e-mail, mot de passe (jamais conservé en clair : seule son empreinte scrypt l’est), date d’inscription',
+    data: 'Adresse e-mail, mot de passe (jamais conservé en clair : seule son empreinte scrypt l’est), date d’inscription, pilote choisi comme avatar',
     purpose: 'Créer et sécuriser votre compte',
     basis: 'Exécution du contrat (conditions d’utilisation)',
     retention: 'Tant que le compte existe',

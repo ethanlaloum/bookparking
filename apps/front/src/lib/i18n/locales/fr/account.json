@@ -112,5 +112,14 @@
       "nothingAtStake": "Aucun paiement n’est en jeu pour cette réservation."
     },
     "deadline": "Annulation gratuite jusqu’au {{date}}."
+  },
+  "profile": {
+    "avatar": "Votre avatar : pilote {{name}}",
+    "signedInAs": "Connecté en tant que {{email}}"
+  },
+  "avatar": {
+    "title": "Votre avatar",
+    "hint": "Il s’affiche dans l’en-tête, sur le site comme dans l’app.",
+    "saved": "Avatar enregistré."
   }
 }

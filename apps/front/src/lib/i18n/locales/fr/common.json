@@ -9,5 +9,6 @@
   "unit": { "perNight": "par nuit", "night_one": "{{count}} nuit", "night_other": "{{count}} nuits" },
   "footer": { "app": "L’app iPhone", "explore": "Explorer", "search": "Rechercher une place", "city": "Partout en France", "madeIn": "Pensé à Nice, pour toute la France.", "faq": "Questions fréquentes", "legal": "Informations légales", "legalNotice": "Mentions légales", "privacy": "Données personnelles", "terms": "Conditions d’utilisation" },
   "date": { "placeholder": "jj/mm/aaaa", "openCalendar": "Ouvrir le calendrier", "dialog": "Choisir les dates", "picking": "Choisissez : {{label}}", "clear": "Effacer", "done": "Valider", "empty": "—", "previousMonth": "Mois précédent", "nextMonth": "Mois suivant", "selectedSuffix": ", sélectionné" },
-  "skipToContent": "Aller au contenu"
+  "skipToContent": "Aller au contenu",
+  "avatar": { "label": "Choisissez votre pilote", "name": { "SIGNAL": "Signal", "MARKING": "Marquage", "RIVIERA": "Riviera", "ASPHALT": "Bitume", "CHECKERED": "Damier" } }
 }

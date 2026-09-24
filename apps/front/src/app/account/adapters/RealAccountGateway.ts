@@ -1,7 +1,8 @@
 import { map, type Observable } from 'rxjs';
 
 import type { HttpClient, HttpResponse } from '../../../lib/http/HttpClient';
-import type { Account } from '../domain/entities/Account';
+import type { Account, OwnAccount } from '../domain/entities/Account';
+import type { Avatar } from '../domain/entities/Avatar';
 import type { HumanChallenge } from '../domain/entities/HumanProof';
 import type {
   AccountGateway,
@@ -26,5 +27,15 @@ export class BookparkingRxAccountGateway implements AccountGateway {
 
   changePassword(payload: ChangePasswordPayload): Observable<void> {
     return this.httpClient.post<void>('/account/password', payload).pipe(map(() => undefined));
+  }
+
+  readOwnAccount(): Observable<OwnAccount> {
+    return this.httpClient
+      .get<OwnAccount>('/account')
+      .pipe(map((response: HttpResponse<OwnAccount>) => response.data));
+  }
+
+  chooseAvatar(avatar: Avatar): Observable<void> {
+    return this.httpClient.patch<void>('/account/avatar', { avatar }).pipe(map(() => undefined));
   }
 }

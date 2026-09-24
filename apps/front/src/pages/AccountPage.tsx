@@ -27,6 +27,12 @@ import { cancelRentalRequested } from '../app/rental/domain/use-cases/cancel-ren
 import { confirmRentalRequestRequested } from '../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import { listReceivedRentalRequestsRequested } from '../app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
+import {
+  chooseAvatarRequested,
+  resetChooseAvatarState,
+} from '../app/account/domain/use-cases/choose-avatar/chooseAvatarEpic';
+import { Avatar } from '../components/Avatar';
+import { AvatarPicker } from '../components/AvatarPicker';
 import { CancelRentalDialog, type CancelRentalTarget } from '../components/CancelRentalDialog';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
@@ -47,6 +53,11 @@ import {
   selectChangePasswordError,
   selectChangePasswordLoading,
   selectChangePasswordSuccess,
+  selectChooseAvatarError,
+  selectChooseAvatarLoading,
+  selectChooseAvatarSuccess,
+  selectOwnAvatar,
+  selectOwnEmail,
 } from '../selectors/account/accountSelectors';
 import { selectSession } from '../selectors/auth/authSelectors';
 import { selectAdminAccess } from '../selectors/back-office/backOfficeSelectors';
@@ -114,6 +125,11 @@ export const AccountPage = () => {
   const [tab, setTab] = useState<Tab>('overview');
 
   const session = useAppSelector(selectSession);
+  const avatar = useAppSelector(selectOwnAvatar);
+  const ownEmail = useAppSelector(selectOwnEmail);
+  const avatarSaving = useAppSelector(selectChooseAvatarLoading);
+  const avatarError = useAppSelector(selectChooseAvatarError);
+  const avatarSaved = useAppSelector(selectChooseAvatarSuccess);
   const isAdmin = useAppSelector(selectAdminAccess) === 'granted';
   const ownerListings = useAppSelector(selectOwnerListings);
   const activeListings = useAppSelector(selectActiveOwnerListings);
@@ -188,6 +204,7 @@ export const AccountPage = () => {
   }, [form, passwordSuccess]);
 
   useEffect(() => () => void dispatch(resetChangePasswordState()), [dispatch]);
+  useEffect(() => () => void dispatch(resetChooseAvatarState()), [dispatch]);
 
   const confirmedNights = receivedRaw
     .filter((request) => request.status === 'CONFIRMED')
@@ -203,6 +220,18 @@ export const AccountPage = () => {
             {t('account:dashboard.title')}
           </h1>
           <p className="mt-3 text-lg text-fg-muted">{t('account:dashboard.subtitle')}</p>
+          {avatar !== null && ownEmail !== null && (
+            <div className="mt-5 flex items-center gap-3">
+              <Avatar
+                avatar={avatar}
+                label={t('account:profile.avatar', { name: t(`common:avatar.name.${avatar}`) })}
+                className="size-12 shadow-[var(--shadow-panel)] ring-2 ring-bg"
+              />
+              <p className="min-w-0 truncate text-sm text-fg-muted">
+                {t('account:profile.signedInAs', { email: ownEmail })}
+              </p>
+            </div>
+          )}
         </div>
         {session !== null && (
           <p className="label-ticket tabular inline-flex items-center gap-2 self-start rounded-full border border-line bg-bg-raised px-3 py-2 text-fg-subtle sm:self-auto">
@@ -437,6 +466,35 @@ export const AccountPage = () => {
 
       {tab === 'settings' && (
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
+          {avatar !== null && (
+            <Card className="p-6 sm:p-7 lg:col-span-2">
+              <div className="flex items-center gap-4">
+                <Avatar avatar={avatar} className="size-14 ring-2 ring-bg" />
+                <div>
+                  <h2 className="font-display text-xl font-bold text-fg">{t('account:avatar.title')}</h2>
+                  <p className="mt-1 text-sm text-fg-muted">{t('account:avatar.hint')}</p>
+                </div>
+              </div>
+              <div className="mt-5 max-w-xl">
+                <AvatarPicker
+                  name="settings-avatar"
+                  value={avatar}
+                  disabled={avatarSaving}
+                  onChange={(next) => {
+                    if (next !== avatar) dispatch(chooseAvatarRequested(next));
+                  }}
+                />
+              </div>
+              <p role="status" className="mt-3 min-h-5 text-sm">
+                {avatarError !== null ? (
+                  <span className="font-medium text-danger">{avatarError}</span>
+                ) : (
+                  avatarSaved && <span className="font-medium text-ok">{t('account:avatar.saved')}</span>
+                )}
+              </p>
+            </Card>
+          )}
+
           <Card className="p-6 sm:p-7">
             <h2 className="font-display text-xl font-bold text-fg">
               {t('account:session.title')}

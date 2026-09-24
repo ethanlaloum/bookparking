@@ -86,6 +86,7 @@ export const createSignInSUT = () => {
         passwordHash: context.passwordHasher.hash(password),
         registeredAt: context.testConstants.registeredAtForTest,
         termsAcceptedAt: context.testConstants.registeredAtForTest,
+        avatar: 'SIGNAL',
       });
       await context.accountRepository.create(account);
       return account;
@@ -100,6 +101,7 @@ export const createSignInSUT = () => {
         passwordHash: context.passwordHasher.hash(password),
         registeredAt: context.testConstants.registeredAtForTest,
         termsAcceptedAt: context.testConstants.registeredAtForTest,
+        avatar: 'SIGNAL',
       });
       const suspended = Account.fromState({
         ...account.toState(),

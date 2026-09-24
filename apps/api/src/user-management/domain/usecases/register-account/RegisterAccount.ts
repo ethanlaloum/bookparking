@@ -5,7 +5,7 @@ import { EmailOutbox } from '../../../../shared/email-outbox/domain/ports/EmailO
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
-import { Account } from '../../entities/Account';
+import { Account, Avatar } from '../../entities/Account';
 import { WeakPasswordError } from '../../errors/WeakPasswordError';
 import { AccountRepository } from '../../ports/AccountRepository';
 import { HumanProof, HumanProofSolution } from '../../ports/HumanProof';
@@ -21,6 +21,7 @@ interface Props {
   registeredAt: Date;
   humanProof: HumanProofSolution;
   acceptsTerms: boolean;
+  avatar: Avatar;
 }
 
 export type RegisterAccountError =
@@ -66,6 +67,7 @@ export class RegisterAccount implements UseCase<
         passwordHash: this.passwordHasher.hash(props.password),
         registeredAt: props.registeredAt,
         termsAcceptedAt: props.registeredAt,
+        avatar: props.avatar,
       });
 
       await this.unitOfWork.process(async (trx) => {

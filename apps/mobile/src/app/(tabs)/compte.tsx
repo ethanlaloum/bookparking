@@ -10,6 +10,10 @@ import {
   changePasswordRequested,
   resetChangePasswordState,
 } from '@front/app/account/domain/use-cases/change-password/changePasswordEpic';
+import {
+  chooseAvatarRequested,
+  resetChooseAvatarState,
+} from '@front/app/account/domain/use-cases/choose-avatar/chooseAvatarEpic';
 import { logoutRequested } from '@front/app/auth/domain/use-cases/sign-out/signOutEpic';
 import { confirmAdminAccessRequested } from '@front/app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '@front/app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
@@ -21,6 +25,11 @@ import {
   selectChangePasswordError,
   selectChangePasswordLoading,
   selectChangePasswordSuccess,
+  selectChooseAvatarError,
+  selectChooseAvatarLoading,
+  selectChooseAvatarSuccess,
+  selectOwnAvatar,
+  selectOwnEmail,
 } from '@front/selectors/account/accountSelectors';
 import { selectIsAuthenticated, selectSession } from '@front/selectors/auth/authSelectors';
 import { selectAdminAccess } from '@front/selectors/back-office/backOfficeSelectors';
@@ -45,6 +54,8 @@ import {
 } from '@front/selectors/rental/rentalSelectors';
 
 import { ApiUnreachable } from '../../components/ApiUnreachable';
+import { Avatar } from '../../components/Avatar';
+import { AvatarPicker } from '../../components/AvatarPicker';
 import { MetricTile } from '../../components/MetricTile';
 import { OwnerListingRow, RentalRequestRow, RowList } from '../../components/RequestRows';
 import { SignInGate } from '../../components/SignInGate';
@@ -77,6 +88,8 @@ export default function AccountScreen() {
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const session = useAppSelector(selectSession);
+  const avatar = useAppSelector(selectOwnAvatar);
+  const ownEmail = useAppSelector(selectOwnEmail);
   const isAdmin = useAppSelector(selectAdminAccess) === 'granted';
   const ownerListings = useAppSelector(selectOwnerListings);
   const activeListings = useAppSelector(selectActiveOwnerListings);
@@ -131,6 +144,14 @@ export default function AccountScreen() {
           <Button size="sm" icon={Plus} label={t('mobile:account.publish')} onPress={() => router.push('/publier')} />
         </View>
         <Text tone="muted">{t('account:dashboard.subtitle')}</Text>
+        {avatar !== null && ownEmail !== null && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Avatar avatar={avatar} size={44} label={t('account:profile.avatar', { name: t(`common:avatar.name.${avatar}`) })} />
+            <Text size={14} tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+              {t('account:profile.signedInAs', { email: ownEmail })}
+            </Text>
+          </View>
+        )}
         {session !== null && (
           <View
             style={{
@@ -289,8 +310,13 @@ const Settings = ({ isAdmin }: { isAdmin: boolean }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [errors, setErrors] = useState<{ current?: string; next?: string }>({});
+  const avatar = useAppSelector(selectOwnAvatar);
+  const avatarSaving = useAppSelector(selectChooseAvatarLoading);
+  const avatarError = useAppSelector(selectChooseAvatarError);
+  const avatarSaved = useAppSelector(selectChooseAvatarSuccess);
 
   useEffect(() => () => void dispatch(resetChangePasswordState()), [dispatch]);
+  useEffect(() => () => void dispatch(resetChooseAvatarState()), [dispatch]);
 
   const submit = (): void => {
     const found = {
@@ -306,6 +332,36 @@ const Settings = ({ isAdmin }: { isAdmin: boolean }) => {
 
   return (
     <View style={{ gap: 16 }}>
+      {avatar !== null && (
+        <Card style={{ gap: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Avatar avatar={avatar} size={52} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Display size={20}>{t('account:avatar.title')}</Display>
+              <Text size={13} tone="muted">
+                {t('account:avatar.hint')}
+              </Text>
+            </View>
+          </View>
+          <AvatarPicker
+            value={avatar}
+            disabled={avatarSaving}
+            onChange={(next) => dispatch(chooseAvatarRequested(next))}
+          />
+          {avatarError !== null ? (
+            <Text size={13} weight="medium" tone="danger" accessibilityLiveRegion="polite">
+              {avatarError}
+            </Text>
+          ) : (
+            avatarSaved && (
+              <Text size={13} weight="medium" tone="ok" accessibilityLiveRegion="polite">
+                {t('account:avatar.saved')}
+              </Text>
+            )
+          )}
+        </Card>
+      )}
+
       <Card style={{ gap: 12 }}>
         <Display size={20}>{t('account:session.title')}</Display>
         {session !== null && (

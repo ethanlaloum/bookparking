@@ -57,6 +57,8 @@ import { ScryptPasswordHasher } from './user-management/adapters/services/passwo
 import { InMemorySignInFailureLog } from './user-management/adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { ChangePassword } from './user-management/domain/usecases/change-password/ChangePassword';
 import { IssueHumanChallenge } from './user-management/domain/usecases/issue-human-challenge/IssueHumanChallenge';
+import { ChooseAvatar } from './user-management/domain/usecases/choose-avatar/ChooseAvatar';
+import { ReadOwnAccount } from './user-management/domain/usecases/read-own-account/ReadOwnAccount';
 import { RegisterAccount } from './user-management/domain/usecases/register-account/RegisterAccount';
 import { SignIn } from './user-management/domain/usecases/sign-in/SignIn';
 
@@ -147,6 +149,18 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
           new InMemorySignInFailureLog(),
           new TimerDelay(),
         ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ChooseAvatar,
+      useFactory: (connection: DatabaseConnection) =>
+        new ChooseAvatar(new KnexAccountRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ReadOwnAccount,
+      useFactory: (connection: DatabaseConnection) =>
+        new ReadOwnAccount(new KnexAccountRepository(typedAs(connection))),
       inject: [DATABASE_CONNECTION],
     },
     {

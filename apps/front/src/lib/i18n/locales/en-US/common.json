@@ -9,5 +9,6 @@
   "unit": { "perNight": "per night", "night_one": "{{count}} night", "night_other": "{{count}} nights" },
   "footer": { "app": "The iPhone app", "explore": "Explore", "search": "Find a space", "city": "Everywhere in France", "madeIn": "Designed in Nice, for all of France.", "faq": "FAQ", "legal": "Legal", "legalNotice": "Legal notice", "privacy": "Personal data", "terms": "Terms of use" },
   "date": { "placeholder": "dd/mm/yyyy", "openCalendar": "Open the calendar", "dialog": "Pick the dates", "picking": "Pick: {{label}}", "clear": "Clear", "done": "Done", "empty": "—", "previousMonth": "Previous month", "nextMonth": "Next month", "selectedSuffix": ", selected" },
-  "skipToContent": "Skip to content"
+  "skipToContent": "Skip to content",
+  "avatar": { "label": "Choose your driver", "name": { "SIGNAL": "Signal", "MARKING": "Road marking", "RIVIERA": "Riviera", "ASPHALT": "Asphalt", "CHECKERED": "Checkered" } }
 }

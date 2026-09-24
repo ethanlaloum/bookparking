@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isAcceptableEmail } from '../app/account/domain/entities/Account';
+import { AVATARS } from '../app/account/domain/entities/Avatar';
 import { passwordStrengthOf, passwordsMatch } from '../app/account/domain/entities/Password';
 import { i18n } from '../lib/i18n';
 
@@ -21,6 +22,8 @@ export const registerSchema = z
     acceptsTerms: z.boolean().refine((accepted) => accepted, {
       message: i18n.t('auth:validation.terms'),
     }),
+    // L'un des cinq pilotes ; le premier est proposé d'office.
+    avatar: z.enum(AVATARS),
   })
   .refine((values) => passwordsMatch(values.password, values.confirmPassword), {
     path: ['confirmPassword'],

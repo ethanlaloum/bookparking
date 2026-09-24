@@ -41,6 +41,59 @@
   ],
   "paths": {
     "/account": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "readOwnAccount",
+        "summary": "Lire son propre compte",
+        "description": "Rend le compte porté par le jeton, et lui seul : la route ne prend aucun identifiant. C'est d'ici que le site et l'app tirent l'adresse et le pilote choisi comme avatar du compte connecté, `POST /session` ne rendant qu'un jeton. Ni empreinte du mot de passe, ni dates, ni suspension.",
+        "responses": {
+          "200": {
+            "description": "Le compte connecté.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnAccount"
+                },
+                "examples": {
+                  "nominal": {
+                    "value": {
+                      "id": "7c2e5b1a-4d3f-4a8e-9b6c-2e1f0a9d8c7b",
+                      "email": "lea.t@example.com",
+                      "avatar": "CHECKERED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Le jeton désigne un compte qui n'existe plus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "compteDisparu": {
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Ce compte n'existe plus"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
       "post": {
         "tags": [
           "account"
@@ -69,7 +122,8 @@
                       "number": 1234,
                       "signature": "4be1…"
                     },
-                    "acceptsTerms": true
+                    "acceptsTerms": true,
+                    "avatar": "CHECKERED"
                   }
                 }
               }
@@ -96,7 +150,7 @@
             }
           },
           "400": {
-            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées.",
+            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées, avatar absent ou hors des cinq pilotes.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1543,6 +1597,64 @@
           }
         }
       }
+    },
+    "/account/avatar": {
+      "patch": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "chooseAvatar",
+        "summary": "Changer d'avatar",
+        "description": "Remplace le pilote choisi comme avatar par le compte porté par le jeton, et lui seul.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseAvatarRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "avatar": "RIVIERA"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Avatar changé. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Avatar absent ou hors des cinq pilotes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Le jeton désigne un compte qui n'existe plus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1648,7 +1760,8 @@
           "email",
           "password",
           "humanProof",
-          "acceptsTerms"
+          "acceptsTerms",
+          "avatar"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1670,6 +1783,9 @@
           "acceptsTerms": {
             "type": "boolean",
             "description": "La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte."
+          },
+          "avatar": {
+            "$ref": "#/components/schemas/Avatar"
           }
         }
       },
@@ -2519,6 +2635,50 @@
           "signature": {
             "type": "string",
             "maxLength": 128
+          }
+        }
+      },
+      "OwnAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "avatar"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "avatar": {
+            "$ref": "#/components/schemas/Avatar"
+          }
+        }
+      },
+      "Avatar": {
+        "type": "string",
+        "enum": [
+          "SIGNAL",
+          "MARKING",
+          "RIVIERA",
+          "ASPHALT",
+          "CHECKERED"
+        ],
+        "description": "Le pilote choisi comme avatar : casque bleu signal, jaune marquage, Riviera, bitume ou damier. Les comptes d'avant le choix valent `SIGNAL`."
+      },
+      "ChooseAvatarRequest": {
+        "type": "object",
+        "required": [
+          "avatar"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "$ref": "#/components/schemas/Avatar"
           }
         }
       }

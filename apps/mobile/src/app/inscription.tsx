@@ -5,6 +5,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Pressable, View, type TextInput } from 'react-native';
 
 import { isAcceptableEmail } from '@front/app/account/domain/entities/Account';
+import { DEFAULT_AVATAR, type Avatar } from '@front/app/account/domain/entities/Avatar';
 import { passwordStrengthOf, passwordsMatch } from '@front/app/account/domain/entities/Password';
 import { humanProofRequested } from '@front/app/account/domain/use-cases/human-proof/humanProofEpic';
 import {
@@ -20,6 +21,7 @@ import {
 import { selectIsAuthenticated, selectSignInLoading } from '@front/selectors/auth/authSelectors';
 
 import { AuthSheet } from '../components/AuthSheet';
+import { AvatarPicker } from '../components/AvatarPicker';
 import { HumanCheck } from '../components/HumanCheck';
 import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
 import { resolveFrontBaseUrl } from '../lib/apiBaseUrl';
@@ -48,6 +50,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [acceptsTerms, setAcceptsTerms] = useState(false);
+  const [avatar, setAvatar] = useState<Avatar>(DEFAULT_AVATAR);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
@@ -91,7 +94,7 @@ export default function RegisterScreen() {
       next.confirmation === undefined &&
       next.terms === undefined
     )
-      dispatch(registerAccountRequested({ email: email.trim(), password, humanProof, acceptsTerms }));
+      dispatch(registerAccountRequested({ email: email.trim(), password, humanProof, acceptsTerms, avatar }));
   };
 
   return (
@@ -153,6 +156,7 @@ export default function RegisterScreen() {
         returnKeyType="go"
         onSubmitEditing={submit}
       />
+      <AvatarPicker value={avatar} onChange={setAvatar} />
       {/* Les conditions et la politique de données font foi en français, sur le
           site : l'app les ouvre plutôt que d'en garder une copie qui divergerait. */}
       <TermsCheckbox checked={acceptsTerms} onToggle={() => setAcceptsTerms((value) => !value)} error={errors.terms} />

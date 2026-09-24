@@ -17,12 +17,20 @@ change côté api casse la compilation du front plutôt que sa production.
 - **L'hexagone de ce front a deux clients : le site et `apps/mobile`.**
   L'app iPhone importe `src/app/**`, `src/store/{coreReducer,AppState,AppEpic,CommonState,
   dependencies.interface}.ts`, `src/store/epics/`, `src/selectors/`, `src/lib/http/`,
-  `src/lib/format.ts` et les locales `fr`/`en-US` par l'alias `@front/*`. Renommer une action,
+  `src/lib/format.ts`, `src/lib/avatarArt.ts` et les locales `fr`/`en-US` par l'alias `@front/*`. Renommer une action,
   changer la forme d'un état ou ajouter un port à `Dependencies` casse le mobile : après toute
   modification de ces fichiers, lancer aussi `pnpm --filter bookparking-mobile typecheck`.
   Deux contraintes en découlent : ces fichiers n'importent ni le DOM, ni `window`, ni
   `import.meta` (seuls les adaptateurs du front y ont droit — le mobile a les siens), et un
   nouveau port exige un adaptateur dans `apps/mobile/src/store/createMobileStore.ts`.
+
+- **L'avatar est l'un de cinq pilotes, choisi à l'inscription puis dans « Réglages ».**
+  L'api garde son nom (`SIGNAL`, `MARKING`, `RIVIERA`, `ASPHALT`, `CHECKERED` ; `SIGNAL` pour les
+  comptes d'avant) : `AVATARS` du front doit rester la liste de l'api, dans l'ordre de l'écran.
+  Le dessin vit dans `lib/avatarArt.ts` (`pilotDrawingOf`), peint par `components/Avatar.tsx` et
+  par l'`Avatar` de l'app, qui ne décident rien. Le compte connecté vient de `GET /account`, que
+  l'en-tête (et la barre d'onglets de l'app) demande dès qu'une session s'ouvre ;
+  `PATCH /account/avatar` répond 204, et c'est la charge soumise qui remplace l'avatar affiché.
 
 - **`estimateRentalPriceInCents` est un report ligne à ligne de `computeRentalPrice` de l'api.**
   Le montant affiché au locataire avant l'envoi doit être celui que le back facturera ; un

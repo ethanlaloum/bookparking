@@ -46,6 +46,7 @@ export const createHumanProofSut = () => {
           password: 'Barla2026!',
           humanProof,
           acceptsTerms: true,
+          avatar: 'SIGNAL',
         }),
       );
     },

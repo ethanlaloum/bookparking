@@ -13,6 +13,7 @@ const PAYLOAD = {
     signature: 'signature',
   },
   acceptsTerms: true,
+  avatar: 'RIVIERA' as const,
 };
 
 describe('registering an account', () => {

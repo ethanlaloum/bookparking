@@ -1,4 +1,4 @@
-import { Account } from '../../../domain/entities/Account';
+import { Account, Avatar } from '../../../domain/entities/Account';
 import { AccountRepository } from '../../../domain/ports/AccountRepository';
 import { EmailAlreadyUsedError } from '../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
 
@@ -43,6 +43,13 @@ export class InMemoryAccountRepository implements AccountRepository {
       stored.id === accountId
         ? Account.fromState({ ...stored.toState(), passwordHash })
         : stored,
+    );
+  }
+
+  public async replaceAvatar(accountId: string, avatar: Avatar): Promise<void> {
+    if (this.failing) throw new Error('accounts repository is unreachable');
+    this.accountList = this.accountList.map((stored) =>
+      stored.id === accountId ? stored.chooseAvatar(avatar) : stored,
     );
   }
 }

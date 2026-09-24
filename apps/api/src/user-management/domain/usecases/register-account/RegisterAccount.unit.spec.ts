@@ -223,3 +223,17 @@ describe('RegisterAccount @SPEC-008', () => {
     sut.thenNoEmailQueued();
   });
 });
+
+describe('RegisterAccount — avatar', () => {
+  it('notes the chosen avatar', async () => {
+    const sut = createRegisterAccountSUT();
+
+    const result = await sut.whenRegistering({
+      email: MARC_EMAIL,
+      avatar: 'CHECKERED',
+    });
+
+    sut.thenResultIsRight(result);
+    sut.thenAccountAvatarIs(MARC_EMAIL, 'CHECKERED');
+  });
+});

@@ -14,6 +14,14 @@ export class RegisterPage {
     await this.submit();
   }
 
+  // Le premier pilote est proposé d'office : n'en choisir un que pour en changer.
+  async chooseAvatar(name: string): Promise<void> {
+    await this.page
+      .getByRole('radiogroup', { name: 'Choisissez votre pilote' })
+      .getByRole('radio', { name, exact: true })
+      .check({ force: true });
+  }
+
   async acceptTerms(): Promise<void> {
     await this.page.getByRole('checkbox', { name: /J’accepte les conditions d’utilisation/ }).check();
   }

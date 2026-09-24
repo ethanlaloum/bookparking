@@ -47,6 +47,7 @@ export const createChangePasswordSUT = () => {
         registeredAt: new Date('2026-09-01T00:00:00.000Z'),
         humanProof: HUMAN_PROOF_FOR_TEST,
         acceptsTerms: true,
+        avatar: 'SIGNAL',
       });
       if (Either.isLeft(created))
         throw new Error('failed to arrange an existing account');

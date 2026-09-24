@@ -1,5 +1,7 @@
 import { Schema } from 'effect/index';
 
+import { AvatarSchema } from './AvatarSchema';
+
 const EMAIL_PATTERN = /^[^\s@'"\\;]+@[^\s@]+\.[^\s@]+$/u;
 const MAX_EMAIL_LENGTH = 254;
 
@@ -49,6 +51,8 @@ export const RegisterAccountSchema = Schema.Struct({
   acceptsTerms: Schema.Boolean.annotations({
     message: () => "Acceptation des conditions d'utilisation invalide",
   }),
+  // L'un des cinq pilotes, jamais absent.
+  avatar: AvatarSchema,
 }).annotations({
   message: () => 'Corps de requête invalide pour une inscription',
 });

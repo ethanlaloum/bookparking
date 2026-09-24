@@ -2,13 +2,20 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { CalendarRange, House, Search, UserRound, type LucideIcon } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { readOwnAccountRequested } from '@front/app/account/domain/use-cases/read-own-account/readOwnAccountEpic';
+import { selectOwnAvatar } from '@front/selectors/account/accountSelectors';
+import { selectIsAuthenticated } from '@front/selectors/auth/authSelectors';
+
+import { useAppDispatch, useAppSelector } from '../store/redux';
 import { fonts } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
+import { Avatar } from './Avatar';
 import { Text } from './ui/Text';
 
 const TABS: Record<string, { icon: LucideIcon; label: string }> = {
@@ -27,6 +34,15 @@ export const TabBar = ({ state, navigation }: BottomTabBarProps) => {
   const { t } = useTranslation('mobile');
   const { scheme, colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const avatar = useAppSelector(selectOwnAvatar);
+
+  // La barre d'onglets est toujours montée : c'est elle qui lit le compte dès
+  // qu'une session s'ouvre, comme l'en-tête du site.
+  useEffect(() => {
+    if (isAuthenticated) dispatch(readOwnAccountRequested());
+  }, [dispatch, isAuthenticated]);
 
   return (
     <View
@@ -85,7 +101,11 @@ export const TabBar = ({ state, navigation }: BottomTabBarProps) => {
                   transitionDuration: 200,
                 }}
               >
-                <Icon size={18} color={focused ? colors.onBrand : colors.fgMuted} strokeWidth={focused ? 2.4 : 2} />
+                {route.name === 'compte' && avatar !== null ? (
+                  <Avatar avatar={avatar} size={24} />
+                ) : (
+                  <Icon size={18} color={focused ? colors.onBrand : colors.fgMuted} strokeWidth={focused ? 2.4 : 2} />
+                )}
               </Animated.View>
               <Text
                 numberOfLines={1}

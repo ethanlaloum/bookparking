@@ -10,6 +10,7 @@ const MARC_EMAIL = 'marc.d@example.com';
 const MARC_EMAIL_CASED = 'Marc.D@Example.COM';
 const MARC_EMAIL_SPACED = ' marc.d@example.com ';
 const UNKNOWN_EMAIL = 'inconnu@example.com';
+const LEA_EMAIL = 'lea.t@example.com';
 
 describe('KnexAccountRepository @SPEC-002', () => {
   beforeAll(async () => {
@@ -54,5 +55,33 @@ describe('KnexAccountRepository @SPEC-002', () => {
       MARC_EMAIL,
       sut.context.testConstants.registeredAtForTest,
     );
+  });
+
+  it('writes the chosen avatar', async () => {
+    const sut = createKnexAccountRepositorySUT();
+
+    await sut.whenWritingAccountFor(LEA_EMAIL, 'RIVIERA');
+
+    await sut.thenAvatarIsWrittenFor(LEA_EMAIL, 'RIVIERA');
+  });
+
+  it('reads an account written before the choice as the signal driver', async () => {
+    const sut = createKnexAccountRepositorySUT();
+    await sut.givenAccountRowWrittenWithoutAvatar(MARC_EMAIL);
+
+    const found = await sut.whenReadingAccountFor(MARC_EMAIL);
+
+    sut.thenFoundAccountAvatarIs(found, 'SIGNAL');
+  });
+
+  it('replaces the avatar of one account only', async () => {
+    const sut = createKnexAccountRepositorySUT();
+    await sut.whenWritingAccountFor(LEA_EMAIL, 'RIVIERA');
+    await sut.whenWritingAccountFor(MARC_EMAIL, 'RIVIERA');
+
+    await sut.whenReplacingAvatarOf(LEA_EMAIL, 'CHECKERED');
+
+    await sut.thenAvatarIsWrittenFor(LEA_EMAIL, 'CHECKERED');
+    await sut.thenAvatarIsWrittenFor(MARC_EMAIL, 'RIVIERA');
   });
 });

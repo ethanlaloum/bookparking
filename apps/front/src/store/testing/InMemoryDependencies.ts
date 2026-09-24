@@ -1,11 +1,12 @@
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 
 import type {
   AccountGateway,
   ChangePasswordPayload,
   RegisterAccountPayload,
 } from '../../app/account/domain/ports/AccountGateway';
-import type { Account } from '../../app/account/domain/entities/Account';
+import type { Account, OwnAccount } from '../../app/account/domain/entities/Account';
+import type { Avatar } from '../../app/account/domain/entities/Avatar';
 import type { HumanChallenge } from '../../app/account/domain/entities/HumanProof';
 import type { Session } from '../../app/auth/domain/entities/Session';
 import type { Credentials, SessionGateway } from '../../app/auth/domain/ports/SessionGateway';
@@ -209,6 +210,16 @@ export class InMemoryAccountGateway implements AccountGateway {
   public readonly passwordChanges: ChangePasswordPayload[] = [];
   public challenge: HumanChallenge | null = null;
   public challengesServed = 0;
+  public ownAccount: OwnAccount = {
+    id: '7c2e5b1a-4d3f-4a8e-9b6c-2e1f0a9d8c7b',
+    email: 'lea.t@example.com',
+    avatar: 'SIGNAL',
+  };
+  public ownAccountRejection: string | null = null;
+  public readonly avatarsChosen: Avatar[] = [];
+  public avatarRejection: string | null = null;
+  // Une api qui ne répond pas encore : ce que l'écran montre pendant l'attente.
+  public avatarResponseHeld = false;
 
   getHumanChallenge(): Observable<HumanChallenge> {
     this.challengesServed += 1;
@@ -223,6 +234,16 @@ export class InMemoryAccountGateway implements AccountGateway {
   changePassword(payload: ChangePasswordPayload): Observable<void> {
     this.passwordChanges.push(payload);
     return this.rejection === null ? of(undefined) : fail(this.rejection);
+  }
+
+  readOwnAccount(): Observable<OwnAccount> {
+    return this.ownAccountRejection === null ? of(this.ownAccount) : fail(this.ownAccountRejection);
+  }
+
+  chooseAvatar(avatar: Avatar): Observable<void> {
+    this.avatarsChosen.push(avatar);
+    if (this.avatarResponseHeld) return NEVER;
+    return this.avatarRejection === null ? of(undefined) : fail(this.avatarRejection);
   }
 }
 

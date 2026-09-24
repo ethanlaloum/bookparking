@@ -1,11 +1,15 @@
 import { LogOut, Plus, Search, Smartphone, UserRound } from 'lucide-react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink } from 'react-router-dom';
 
+import { readOwnAccountRequested } from '../app/account/domain/use-cases/read-own-account/readOwnAccountEpic';
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
 import { cn } from '../lib/cn';
+import { selectOwnAvatar } from '../selectors/account/accountSelectors';
 import { selectIsAuthenticated } from '../selectors/auth/authSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
+import { Avatar } from './Avatar';
 import { BrandLink } from './BrandLink';
 import { buttonVariants } from './ui/buttonVariants';
 
@@ -13,6 +17,13 @@ export const Header = () => {
   const { t } = useTranslation(['common', 'listing']);
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const avatar = useAppSelector(selectOwnAvatar);
+
+  // L'en-tête est sur toutes les pages : c'est lui qui lit le compte dès qu'une
+  // session s'ouvre — connexion, inscription ou rechargement.
+  useEffect(() => {
+    if (isAuthenticated) dispatch(readOwnAccountRequested());
+  }, [dispatch, isAuthenticated]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-xl backdrop-saturate-150">
@@ -68,9 +79,13 @@ export const Header = () => {
                 aria-label={t('common:nav.account')}
                 className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-2 px-1.5 md:pr-3.5')}
               >
-                <span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-signal-400 to-signal-700 text-white ring-2 ring-bg">
-                  <UserRound className="size-3.5" aria-hidden="true" />
-                </span>
+                {avatar === null ? (
+                  <span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-signal-400 to-signal-700 text-white ring-2 ring-bg">
+                    <UserRound className="size-3.5" aria-hidden="true" />
+                  </span>
+                ) : (
+                  <Avatar avatar={avatar} className="size-7 ring-2 ring-bg" />
+                )}
                 <span className="hidden md:inline">{t('common:nav.account')}</span>
               </Link>
               {/* Sur un téléphone, la déconnexion vit dans l'onglet « Réglages » du

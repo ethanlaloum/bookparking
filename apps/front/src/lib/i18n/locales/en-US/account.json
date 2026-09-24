@@ -112,5 +112,14 @@
       "nothingAtStake": "No payment is involved in this booking."
     },
     "deadline": "Free cancellation until {{date}}."
+  },
+  "profile": {
+    "avatar": "Your avatar: {{name}} driver",
+    "signedInAs": "Signed in as {{email}}"
+  },
+  "avatar": {
+    "title": "Your avatar",
+    "hint": "It shows in the header, on the website and in the app.",
+    "saved": "Avatar saved."
   }
 }

@@ -11,7 +11,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Lire son propre compte
+         * @description Rend le compte porté par le jeton, et lui seul : la route ne prend aucun identifiant. C'est d'ici que le site et l'app tirent l'adresse et le pilote choisi comme avatar du compte connecté, `POST /session` ne rendant qu'un jeton. Ni empreinte du mot de passe, ni dates, ni suspension.
+         */
+        get: operations["readOwnAccount"];
         put?: never;
         /**
          * Inscrire un compte
@@ -504,6 +508,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Changer d'avatar
+         * @description Remplace le pilote choisi comme avatar par le compte porté par le jeton, et lui seul.
+         */
+        patch: operations["chooseAvatar"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -529,6 +553,7 @@ export interface components {
             humanProof: components["schemas"]["HumanProof"];
             /** @description La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte. */
             acceptsTerms: boolean;
+            avatar: components["schemas"]["Avatar"];
         };
         RegisterAccountResponse: {
             /** Format: uuid */
@@ -809,6 +834,21 @@ export interface components {
             number: number;
             signature: string;
         };
+        OwnAccount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            avatar: components["schemas"]["Avatar"];
+        };
+        /**
+         * @description Le pilote choisi comme avatar : casque bleu signal, jaune marquage, Riviera, bitume ou damier. Les comptes d'avant le choix valent `SIGNAL`.
+         * @enum {string}
+         */
+        Avatar: "SIGNAL" | "MARKING" | "RIVIERA" | "ASPHALT" | "CHECKERED";
+        ChooseAvatarRequest: {
+            avatar: components["schemas"]["Avatar"];
+        };
     };
     responses: {
         /** @description Jeton d'accès absent, mal formé ou invalide. */
@@ -852,6 +892,37 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readOwnAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le compte connecté. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le jeton désigne un compte qui n'existe plus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     registerAccount: {
         parameters: {
             query?: never;
@@ -874,7 +945,7 @@ export interface operations {
                     "application/json": components["schemas"]["RegisterAccountResponse"];
                 };
             };
-            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées. */
+            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées, avatar absent ou hors des cinq pilotes. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1796,6 +1867,48 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    chooseAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseAvatarRequest"];
+            };
+        };
+        responses: {
+            /** @description Avatar changé. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Avatar absent ou hors des cinq pilotes. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le jeton désigne un compte qui n'existe plus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
         };
     };
 }

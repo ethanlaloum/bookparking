@@ -1,0 +1,89 @@
+{
+  "label": "Aide",
+  "title": "Questions fréquentes",
+  "subtitle": "Réserver, louer sa place, payer, annuler : ce qu’il faut savoir avant de commencer.",
+  "jumpTo": "Aller à la rubrique",
+  "section": {
+    "drivers": "Réserver une place",
+    "owners": "Louer sa place",
+    "account": "Compte et données"
+  },
+  "q": {
+    "howToBook": {
+      "question": "Comment réserver une place ?",
+      "answer": "Cherchez une adresse, ouvrez la fiche d’une place, choisissez vos dates et continuez vers le paiement. Vous posez alors une empreinte bancaire sur une page de Stripe, et le loueur reçoit votre demande : il a 48 heures pour la confirmer."
+    },
+    "whenCharged": {
+      "question": "Quand mon argent est-il prélevé ?",
+      "answer": "Seulement quand le loueur confirme. Avant, la somme est réservée sur votre carte, pas prélevée. Si le loueur ne confirme pas dans les 48 heures, la demande expire, l’empreinte est levée et vous ne payez rien."
+    },
+    "finalPrice": {
+      "question": "Le prix affiché est-il celui que je paierai ?",
+      "answer": "Oui. Il est calculé à partir des tarifs du loueur — à la journée, à la semaine ou au mois — et figé au moment où vous envoyez la demande : il ne bouge plus, même si le loueur change ses tarifs ensuite."
+    },
+    "card": {
+      "question": "Bookparking voit-il ma carte bancaire ?",
+      "answer": "Non. Vous la saisissez sur la page de paiement de Stripe, et elle ne passe jamais par bookparking. Cette page expire au bout de 30 minutes : passé ce délai, il suffit de refaire la demande."
+    },
+    "driverCancels": {
+      "question": "Puis-je annuler ?",
+      "answer": "Oui, depuis « Mes réservations », tant que la location n’a pas commencé. Jusqu’à 24 heures avant son début, vous êtes remboursé en totalité ; après, vous pouvez toujours annuler, mais la somme prélevée n’est pas remboursée. Avant de confirmer, la fenêtre d’annulation vous dit ce qu’il en sera."
+    },
+    "ownerCancelsForDriver": {
+      "question": "Et si le loueur annule ?",
+      "answer": "Vous êtes remboursé en totalité, quelle que soit la date de l’annulation."
+    },
+    "vehicles": {
+      "question": "Ma voiture rentrera-t-elle ?",
+      "answer": "Chaque loueur indique les véhicules que sa place accepte, et vous pouvez filtrer la recherche par type de véhicule. Les places dont le loueur n’a rien précisé restent affichées : la recherche vous dit combien acceptent explicitement votre véhicule, et combien n’ont rien indiqué."
+    },
+    "account": {
+      "question": "Faut-il un compte pour chercher ?",
+      "answer": "Non : la recherche et les fiches des places sont ouvertes à tous. Un compte n’est nécessaire que pour demander une place ou en publier une."
+    },
+    "howToPublish": {
+      "question": "Comment publier ma place ?",
+      "answer": "Créez un compte, puis choisissez « Publier une place » : adresse, numéro de box, consignes d’accès, tarifs, disponibilités et véhicules acceptés. L’annonce est en ligne dès que vous la validez."
+    },
+    "whoSeesAddress": {
+      "question": "Qui voit l’adresse de ma place ?",
+      "answer": "Tout le monde : l’adresse exacte et le box sont affichés dès la publication, pour que les conducteurs sachent où ils vont. Vos consignes d’accès, elles, ne sont jamais publiées."
+    },
+    "pricing": {
+      "question": "Comment fixer mes tarifs ?",
+      "answer": "Vous choisissez un prix à la journée, à la semaine ou au mois — au moins l’un des trois — et vous pouvez les modifier à tout moment. Une demande déjà envoyée garde le prix du jour où elle a été faite."
+    },
+    "acceptRequests": {
+      "question": "Dois-je accepter toutes les demandes ?",
+      "answer": "Non. Vous confirmez celles qui vous conviennent, depuis « Demandes reçues ». Une demande que vous ne confirmez pas expire au bout de 48 heures, et le conducteur ne paie rien."
+    },
+    "ownerCancels": {
+      "question": "Puis-je annuler une location déjà confirmée ?",
+      "answer": "Oui, tant qu’elle n’a pas commencé. Le conducteur est alors remboursé en totalité."
+    },
+    "unpublish": {
+      "question": "Puis-je retirer ma place ?",
+      "answer": "Oui, à tout moment : dépubliée, elle disparaît de la recherche. Les locations déjà confirmées restent dues."
+    },
+    "taxes": {
+      "question": "Dois-je déclarer ce que je gagne ?",
+      "answer": "Oui : les sommes perçues en louant votre place sont des revenus à déclarer. Les <terms>conditions d’utilisation</terms> renvoient vers les règles applicables."
+    },
+    "cookies": {
+      "question": "Bookparking dépose-t-il des cookies ?",
+      "answer": "Aucun. Votre session et votre choix de consentement sont gardés dans votre navigateur. La carte et les polices, qui appellent des services tiers, n’arrivent qu’avec votre accord, et vous pouvez <settings>revoir votre choix</settings> à tout moment."
+    },
+    "data": {
+      "question": "Que faites-vous de mes données ?",
+      "answer": "Seulement ce qu’il faut pour faire fonctionner le service : rien n’est vendu, et il n’y a ni publicité ni mesure d’audience. Le détail, donnée par donnée, est sur la page <privacy>Données personnelles</privacy>."
+    },
+    "deleteAccount": {
+      "question": "Comment supprimer mon compte ?",
+      "answer": "La suppression se demande par écrit, comme l’explique la page <privacy>Données personnelles</privacy> : elle n’est pas encore proposée depuis le site."
+    },
+    "contact": {
+      "question": "Comment vous contacter ?",
+      "answer": "Le point de contact de bookparking figure dans les <notice>mentions légales</notice>."
+    }
+  }
+}

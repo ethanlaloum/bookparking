@@ -65,14 +65,61 @@
     "awaiting": "En attente de la réponse du propriétaire."
   },
   "status": {
+    "AWAITING_PAYMENT": "À payer",
     "PENDING": "En attente",
     "CONFIRMED": "Confirmée",
-    "EXPIRED": "Expirée"
+    "EXPIRED": "Expirée",
+    "CANCELLED": "Annulée",
+    "ABANDONED": "Abandonnée",
+    "PAYMENT_FAILED": "Refusée"
   },
   "row": {
     "period": "Du {{from}} au {{to}}",
     "nights_one": "{{count}} nuit",
     "nights_other": "{{count}} nuits",
     "requestedOn": "Demandée le {{date}}"
+  },
+  "money": {
+    "awaitingPayment": "Paiement en cours de vérification",
+    "abandoned": "Paiement abandonné",
+    "paymentFailed": "Paiement refusé par la banque",
+    "holdAwaitingOwner": "Empreinte de {{amount}} · en attente du loueur",
+    "captured": "Confirmée · {{amount}} prélevés",
+    "expiredReleasing": "Expirée · empreinte en cours de levée",
+    "expiredReleased": "Expirée · rien n’a été prélevé",
+    "cancelledReleasing": "Annulée · empreinte en cours de levée",
+    "cancelledReleased": "Annulée · rien n’a été prélevé",
+    "cancelledRefunding": "Annulée · remboursement en cours",
+    "cancelledRefunded": "Annulée · {{amount}} remboursés",
+    "pendingWithoutPayment": "En attente du loueur",
+    "confirmedWithoutPayment": "Confirmée",
+    "expiredWithoutPayment": "Expirée",
+    "cancelledWithoutPayment": "Annulée",
+    "cancelledKept": "Annulée · {{amount}} non remboursés"
+  },
+  "cancel": {
+    "action": "Annuler",
+    "title": "Annuler cette réservation ?",
+    "confirm": "Annuler la réservation",
+    "keep": "Garder ma réservation",
+    "ownerConfirm": "Annuler la location",
+    "ownerKeep": "Garder la location",
+    "terms": {
+      "refund": "Vous serez remboursé de {{amount}}.",
+      "nonRefundable": "L’échéance d’annulation gratuite est passée : les {{amount}} prélevés ne seront pas remboursés.",
+      "release": "L’empreinte de {{amount}} sera levée : rien n’a été prélevé.",
+      "ownerFullReturn": "Le conducteur récupérera tout son argent.",
+      "nothingAtStake": "Aucun paiement n’est en jeu pour cette réservation."
+    },
+    "deadline": "Annulation gratuite jusqu’au {{date}}."
+  },
+  "profile": {
+    "avatar": "Votre avatar : pilote {{name}}",
+    "signedInAs": "Connecté en tant que {{email}}"
+  },
+  "avatar": {
+    "title": "Votre avatar",
+    "hint": "Il s’affiche dans l’en-tête, sur le site comme dans l’app.",
+    "saved": "Avatar enregistré."
   }
 }

@@ -1,7 +1,10 @@
+import { randomUUID } from 'node:crypto';
+
 import { Either } from 'effect/index';
 
 import { InMemoryPublishedListingReader } from '../../../adapters/repositories/published-listing/InMemoryPublishedListingReader';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
+import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
 import { ConfirmedRentalBuilder } from '../../builders/ConfirmedRentalBuilder';
 import {
   CalendarDay,
@@ -13,7 +16,7 @@ import {
 } from '../../entities/CalendarDay';
 import { RentalPlace } from '../../entities/RentalPlace';
 import { RentalRequest } from '../../entities/RentalRequest';
-import { RequestRental } from './RequestRental';
+import { RequestedRental, RequestRental } from './RequestRental';
 
 interface PricingForTest {
   day: number | null;
@@ -57,6 +60,7 @@ const toRentalPricing = (pricing: PricingForTest) => ({
 export const createRequestRentalSUT = () => {
   const publishedListingReader = new InMemoryPublishedListingReader();
   const rentalRepository = new InMemoryRentalRepository();
+  const paymentGateway = new InMemoryPaymentGateway();
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
@@ -70,7 +74,9 @@ export const createRequestRentalSUT = () => {
   const requestRental = new RequestRental(
     publishedListingReader,
     rentalRepository,
+    paymentGateway,
     testConstants.requestExpiryInHoursForTest,
+    24,
   );
 
   const accountIdsByPersonName: Record<string, string> = {
@@ -83,6 +89,7 @@ export const createRequestRentalSUT = () => {
   const context = {
     publishedListingReader,
     rentalRepository,
+    paymentGateway,
     requestRental,
     testConstants,
   };
@@ -155,6 +162,7 @@ export const createRequestRentalSUT = () => {
       const input = { ...defaults, ...overrides };
 
       return context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: input.address,
         box: input.box,
@@ -170,6 +178,7 @@ export const createRequestRentalSUT = () => {
       overrides?: Partial<{ from: CalendarDay; to: CalendarDay }>,
     ) {
       return context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: context.testConstants.addressForTest,
         box: context.testConstants.boxForTest,
@@ -177,6 +186,134 @@ export const createRequestRentalSUT = () => {
         toDay: overrides?.to ?? '2026-11-12',
         requestedAt,
       });
+    },
+
+    async givenRequestWithoutPaymentAt(renterName: string, requestedAt: Date) {
+      const result = await context.requestRental.execute({
+        idempotencyKey: randomUUID(),
+        renterId: toAccountId(renterName),
+        address: context.testConstants.addressForTest,
+        box: context.testConstants.boxForTest,
+        fromDay: '2026-11-05',
+        toDay: '2026-11-12',
+        requestedAt,
+      });
+      if (Either.isLeft(result))
+        throw new Error('failed to arrange a request made before payments');
+      context.rentalRepository.placeWithoutPayment(
+        result.right.rentalRequest.id,
+      );
+    },
+
+    givenStripeDoesNotAnswer() {
+      context.paymentGateway.unavailable = true;
+    },
+
+    givenStripeAnswersAgain() {
+      context.paymentGateway.unavailable = false;
+    },
+
+    async whenRequestingUnderIntent(params: {
+      renterName: string;
+      idempotencyKey: string;
+      place: RentalPlace;
+      from: CalendarDay;
+      to: CalendarDay;
+    }) {
+      return context.requestRental.execute({
+        renterId: toAccountId(params.renterName),
+        address: params.place.address,
+        box: params.place.box,
+        fromDay: params.from,
+        toDay: params.to,
+        requestedAt: new Date('2026-10-01T07:00:00.000Z'),
+        idempotencyKey: params.idempotencyKey,
+      });
+    },
+
+    thenTheRequestIs(
+      result: Either.Either<RequestedRental, unknown>,
+      status: string,
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (Either.isRight(result))
+        expect(
+          context.rentalRepository.statusOf(result.right.rentalRequest.id),
+        ).toEqual(status);
+    },
+
+    thenItsPaymentPageWasClosed(
+      result: Either.Either<RequestedRental, unknown>,
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (Either.isRight(result))
+        expect(context.paymentGateway.closedPages).toEqual([
+          `cs_test_${result.right.rentalRequest.id}`,
+        ]);
+    },
+
+    thenRecordedRequestCountIs(count: number) {
+      expect(context.rentalRepository.rentalRequestList).toHaveLength(count);
+    },
+
+    thenPaymentPagesOpenedCountIs(count: number) {
+      expect(context.paymentGateway.openedPages).toHaveLength(count);
+    },
+
+    thenBothAnswersAreTheSame(
+      first: Either.Either<RequestedRental, unknown>,
+      second: Either.Either<RequestedRental, unknown>,
+    ) {
+      expect(Either.isRight(first) && Either.isRight(second)).toEqual(true);
+      if (Either.isRight(first) && Either.isRight(second)) {
+        expect(second.right.rentalRequest.id).toEqual(
+          first.right.rentalRequest.id,
+        );
+        expect(second.right.checkoutUrl).toEqual(first.right.checkoutUrl);
+      }
+    },
+
+    thenTheAnswersDiffer(
+      first: Either.Either<RequestedRental, unknown>,
+      second: Either.Either<RequestedRental, unknown>,
+    ) {
+      expect(Either.isRight(first) && Either.isRight(second)).toEqual(true);
+      if (Either.isRight(first) && Either.isRight(second)) {
+        expect(second.right.rentalRequest.id).not.toEqual(
+          first.right.rentalRequest.id,
+        );
+        expect(second.right.checkoutUrl).not.toEqual(first.right.checkoutUrl);
+        expect(second.right.rentalRequest.toState().renterId).not.toEqual(
+          first.right.rentalRequest.toState().renterId,
+        );
+      }
+    },
+
+    thenPaymentPageOpenedFor(
+      result: Either.Either<RequestedRental, unknown>,
+      expected: { amountInCents: number; expiresAt?: string },
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (Either.isLeft(result)) return;
+      const opened = context.paymentGateway.openedPages;
+      expect(opened).toHaveLength(1);
+      expect(opened[0].requestId).toEqual(result.right.rentalRequest.id);
+      expect(opened[0].amountInCents).toEqual(expected.amountInCents);
+      if (expected.expiresAt !== undefined)
+        expect(opened[0].expiresAt).toEqual(new Date(expected.expiresAt));
+      expect(result.right.checkoutUrl).toEqual(
+        `https://checkout.stripe.com/c/pay/${opened[0].checkoutSessionId}`,
+      );
+    },
+
+    thenNoPaymentPageOpened() {
+      expect(context.paymentGateway.openedPages).toHaveLength(0);
+    },
+
+    thenTheOnlyRequestIs(status: string) {
+      const requests = context.rentalRepository.rentalRequestList;
+      expect(requests).toHaveLength(1);
+      expect(context.rentalRepository.statusOf(requests[0].id)).toEqual(status);
     },
 
     thenPendingRequestsExpired(howMany: number) {
@@ -197,6 +334,7 @@ export const createRequestRentalSUT = () => {
       const input = { ...defaults, ...overrides };
 
       return context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: input.address,
         box: input.box,
@@ -207,16 +345,18 @@ export const createRequestRentalSUT = () => {
     },
 
     thenPriceIs(
-      result: Either.Either<RentalRequest, unknown>,
+      result: Either.Either<RequestedRental, unknown>,
       amountInCents: number,
     ) {
       expect(Either.isRight(result)).toEqual(true);
       if (Either.isRight(result)) {
-        expect(result.right.toState().priceInCents).toEqual(amountInCents);
+        expect(result.right.rentalRequest.toState().priceInCents).toEqual(
+          amountInCents,
+        );
       }
     },
 
-    thenRequestIsAccepted(result: Either.Either<RentalRequest, unknown>) {
+    thenRequestIsAccepted(result: Either.Either<RequestedRental, unknown>) {
       expect(Either.isRight(result)).toEqual(true);
     },
 
@@ -238,7 +378,7 @@ export const createRequestRentalSUT = () => {
     },
 
     thenRequestIsRefusedWith(
-      result: Either.Either<RentalRequest, unknown>,
+      result: Either.Either<RequestedRental, unknown>,
       ErrorClass: new (...args: never[]) => Error,
     ) {
       expect(Either.isLeft(result)).toEqual(true);
@@ -256,12 +396,12 @@ export const createRequestRentalSUT = () => {
     },
 
     thenRequestedPeriodIs(
-      result: Either.Either<RentalRequest, unknown>,
+      result: Either.Either<RequestedRental, unknown>,
       period: { from: string; to: string },
     ) {
       expect(Either.isRight(result)).toEqual(true);
       if (Either.isRight(result)) {
-        expect(result.right.toState().period).toEqual({
+        expect(result.right.rentalRequest.toState().period).toEqual({
           from: new Date(period.from),
           to: new Date(period.to),
         });
@@ -269,12 +409,12 @@ export const createRequestRentalSUT = () => {
     },
 
     thenNoPartOfDayIsRetained(
-      result: Either.Either<RentalRequest, unknown>,
+      result: Either.Either<RequestedRental, unknown>,
       days: CalendarDay[],
     ) {
       expect(Either.isRight(result)).toEqual(true);
       if (Either.isRight(result)) {
-        const period = result.right.toState().period;
+        const period = result.right.rentalRequest.toState().period;
         const retainedDays = [parisDayOf(period.from), parisDayOf(period.to)];
         expect(retainedDays.filter((day) => days.includes(day))).toEqual([]);
       }

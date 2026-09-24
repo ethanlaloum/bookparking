@@ -41,13 +41,66 @@
   ],
   "paths": {
     "/account": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "readOwnAccount",
+        "summary": "Lire son propre compte",
+        "description": "Rend le compte porté par le jeton, et lui seul : la route ne prend aucun identifiant. C'est d'ici que le site et l'app tirent l'adresse et le pilote choisi comme avatar du compte connecté, `POST /session` ne rendant qu'un jeton. Ni empreinte du mot de passe, ni dates, ni suspension.",
+        "responses": {
+          "200": {
+            "description": "Le compte connecté.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnAccount"
+                },
+                "examples": {
+                  "nominal": {
+                    "value": {
+                      "id": "7c2e5b1a-4d3f-4a8e-9b6c-2e1f0a9d8c7b",
+                      "email": "lea.t@example.com",
+                      "avatar": "CHECKERED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Le jeton désigne un compte qui n'existe plus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "compteDisparu": {
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Ce compte n'existe plus"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
       "post": {
         "tags": [
           "account"
         ],
         "operationId": "registerAccount",
         "summary": "Inscrire un compte",
-        "description": "Crée un compte à partir d'une adresse e-mail et d'un mot de passe. Route publique.",
+        "description": "Crée un compte à partir d'une adresse e-mail, d'un mot de passe assez robuste et d'une preuve anti-robot (`GET /account/human-challenge`). Route publique.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -61,7 +114,16 @@
                   "summary": "Inscription valide",
                   "value": {
                     "email": "alice@example.com",
-                    "password": "motdepasse123"
+                    "password": "Barla2026!",
+                    "humanProof": {
+                      "algorithm": "SHA-256",
+                      "challenge": "9f2c…",
+                      "salt": "a1b2c3d4e5f6a7b8c9d0e1f2?expires=1790000000",
+                      "number": 1234,
+                      "signature": "4be1…"
+                    },
+                    "acceptsTerms": true,
+                    "avatar": "CHECKERED"
                   }
                 }
               }
@@ -88,7 +150,7 @@
             }
           },
           "400": {
-            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères.",
+            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées, avatar absent ou hors des cinq pilotes.",
             "content": {
               "application/json": {
                 "schema": {
@@ -99,6 +161,24 @@
                     "value": {
                       "statusCode": 400,
                       "message": "password: Le mot de passe doit contenir au moins 8 caractères"
+                    }
+                  },
+                  "motDePasseFaible": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Ce mot de passe est trop faible : allongez-le, ou mêlez minuscules, majuscules, chiffres et symboles"
+                    }
+                  },
+                  "preuveRefusee": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "La vérification anti-robot a échoué. Rechargez la page et réessayez."
+                    }
+                  },
+                  "conditionsNonAcceptees": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Cochez la case pour accepter les conditions d'utilisation."
                     }
                   }
                 }
@@ -125,6 +205,29 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/account/human-challenge": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "issueHumanChallenge",
+        "summary": "Obtenir un défi anti-robot",
+        "description": "Rend un défi à résoudre avant `POST /account` (SPEC-007). Route publique.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Défi émis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HumanChallenge"
+                }
+              }
+            }
           }
         }
       }
@@ -695,7 +798,7 @@
         ],
         "operationId": "requestRental",
         "summary": "Demander une location",
-        "description": "Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton.\n\nUne demande non confirmée expire au bout du délai configuré par `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut).",
+        "description": "Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton, et ouvre la page de paiement Stripe au prix que l'api a figé.\n\nLa demande reste en attente de paiement jusqu'à ce que Stripe annonce l'empreinte ; le délai de `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut) court ensuite depuis l'empreinte. Une page de paiement vaut trente minutes.",
         "requestBody": {
           "required": true,
           "content": {
@@ -718,10 +821,17 @@
         },
         "responses": {
           "201": {
-            "description": "Demande enregistrée. Aucun corps de réponse."
+            "description": "Demande enregistrée, en attente de paiement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestRentalResponse"
+                }
+              }
+            }
           },
           "400": {
-            "description": "Corps de requête invalide.",
+            "description": "Corps de requête invalide, ou en-tête `Idempotency-Key` absent ou qui n'est pas un UUID.",
             "content": {
               "application/json": {
                 "schema": {
@@ -742,7 +852,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ».",
+            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ».",
             "content": {
               "application/json": {
                 "schema": {
@@ -773,8 +883,40 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Stripe ne répond pas : la demande est abandonnée et ses dates rendues.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "L'identifiant d'intention, un UUID choisi par le client pour une place et une période. Renvoyé à l'identique, il rend la demande déjà créée — même identifiant, même page de paiement — au lieu d'en créer une seconde, et la réponse porte alors `Idempotent-Replayed: true`. Il est propre au compte qui l'envoie.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
       },
       "get": {
         "tags": [
@@ -857,7 +999,7 @@
         ],
         "operationId": "confirmRentalRequest",
         "summary": "Confirmer une demande de location",
-        "description": "Confirme une demande de location. Seul le propriétaire de la place peut confirmer.\n\nUn identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.",
+        "description": "Confirme une demande de location. Seul le propriétaire de la place peut confirmer.\n\nUn identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.\n\nConfirmer prélève l'empreinte du conducteur. Si sa banque refuse le prélèvement, la confirmation répond `409` et la demande passe en `PAYMENT_FAILED`.",
         "responses": {
           "204": {
             "description": "Demande confirmée. Aucun corps de réponse."
@@ -903,6 +1045,16 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Stripe ne répond pas : rien n'est prélevé ni confirmé, la confirmation peut être rejouée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1318,6 +1470,191 @@
           }
         }
       }
+    },
+    "/rental-request/{id}/abandonment": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Identifiant de la demande de location (UUID).",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "example": "9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c"
+        }
+      ],
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "abandonRentalRequest",
+        "summary": "Abandonner sa demande avant de payer",
+        "description": "Appelée quand le conducteur revient de Stripe sans payer : la page de paiement est fermée et les dates rendues aussitôt. Seul l'auteur de la demande peut l'abandonner.",
+        "responses": {
+          "204": {
+            "description": "Demande abandonnée, ou déjà abandonnée."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Demande inexistante, identifiant mal formé, ou demande d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "L'empreinte est déjà posée : la demande attend le propriétaire.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment/stripe-webhook": {
+      "post": {
+        "tags": [
+          "payment"
+        ],
+        "operationId": "receiveStripeWebhook",
+        "summary": "Recevoir un événement de Stripe",
+        "description": "Appelée par Stripe seul, jamais par un client. Aucune garde de jeton : l'en-tête `Stripe-Signature` est vérifié sur le corps brut avec `STRIPE_WEBHOOK_SECRET`. Événements lus : `payment_intent.amount_capturable_updated` (empreinte posée) et `checkout.session.expired` (page de paiement expirée).",
+        "responses": {
+          "200": {
+            "description": "Événement accusé, qu'il ait changé une demande ou non."
+          },
+          "400": {
+            "description": "Signature absente ou invalide."
+          }
+        }
+      }
+    },
+    "/rental-request/{id}/cancellation": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Identifiant de la demande de location (UUID).",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "example": "9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c"
+        }
+      ],
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "cancelRental",
+        "summary": "Annuler une réservation",
+        "description": "Annule une demande qui attend le propriétaire ou une location confirmée, tant qu'elle n'a pas commencé. Le conducteur est remboursé en totalité jusqu'à l'échéance `freeCancellationUntil` incluse, et plus du tout après ; le propriétaire peut annuler à tout moment avant le début, et le conducteur récupère alors tout. Une empreinte non prélevée est toujours levée. Annuler deux fois rend le même effet sans rien refaire.",
+        "responses": {
+          "200": {
+            "description": "Réservation annulée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancellationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Demande inexistante, identifiant mal formé, ou demande que ce compte ne peut ni voir ni annuler.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La location a commencé, ou la demande n'est ni en attente du propriétaire ni confirmée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account/avatar": {
+      "patch": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "chooseAvatar",
+        "summary": "Changer d'avatar",
+        "description": "Remplace le pilote choisi comme avatar par le compte porté par le jeton, et lui seul.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseAvatarRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "avatar": "RIVIERA"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Avatar changé. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Avatar absent ou hors des cinq pilotes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Le jeton désigne un compte qui n'existe plus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1421,7 +1758,10 @@
         "type": "object",
         "required": [
           "email",
-          "password"
+          "password",
+          "humanProof",
+          "acceptsTerms",
+          "avatar"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1434,7 +1774,18 @@
           },
           "password": {
             "type": "string",
-            "minLength": 8
+            "minLength": 8,
+            "description": "Au moins 8 caractères, et une robustesse moyenne ou forte (SPEC-007 RG-02) ; un mot de passe faible est refusé en 400."
+          },
+          "humanProof": {
+            "$ref": "#/components/schemas/HumanProof"
+          },
+          "acceptsTerms": {
+            "type": "boolean",
+            "description": "La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte."
+          },
+          "avatar": {
+            "$ref": "#/components/schemas/Avatar"
           }
         }
       },
@@ -1824,8 +2175,11 @@
           "toDay",
           "priceInCents",
           "status",
+          "money",
           "requestedAt",
-          "confirmedAt"
+          "confirmedAt",
+          "startsAt",
+          "freeCancellationUntil"
         ],
         "properties": {
           "id": {
@@ -1858,10 +2212,28 @@
           "status": {
             "type": "string",
             "enum": [
+              "AWAITING_PAYMENT",
               "PENDING",
               "CONFIRMED",
-              "EXPIRED"
-            ]
+              "EXPIRED",
+              "CANCELLED",
+              "ABANDONED",
+              "PAYMENT_FAILED"
+            ],
+            "description": "`AWAITING_PAYMENT` : la page de paiement est ouverte, l'empreinte n'est pas constatée ; la demande retient ses dates mais le propriétaire ne la voit pas. `ABANDONED` : le paiement n'a jamais eu lieu. `PAYMENT_FAILED` : la banque a refusé le prélèvement à la confirmation."
+          },
+          "money": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "AUTHORIZED",
+              "CAPTURED",
+              "RELEASE_DUE",
+              "RELEASED",
+              "REFUND_DUE",
+              "REFUNDED"
+            ],
+            "description": "Où en est l'argent du conducteur. `AUTHORIZED` : empreinte posée, rien de prélevé. `CAPTURED` : prélevé à la confirmation. `RELEASE_DUE` / `REFUND_DUE` : l'empreinte est en cours de levée, le remboursement en cours. `NONE` : demande faite avant l'encaissement."
           },
           "requestedAt": {
             "type": "string",
@@ -1873,6 +2245,19 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Le premier instant de la location, heure de Paris. Une réservation ne s'annule plus à partir de cet instant."
+          },
+          "freeCancellationUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité."
           }
         }
       },
@@ -2110,10 +2495,13 @@
           "status": {
             "type": "string",
             "enum": [
+              "AWAITING_PAYMENT",
               "PENDING",
               "CONFIRMED",
               "EXPIRED",
-              "CANCELLED"
+              "CANCELLED",
+              "ABANDONED",
+              "PAYMENT_FAILED"
             ]
           },
           "requestedAt": {
@@ -2140,6 +2528,157 @@
           "reason": {
             "type": "string",
             "minLength": 10
+          }
+        }
+      },
+      "RequestRentalResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "checkoutUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "L'identifiant de la demande, en attente de paiement."
+          },
+          "checkoutUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "La page de paiement Stripe Checkout où le conducteur pose son empreinte. Toujours sur `https://checkout.stripe.com/`."
+          }
+        }
+      },
+      "CancellationResult": {
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "RELEASED",
+              "REFUNDED",
+              "KEPT",
+              "NOTHING_TO_RETURN"
+            ],
+            "description": "`RELEASED` : l'empreinte est levée, rien n'avait été prélevé. `REFUNDED` : le prélèvement est remboursé en totalité. `KEPT` : annulation tardive du conducteur, le prélèvement est gardé. `NOTHING_TO_RETURN` : demande faite avant l'encaissement."
+          }
+        }
+      },
+      "HumanChallenge": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "challenge",
+          "salt",
+          "maxNumber",
+          "signature"
+        ],
+        "additionalProperties": false,
+        "description": "Défi anti-robot (SPEC-007) : retrouver le nombre `n` ≤ `maxNumber` tel que SHA-256(`salt` + `n`) = `challenge`. Valable 20 minutes.",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "SHA-256"
+            ]
+          },
+          "challenge": {
+            "type": "string",
+            "description": "Condensé SHA-256 hexadécimal."
+          },
+          "salt": {
+            "type": "string",
+            "description": "Sel, qui porte son échéance (`?expires=` en secondes Unix)."
+          },
+          "maxNumber": {
+            "type": "integer"
+          },
+          "signature": {
+            "type": "string",
+            "description": "HMAC du condensé, par l'api."
+          }
+        }
+      },
+      "HumanProof": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "challenge",
+          "salt",
+          "number",
+          "signature"
+        ],
+        "additionalProperties": false,
+        "description": "Le défi recopié, avec le nombre trouvé. Accepté une seule fois.",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "challenge": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "salt": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      },
+      "OwnAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "avatar"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "avatar": {
+            "$ref": "#/components/schemas/Avatar"
+          }
+        }
+      },
+      "Avatar": {
+        "type": "string",
+        "enum": [
+          "SIGNAL",
+          "MARKING",
+          "RIVIERA",
+          "ASPHALT",
+          "CHECKERED"
+        ],
+        "description": "Le pilote choisi comme avatar : casque bleu signal, jaune marquage, Riviera, bitume ou damier. Les comptes d'avant le choix valent `SIGNAL`."
+      },
+      "ChooseAvatarRequest": {
+        "type": "object",
+        "required": [
+          "avatar"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "avatar": {
+            "$ref": "#/components/schemas/Avatar"
           }
         }
       }

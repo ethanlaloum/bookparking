@@ -2,6 +2,7 @@ import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UseCase } from '../../../../shared/use-case/UseCase';
+import { hasReachedTheOwner } from '../../entities/RentalMoney';
 import {
   RentalRepository,
   RentalRequestView,
@@ -21,8 +22,9 @@ export class ListOwnerRentalRequests implements UseCase<
     props: Props,
   ): Promise<Either.Either<RentalRequestView[], UnknownError>> {
     try {
+      const views = await this.rentalRepository.findAllForOwner(props.ownerId);
       return Either.right(
-        await this.rentalRepository.findAllForOwner(props.ownerId),
+        views.filter((view) => hasReachedTheOwner(view.status)),
       );
     } catch (error: unknown) {
       return Either.left(

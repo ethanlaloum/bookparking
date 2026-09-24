@@ -1,11 +1,13 @@
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 
 import type {
   AccountGateway,
   ChangePasswordPayload,
   RegisterAccountPayload,
 } from '../../app/account/domain/ports/AccountGateway';
-import type { Account } from '../../app/account/domain/entities/Account';
+import type { Account, OwnAccount } from '../../app/account/domain/entities/Account';
+import type { Avatar } from '../../app/account/domain/entities/Avatar';
+import type { HumanChallenge } from '../../app/account/domain/entities/HumanProof';
 import type { Session } from '../../app/auth/domain/entities/Session';
 import type { Credentials, SessionGateway } from '../../app/auth/domain/ports/SessionGateway';
 import type { AdminAccount } from '../../app/back-office/domain/entities/AdminAccount';
@@ -18,6 +20,9 @@ import {
   type FailureKind,
 } from '../../app/back-office/domain/ports/BackOfficeGateway';
 import type { SessionStore } from '../../app/auth/domain/ports/SessionStore';
+import type { Consent } from '../../app/consent/domain/entities/Consent';
+import type { Clock } from '../../app/consent/domain/ports/Clock';
+import type { ConsentStore } from '../../app/consent/domain/ports/ConsentStore';
 import type {
   AddressSuggestion,
   LocatedAddress,
@@ -31,7 +36,13 @@ import type {
   UpdatePricingPayload,
 } from '../../app/listing/domain/ports/ListingGateway';
 import type { RentalRequestView } from '../../app/rental/domain/entities/RentalRequestView';
-import type { RentalGateway, RequestRentalPayload } from '../../app/rental/domain/ports/RentalGateway';
+import type { PaymentPageNavigator } from '../../app/rental/domain/ports/PaymentPageNavigator';
+import type {
+  CancellationOutcome,
+  RentalGateway,
+  RequestedRental,
+  RequestRentalPayload,
+} from '../../app/rental/domain/ports/RentalGateway';
 import type { Dependencies } from '../dependencies.interface';
 
 const fail = <T>(message: string): Observable<T> => throwError(() => new Error(message));
@@ -62,6 +73,26 @@ export class InMemorySessionStore implements SessionStore {
   clear(): void {
     this.saved = null;
     this.cleared = true;
+  }
+}
+
+export class InMemoryConsentStore implements ConsentStore {
+  public saved: Consent | null = null;
+
+  read(): Consent | null {
+    return this.saved;
+  }
+
+  save(consent: Consent): void {
+    this.saved = consent;
+  }
+}
+
+export class FixedClock implements Clock {
+  public current = new Date('2026-09-23T08:00:00.000Z');
+
+  now(): Date {
+    return new Date(this.current);
   }
 }
 
@@ -120,13 +151,32 @@ export class InMemoryListingGateway implements ListingGateway {
 export class InMemoryRentalGateway implements RentalGateway {
   public rejection: string | null = null;
   public readonly requested: RequestRentalPayload[] = [];
+  public readonly intents: string[] = [];
   public readonly confirmed: string[] = [];
+  public readonly abandoned: string[] = [];
+  public readonly cancelled: string[] = [];
+  public cancellationOutcome: CancellationOutcome = 'REFUNDED';
+  public requestedRental: RequestedRental = {
+    id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
+    checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_lea',
+  };
   public myRequests: RentalRequestView[] = [];
   public receivedRequests: RentalRequestView[] = [];
   public listReceivedCallCount = 0;
 
-  request(payload: RequestRentalPayload): Observable<void> {
+  request(payload: RequestRentalPayload, idempotencyKey: string): Observable<RequestedRental> {
     this.requested.push(payload);
+    this.intents.push(idempotencyKey);
+    return this.rejection === null ? of(this.requestedRental) : fail(this.rejection);
+  }
+
+  cancel(requestId: string): Observable<CancellationOutcome> {
+    this.cancelled.push(requestId);
+    return this.rejection === null ? of(this.cancellationOutcome) : fail(this.rejection);
+  }
+
+  abandon(requestId: string): Observable<void> {
+    this.abandoned.push(requestId);
     return this.rejection === null ? of(undefined) : fail(this.rejection);
   }
 
@@ -145,11 +195,36 @@ export class InMemoryRentalGateway implements RentalGateway {
   }
 }
 
+export class InMemoryPaymentPageNavigator implements PaymentPageNavigator {
+  public readonly opened: string[] = [];
+
+  open(url: string): void {
+    this.opened.push(url);
+  }
+}
+
 export class InMemoryAccountGateway implements AccountGateway {
   public account: Account = { id: 'compte-1', email: 'alice@example.com' };
   public rejection: string | null = null;
   public readonly registered: RegisterAccountPayload[] = [];
   public readonly passwordChanges: ChangePasswordPayload[] = [];
+  public challenge: HumanChallenge | null = null;
+  public challengesServed = 0;
+  public ownAccount: OwnAccount = {
+    id: '7c2e5b1a-4d3f-4a8e-9b6c-2e1f0a9d8c7b',
+    email: 'lea.t@example.com',
+    avatar: 'SIGNAL',
+  };
+  public ownAccountRejection: string | null = null;
+  public readonly avatarsChosen: Avatar[] = [];
+  public avatarRejection: string | null = null;
+  // Une api qui ne répond pas encore : ce que l'écran montre pendant l'attente.
+  public avatarResponseHeld = false;
+
+  getHumanChallenge(): Observable<HumanChallenge> {
+    this.challengesServed += 1;
+    return this.challenge === null ? fail('Défi indisponible') : of(this.challenge);
+  }
 
   register(payload: RegisterAccountPayload): Observable<Account> {
     this.registered.push(payload);
@@ -159,6 +234,16 @@ export class InMemoryAccountGateway implements AccountGateway {
   changePassword(payload: ChangePasswordPayload): Observable<void> {
     this.passwordChanges.push(payload);
     return this.rejection === null ? of(undefined) : fail(this.rejection);
+  }
+
+  readOwnAccount(): Observable<OwnAccount> {
+    return this.ownAccountRejection === null ? of(this.ownAccount) : fail(this.ownAccountRejection);
+  }
+
+  chooseAvatar(avatar: Avatar): Observable<void> {
+    this.avatarsChosen.push(avatar);
+    if (this.avatarResponseHeld) return NEVER;
+    return this.avatarRejection === null ? of(undefined) : fail(this.avatarRejection);
   }
 }
 
@@ -183,8 +268,11 @@ export class InMemoryGeocodingGateway implements GeocodingGateway {
 export interface InMemoryDependencies extends Dependencies {
   accountGateway: InMemoryAccountGateway;
   backOfficeGateway: InMemoryBackOfficeGateway;
+  clock: FixedClock;
+  consentStore: InMemoryConsentStore;
   geocodingGateway: InMemoryGeocodingGateway;
   listingGateway: InMemoryListingGateway;
+  paymentPageNavigator: InMemoryPaymentPageNavigator;
   rentalGateway: InMemoryRentalGateway;
   sessionGateway: InMemorySessionGateway;
   sessionStore: InMemorySessionStore;
@@ -193,8 +281,11 @@ export interface InMemoryDependencies extends Dependencies {
 export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   accountGateway: new InMemoryAccountGateway(),
   backOfficeGateway: new InMemoryBackOfficeGateway(),
+  clock: new FixedClock(),
+  consentStore: new InMemoryConsentStore(),
   geocodingGateway: new InMemoryGeocodingGateway(),
   listingGateway: new InMemoryListingGateway(),
+  paymentPageNavigator: new InMemoryPaymentPageNavigator(),
   rentalGateway: new InMemoryRentalGateway(),
   sessionGateway: new InMemorySessionGateway(),
   sessionStore: new InMemorySessionStore(),
@@ -227,6 +318,9 @@ export const aRentalRequestView = (
   requestedAt: '2026-09-20T09:00:00.000Z',
   confirmedAt: null,
   ...overrides,
+  money: overrides.money ?? 'NONE',
+  startsAt: overrides.startsAt ?? '2026-10-09T22:00:00.000Z',
+  freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-10-08T22:00:00.000Z',
 });
 
 export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerListing => ({

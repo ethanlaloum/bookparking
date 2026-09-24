@@ -1,11 +1,14 @@
 {
   "brand": "Bookparking",
   "tagline": "Parking spaces, between neighbors.",
-  "nav": { "browse": "Spaces", "publish": "List a space", "account": "My account", "signIn": "Sign in", "signOut": "Sign out", "register": "Create an account" },
+  "nav": { "app": "Get the app", "browse": "Spaces", "publish": "List a space", "account": "My account", "signIn": "Sign in", "signOut": "Sign out", "register": "Create an account" },
   "action": { "retry": "Try again", "cancel": "Cancel", "back": "Back", "close": "Close" },
   "state": { "loading": "Loading…", "empty": "Nothing to show yet." },
-  "error": { "title": "Something went wrong", "unexpected": "An unexpected error occurred. Try again in a moment.", "notFound": "Page not found", "notFoundBody": "The link you followed leads nowhere." },
+  "error": { "title": "Something went wrong", "unexpected": "An unexpected error occurred. Try again in a moment.", "notFound": "Page not found", "notFoundBody": "The link you followed leads nowhere.", "notFoundSign": "No parking here.", "notFoundPath": "Nothing is parked at <path>{{path}}</path>.", "notFoundSearch": "Looking for a space? Start with an address.", "notFoundElsewhere": "Elsewhere on Bookparking", "notFoundHome": "Back to home", "notFoundDocumentTitle": "Page not found — Bookparking" },
   "form": { "required": "This field is required.", "problemTitle": "Your request could not be sent", "problemIntro": "Fix the following:" },
   "unit": { "perNight": "per night", "night_one": "{{count}} night", "night_other": "{{count}} nights" },
-  "skipToContent": "Skip to content"
+  "footer": { "app": "The iPhone app", "explore": "Explore", "search": "Find a space", "city": "Everywhere in France", "madeIn": "Designed in Nice, for all of France.", "faq": "FAQ", "legal": "Legal", "legalNotice": "Legal notice", "privacy": "Personal data", "terms": "Terms of use" },
+  "date": { "placeholder": "dd/mm/yyyy", "openCalendar": "Open the calendar", "dialog": "Pick the dates", "picking": "Pick: {{label}}", "clear": "Clear", "done": "Done", "empty": "—", "previousMonth": "Previous month", "nextMonth": "Next month", "selectedSuffix": ", selected" },
+  "skipToContent": "Skip to content",
+  "avatar": { "label": "Choose your driver", "name": { "SIGNAL": "Signal", "MARKING": "Road marking", "RIVIERA": "Riviera", "ASPHALT": "Asphalt", "CHECKERED": "Checkered" } }
 }

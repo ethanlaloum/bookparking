@@ -1,5 +1,5 @@
 import { GenericTransaction } from '../../../shared/unit-of-work/GenericTransaction';
-import { Account } from '../entities/Account';
+import { Account, Avatar } from '../entities/Account';
 
 export interface AccountRepository {
   create(account: Account, trx?: GenericTransaction): Promise<void>;
@@ -11,6 +11,11 @@ export interface AccountRepository {
   replacePasswordHash(
     accountId: string,
     passwordHash: string,
+    trx?: GenericTransaction,
+  ): Promise<void>;
+  replaceAvatar(
+    accountId: string,
+    avatar: Avatar,
     trx?: GenericTransaction,
   ): Promise<void>;
 }

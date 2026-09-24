@@ -2,12 +2,14 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpException,
   HttpStatus,
   Param,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { Either, Schema } from 'effect/index';
@@ -18,12 +20,21 @@ import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/a
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { ConfirmRentalRequest } from '../../../../domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RentalRequestExpiredError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestExpiredError';
-import { RentalRequestNotFoundError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestNotFoundError';
+import { PaymentUnavailableError } from '../../../../domain/errors/PaymentUnavailableError';
+import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequestNotFoundError';
+import { AbandonRentalRequest } from '../../../../domain/usecases/abandon-rental-request/AbandonRentalRequest';
+import { CancelRental } from '../../../../domain/usecases/cancel-rental/CancelRental';
+import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-rental/errors/RentalAlreadyStartedError';
+import { RentalNotCancellableError } from '../../../../domain/usecases/cancel-rental/errors/RentalNotCancellableError';
+import { RentalRequestAlreadyPaidError } from '../../../../domain/usecases/abandon-rental-request/errors/RentalRequestAlreadyPaidError';
+import { RentalRequestPaymentFailedError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestPaymentFailedError';
 import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
+import { RentalRequestBeingCreatedError } from '../../../../domain/usecases/request-rental/errors/RentalRequestBeingCreatedError';
 import { RentalRequestMapper } from '../../../mappers/RentalRequestMapper';
 import { GetRentalRequestResponseDto } from '../../dtos/GetRentalRequestResponseDto';
+import { RequestRentalResponseDto } from '../../dtos/RequestRentalResponseDto';
 import { RequestRentalSchema } from '../../dtos/RequestRentalSchema';
 
 @Controller('rental-request')
@@ -33,6 +44,8 @@ export class RentalRequestController {
     private readonly confirmRentalRequestUseCase: ConfirmRentalRequest,
     private readonly listRenterRentalRequestsUseCase: ListRenterRentalRequests,
     private readonly listOwnerRentalRequestsUseCase: ListOwnerRentalRequests,
+    private readonly abandonRentalRequestUseCase: AbandonRentalRequest,
+    private readonly cancelRentalUseCase: CancelRental,
   ) {}
 
   @Get()
@@ -78,13 +91,26 @@ export class RentalRequestController {
     );
   }
 
+  // L'identifiant d'intention est exigé, et décodé comme un UUID : sans lui,
+  // deux clics feraient deux demandes. Une intention rejouée répond la même
+  // demande, et le dit par `Idempotent-Replayed`, comme Stripe.
   @Post()
   @UseGuards(AuthGuard)
   public async requestRental(
     @Req() req: TokenRequest,
     @Body() body: unknown,
-  ): Promise<void> {
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Res({ passthrough: true })
+    res: { setHeader(name: string, value: string): void },
+  ): Promise<RequestRentalResponseDto | undefined> {
     try {
+      const intent = Schema.decodeUnknownEither(Schema.UUID)(idempotencyKey);
+      if (Either.isLeft(intent))
+        throw new HttpException(
+          "L'en-tête Idempotency-Key doit porter l'identifiant de la demande (UUID)",
+          HttpStatus.BAD_REQUEST,
+        );
+
       const decode = Schema.decodeUnknownEither(RequestRentalSchema)(body);
 
       if (Either.isLeft(decode))
@@ -100,13 +126,28 @@ export class RentalRequestController {
         fromDay: decode.right.fromDay,
         toDay: decode.right.toDay,
         requestedAt: new Date(),
+        idempotencyKey: intent.right,
       });
 
-      if (Either.isLeft(result))
+      if (Either.isLeft(result)) {
+        if (result.left instanceof RentalRequestBeingCreatedError)
+          throw new HttpException(result.left.message, HttpStatus.CONFLICT);
+        if (result.left instanceof PaymentUnavailableError)
+          throw new HttpException(
+            result.left.message,
+            HttpStatus.SERVICE_UNAVAILABLE,
+          );
         throw new HttpException(
           result.left.message,
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
+      }
+
+      if (result.right.replayed) res.setHeader('Idempotent-Replayed', 'true');
+      return {
+        id: result.right.rentalRequest.id,
+        checkoutUrl: result.right.checkoutUrl,
+      };
     } catch (error: unknown) {
       controllerErrorHandler(error, {
         name: 'RentalRequestController',
@@ -145,8 +186,16 @@ export class RentalRequestController {
         const error = result.left;
         if (error instanceof RentalRequestNotFoundError)
           throw new HttpException(error.message, HttpStatus.NOT_FOUND);
-        if (error instanceof RentalRequestExpiredError)
+        if (
+          error instanceof RentalRequestExpiredError ||
+          error instanceof RentalRequestPaymentFailedError
+        )
           throw new HttpException(error.message, HttpStatus.CONFLICT);
+        if (error instanceof PaymentUnavailableError)
+          throw new HttpException(
+            error.message,
+            HttpStatus.SERVICE_UNAVAILABLE,
+          );
         throw new HttpException(
           'La confirmation de la demande a échoué',
           HttpStatus.INTERNAL_SERVER_ERROR,
@@ -156,6 +205,98 @@ export class RentalRequestController {
       controllerErrorHandler(error, {
         name: 'RentalRequestController',
         method: 'confirmRentalRequest',
+        userId: req.user.id,
+      });
+    }
+  }
+
+  // Appelée par le front quand le conducteur revient de Stripe sans payer :
+  // les dates sont rendues tout de suite, au lieu d'attendre que la page de
+  // paiement expire. Une demande d'un autre compte répond comme une inconnue.
+  @Post(':id/abandonment')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public async abandonRentalRequest(
+    @Req() req: TokenRequest,
+    @Param('id') id: string,
+  ): Promise<void> {
+    try {
+      const decode = Schema.decodeUnknownEither(Schema.UUID)(id);
+      if (Either.isLeft(decode))
+        throw new HttpException(
+          new RentalRequestNotFoundError().message,
+          HttpStatus.NOT_FOUND,
+        );
+
+      const result = await this.abandonRentalRequestUseCase.execute({
+        requestId: decode.right,
+        renterId: req.user.id,
+      });
+
+      if (Either.isLeft(result)) {
+        const error = result.left;
+        if (error instanceof RentalRequestNotFoundError)
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        if (error instanceof RentalRequestAlreadyPaidError)
+          throw new HttpException(error.message, HttpStatus.CONFLICT);
+        throw new HttpException(
+          "L'abandon de la demande a échoué",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'RentalRequestController',
+        method: 'abandonRentalRequest',
+        userId: req.user.id,
+      });
+    }
+  }
+
+  // Le conducteur comme le loueur passent par cette route : c'est le cas
+  // d'usage qui reconnaît qui annule, et une demande que le compte ne peut ni
+  // voir ni annuler répond comme une demande inconnue.
+  @Post(':id/cancellation')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  public async cancelRental(
+    @Req() req: TokenRequest,
+    @Param('id') id: string,
+  ): Promise<{ outcome: string } | undefined> {
+    try {
+      const decode = Schema.decodeUnknownEither(Schema.UUID)(id);
+      if (Either.isLeft(decode))
+        throw new HttpException(
+          new RentalRequestNotFoundError().message,
+          HttpStatus.NOT_FOUND,
+        );
+
+      const result = await this.cancelRentalUseCase.execute({
+        requestId: decode.right,
+        accountId: req.user.id,
+        cancelledAt: new Date(),
+      });
+
+      if (Either.isLeft(result)) {
+        const error = result.left;
+        if (error instanceof RentalRequestNotFoundError)
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        if (
+          error instanceof RentalAlreadyStartedError ||
+          error instanceof RentalNotCancellableError
+        )
+          throw new HttpException(error.message, HttpStatus.CONFLICT);
+        throw new HttpException(
+          "L'annulation a échoué",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      return { outcome: result.right };
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'RentalRequestController',
+        method: 'cancelRental',
         userId: req.user.id,
       });
     }

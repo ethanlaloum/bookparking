@@ -13,6 +13,9 @@ const EURO_PRECISE = new Intl.NumberFormat('fr-FR', {
 export const formatCents = (cents: number): string =>
   cents % 100 === 0 ? EURO.format(cents / 100) : EURO_PRECISE.format(cents / 100);
 
+export const formatCentsPrecisely = (cents: number): string =>
+  EURO_PRECISE.format(cents / 100);
+
 export const formatDay = (iso: string): string =>
   new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(
     new Date(iso),

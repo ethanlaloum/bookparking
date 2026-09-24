@@ -35,17 +35,17 @@ export const VehiclePicker = ({ selected, onToggle, error }: VehiclePickerProps)
             <label
               key={vehicle}
               className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-[2px] border px-3.5 py-2.5 text-sm transition-colors duration-150',
+                'flex cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm transition-[border-color,background-color,color,box-shadow] duration-150 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-accent/25',
                 checked
-                  ? 'border-accent bg-accent/10 text-fg'
-                  : 'border-line-strong bg-bg-raised text-fg-muted hover:border-line-strong hover:text-fg',
+                  ? 'border-brand bg-accent-soft font-medium text-fg shadow-[inset_0_0_0_1px_var(--brand)]'
+                  : 'border-line-strong bg-bg-raised text-fg-muted hover:border-fg-subtle hover:text-fg',
               )}
             >
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => onToggle(vehicle)}
-                className="size-4 shrink-0 cursor-pointer accent-[var(--accent)]"
+                className="size-4 shrink-0 cursor-pointer accent-[var(--brand)]"
               />
               <Icon
                 className={cn('size-4 shrink-0', checked ? 'text-accent' : 'text-fg-subtle')}
@@ -57,7 +57,7 @@ export const VehiclePicker = ({ selected, onToggle, error }: VehiclePickerProps)
         })}
       </div>
 
-      {error !== undefined && <p className="mt-2 text-xs font-medium text-danger">{error}</p>}
+      {error !== undefined && <p className="mt-2.5 text-xs font-medium text-danger">{error}</p>}
     </fieldset>
   );
 };

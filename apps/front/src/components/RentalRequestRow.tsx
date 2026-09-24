@@ -1,4 +1,4 @@
-import { CalendarRange, MapPin } from 'lucide-react';
+import { CalendarRange } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,51 +8,64 @@ import {
   type RentalRequestView,
 } from '../app/rental/domain/entities/RentalRequestView';
 import { formatCents, formatShortDay } from '../lib/format';
+import { BayThumbnail } from './art/BayThumbnail';
 import { Badge } from './ui/badge';
 import type { BadgeVariantProps } from './ui/badgeVariants';
 
 const TONE: Record<RentalRequestStatus, NonNullable<BadgeVariantProps['tone']>> = {
+  AWAITING_PAYMENT: 'neutral',
   PENDING: 'warn',
   CONFIRMED: 'ok',
   EXPIRED: 'neutral',
+  CANCELLED: 'danger',
+  ABANDONED: 'neutral',
+  PAYMENT_FAILED: 'danger',
 };
 
 export const RentalRequestRow = ({
   request,
   action,
+  moneyLabel,
 }: {
   request: RentalRequestView;
   action?: ReactNode;
+  moneyLabel?: string;
 }) => {
   const { t } = useTranslation('account');
   const nights = rentedNightCount(request);
 
   return (
-    <li className="flex flex-col gap-3 border-b border-line py-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-5">
-      <div className="min-w-0 flex-1">
-        <p className="flex items-start gap-1.5 font-medium text-fg">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
-          <span className="min-w-0">
-            {request.address} · {request.box}
-          </span>
-        </p>
-        <p className="tabular mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-5.5 text-xs text-fg-subtle">
-          <span className="flex items-center gap-1.5">
-            <CalendarRange className="size-3.5" aria-hidden="true" />
-            {t('row.period', {
-              from: formatShortDay(`${request.fromDay}T00:00:00.000Z`),
-              to: formatShortDay(`${request.toDay}T00:00:00.000Z`),
-            })}
-          </span>
-          <span>{t('row.nights', { count: nights })}</span>
-        </p>
+    <li className="flex flex-col gap-4 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-bg-sunken/40 sm:flex-row sm:items-center sm:gap-5">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <BayThumbnail box={request.box} className="h-16 w-13 shrink-0 rounded-lg" />
+        <div className="min-w-0">
+          <p className="font-medium text-fg">
+            {request.address} · <span className="font-mono text-[0.9em]">{request.box}</span>
+          </p>
+          <p className="tabular mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-subtle">
+            <span className="flex items-center gap-1.5">
+              <CalendarRange className="size-3.5" aria-hidden="true" />
+              {t('row.period', {
+                from: formatShortDay(`${request.fromDay}T00:00:00.000Z`),
+                to: formatShortDay(`${request.toDay}T00:00:00.000Z`),
+              })}
+            </span>
+            <span className="rounded-full bg-bg-sunken px-2 py-0.5 font-medium">
+              {t('row.nights', { count: nights })}
+            </span>
+          </p>
+          {moneyLabel !== undefined && (
+            <p className="mt-1.5 text-sm font-medium text-fg-muted">{moneyLabel}</p>
+          )}
+        </div>
       </div>
 
-      <p className="tabular font-display text-lg font-semibold text-fg sm:w-24 sm:text-right">
+      <p className="tabular font-display text-xl font-bold tracking-tight text-fg sm:w-24 sm:text-right">
         {formatCents(request.priceInCents)}
       </p>
 
-      <Badge tone={TONE[request.status]} className="shrink-0 sm:w-28 sm:justify-center">
+      <Badge tone={TONE[request.status]} className="shrink-0 self-start sm:w-28 sm:justify-center sm:self-auto">
+        <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
         {t(`status.${request.status}`)}
       </Badge>
 

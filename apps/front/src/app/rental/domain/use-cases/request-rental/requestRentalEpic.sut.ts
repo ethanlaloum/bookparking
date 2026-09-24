@@ -4,11 +4,10 @@ import {
 } from '../../../../../store/testing/InMemoryDependencies';
 import { createTestStore } from '../../../../../store/testing/createTestStore';
 import {
-  selectLastRequestedRental,
   selectRequestRentalError,
   selectRequestRentalSuccess,
 } from '../../../../../selectors/rental/rentalSelectors';
-import type { RequestRentalPayload } from '../../ports/RentalGateway';
+import type { RequestedRental, RequestRentalPayload } from '../../ports/RentalGateway';
 import { requestRentalRequested } from './requestRentalEpic';
 
 export const createRequestRentalSut = () => {
@@ -20,17 +19,28 @@ export const createRequestRentalSut = () => {
       dependencies.rentalGateway.rejection = message;
     },
     whenRequesting(payload: RequestRentalPayload): void {
-      store.dispatch(requestRentalRequested(payload));
+      store.dispatch(
+        requestRentalRequested({ ...payload, idempotencyKey: '9d3c1b2a-0f4e-4a5b-8c6d-7e8f9a0b1c2d' }),
+      );
     },
     thenTheRequestSucceeded(): void {
       if (!selectRequestRentalSuccess(store.getState()))
         throw new Error('La demande n est pas marquee comme reussie');
     },
-    thenTheSubmittedPeriodIsKept(fromDay: string, toDay: string): void {
-      const kept = selectLastRequestedRental(store.getState());
-      if (kept === null) throw new Error('Aucune demande conservee');
-      if (kept.fromDay !== fromDay || kept.toDay !== toDay)
-        throw new Error(`Periode conservee inattendue : ${JSON.stringify(kept)}`);
+    givenTheApiOpensThePaymentPage(checkoutUrl: string): void {
+      dependencies.rentalGateway.requestedRental = {
+        id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
+        checkoutUrl,
+      };
+    },
+    // Ce que répond une api antérieure à SPEC-004 : 201, sans corps.
+    givenTheApiAnswersWithoutBody(): void {
+      dependencies.rentalGateway.requestedRental = undefined as unknown as RequestedRental;
+    },
+    thenThePaymentPagesOpenedAre(expected: string[]): void {
+      const actual = dependencies.paymentPageNavigator.opened;
+      if (JSON.stringify(actual) !== JSON.stringify(expected))
+        throw new Error(`Pages ouvertes ${JSON.stringify(actual)}, attendues ${JSON.stringify(expected)}`);
     },
     thenTheErrorShownIs(expected: string): void {
       const actual = selectRequestRentalError(store.getState());

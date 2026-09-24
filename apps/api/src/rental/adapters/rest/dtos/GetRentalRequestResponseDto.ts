@@ -7,6 +7,9 @@ export interface GetRentalRequestResponseDto {
   toDay: string;
   priceInCents: number;
   status: string;
+  money: string;
   requestedAt: string;
   confirmedAt: string | null;
+  startsAt: string;
+  freeCancellationUntil: string | null;
 }

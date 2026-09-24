@@ -41,13 +41,13 @@ describe('placing the listings on a map', () => {
     sut.thenTheApproximateCountIs(1);
   });
 
-  it('falls back on Nice when nothing could be placed', () => {
+  it('opens on the whole of France when nothing could be placed', () => {
     const sut = createLocateListingsSut();
     sut.givenListingsAt([NULLE_PART]);
 
     sut.whenLocating();
 
-    sut.thenTheMapFallsBackOnNice();
+    sut.thenTheMapOpensOnFrance();
   });
 
   it('asks the geocoder once per address, and not again for one already placed', () => {

@@ -6,6 +6,7 @@ import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { ListingBuilder } from '../../../../domain/builders/ListingBuilder';
 import { ListingStatus } from '../../../../domain/entities/Listing';
 import { ListActiveListings } from '../../../../domain/usecases/list-active-listings/ListActiveListings';
+import { ListOwnerListings } from '../../../../domain/usecases/list-owner-listings/ListOwnerListings';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { ListingNotFoundError } from '../../../../domain/usecases/get-listing/errors/ListingNotFoundError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
@@ -53,6 +54,7 @@ export const createListingControllerSUT = () => {
       { provide: PublishListing, useValue: publishListing },
       { provide: GetListing, useValue: getListing },
       { provide: ListActiveListings, useValue: listActiveListings },
+      { provide: ListOwnerListings, useValue: new UseCaseDouble() },
       { provide: UnpublishListing, useValue: unpublishListing },
       { provide: UpdateListingPricing, useValue: updateListingPricing },
     ],

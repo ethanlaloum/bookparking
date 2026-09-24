@@ -37,7 +37,10 @@ export const createListRentalRequestsSUT = () => {
     listOwnerRentalRequests,
   };
 
-  const arrange = async (arrangement: Arrangement): Promise<string> => {
+  const arrange = async (
+    arrangement: Arrangement,
+    paid: 'before-payments' | 'awaiting-payment' = 'before-payments',
+  ): Promise<string> => {
     const request = RentalRequest.request({
       renterId: arrangement.renterId,
       address: arrangement.address,
@@ -50,6 +53,8 @@ export const createListRentalRequestsSUT = () => {
       throw new Error('failed to arrange a pending request');
 
     await context.rentalRepository.createRequest(request.right);
+    if (paid === 'before-payments')
+      context.rentalRepository.placeWithoutPayment(request.right.id);
     context.rentalRepository.ownerIdByRequestId.set(
       request.right.id,
       arrangement.ownerId,
@@ -67,6 +72,12 @@ export const createListRentalRequestsSUT = () => {
 
     async givenPendingRequest(arrangement: Arrangement): Promise<string> {
       return arrange(arrangement);
+    },
+
+    async givenRequestAwaitingPayment(
+      arrangement: Arrangement,
+    ): Promise<string> {
+      return arrange(arrangement, 'awaiting-payment');
     },
 
     async givenConfirmedRequest(arrangement: Arrangement): Promise<string> {

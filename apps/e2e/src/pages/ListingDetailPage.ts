@@ -12,7 +12,7 @@ export class ListingDetailPage {
   }
 
   bookButton(): Locator {
-    return this.page.getByRole('button', { name: 'Demander la réservation' });
+    return this.page.getByRole('button', { name: 'Continuer vers le paiement' });
   }
 
   async expectOpen(address: string): Promise<void> {
@@ -40,12 +40,18 @@ export class ListingDetailPage {
     await expect(this.page.getByText('Aucun tarif ne couvre cette période.')).toBeVisible();
   }
 
-  async requestRental(): Promise<void> {
+  async continueToPayment(): Promise<void> {
     await this.bookButton().click();
   }
 
-  async expectRequestSent(): Promise<void> {
-    await expect(this.page.getByText('Demande envoyée')).toBeVisible();
+  async doubleClickContinueToPayment(): Promise<void> {
+    await this.bookButton().dblclick();
+  }
+
+  async expectNothingWasHeld(): Promise<void> {
+    await expect(
+      this.page.getByText('Paiement abandonné : rien n’a été réservé sur votre carte.'),
+    ).toBeVisible();
   }
 
   async unpublish(): Promise<void> {

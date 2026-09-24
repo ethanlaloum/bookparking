@@ -14,15 +14,13 @@ interface TableShellProps {
  * l'œil — un tableau sans nom est une grille d'inconnues.
  */
 export const TableShell = ({ caption, head, children }: TableShellProps) => (
-  <div className="overflow-x-auto rounded-[2px] border border-line bg-bg-raised shadow-[var(--shadow-panel)]">
+  <div className="overflow-x-auto rounded-2xl border border-line bg-bg-raised shadow-[var(--shadow-panel)]">
     <table className="w-full min-w-[54rem] border-collapse text-sm">
       <caption className="sr-only">{caption}</caption>
-      <thead className="border-b border-line bg-bg-sunken">
-        <tr className="text-left text-xs font-medium tracking-wide text-fg-subtle uppercase">
-          {head}
-        </tr>
+      <thead className="border-b border-line bg-bg-sunken/60">
+        <tr className="label-ticket text-left text-fg-subtle">{head}</tr>
       </thead>
-      <tbody>{children}</tbody>
+      <tbody className="[&>tr]:transition-colors [&>tr:hover]:bg-bg-sunken/50">{children}</tbody>
     </table>
   </div>
 );
@@ -32,11 +30,11 @@ export const TableShell = ({ caption, head, children }: TableShellProps) => (
 // en-tête « Action » sortait du cadre tant qu'on n'avait pas fait défiler.
 // Huit pixels de moins par côté et par colonne rendent les 64 px qui manquaient.
 export const Th = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <th scope="col" className={`px-3 py-3 font-medium ${className ?? ''}`}>
+  <th scope="col" className={`px-3 py-3.5 font-medium ${className ?? ''}`}>
     {children}
   </th>
 );
 
 export const Td = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <td className={`px-3 py-3 align-middle ${className ?? ''}`}>{children}</td>
+  <td className={`px-3 py-3.5 align-middle ${className ?? ''}`}>{children}</td>
 );

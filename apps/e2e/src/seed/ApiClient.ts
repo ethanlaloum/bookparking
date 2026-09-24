@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export interface SeededUser {
   email: string;
@@ -26,6 +26,14 @@ export interface SeededListing {
 
 const PASSWORD = 'motdepasse-e2e-123';
 
+interface HumanChallenge {
+  algorithm: string;
+  challenge: string;
+  salt: string;
+  maxNumber: number;
+  signature: string;
+}
+
 /**
  * Cette api n'expose aucun endpoint d'administration : l'amorcage passe donc
  * par les memes routes publiques que celles qu'un utilisateur emprunte. La loi
@@ -38,9 +46,32 @@ export class ApiClient {
 
   async registerUser(label: string): Promise<SeededUser> {
     const email = `e2e-${label}-${randomUUID().slice(0, 8)}@bookparking.test`;
-    await this.expectOk('POST', '/account', { email, password: PASSWORD });
+    const humanProof = await this.solveHumanChallenge();
+    await this.expectOk('POST', '/account', {
+      email,
+      password: PASSWORD,
+      humanProof,
+      acceptsTerms: true,
+      avatar: 'SIGNAL',
+    });
     const session = await this.signIn(email, PASSWORD);
     return { email, password: PASSWORD, ...session };
+  }
+
+  // SPEC-007 : l'inscription exige la preuve anti-robot. Le client la calcule
+  // comme le navigateur, en essayant chaque nombre.
+  private async solveHumanChallenge(): Promise<Record<string, unknown>> {
+    const challenge = (await this.expectOk('GET', '/account/human-challenge')) as HumanChallenge;
+    for (let number = 0; number <= challenge.maxNumber; number += 1)
+      if (createHash('sha256').update(challenge.salt + String(number)).digest('hex') === challenge.challenge)
+        return {
+          algorithm: challenge.algorithm,
+          challenge: challenge.challenge,
+          salt: challenge.salt,
+          number,
+          signature: challenge.signature,
+        };
+    throw new Error('Défi anti-robot insoluble');
   }
 
   async signIn(email: string, password: string): Promise<{ token: string; validUntil: string }> {
@@ -68,8 +99,25 @@ export class ApiClient {
   async requestRental(
     token: string,
     input: { address: string; box: string; fromDay: string; toDay: string },
-  ): Promise<void> {
-    await this.expectOk('POST', '/rental-request', input, token);
+  ): Promise<{ id: string; checkoutUrl: string }> {
+    return (await this.expectOk('POST', '/rental-request', input, token, {
+      'Idempotency-Key': randomUUID(),
+    })) as {
+      id: string;
+      checkoutUrl: string;
+    };
+  }
+
+  async confirmRequest(token: string, requestId: string): Promise<void> {
+    await this.expectOk('POST', `/rental-request/${requestId}/confirmation`, undefined, token);
+  }
+
+  async myRequests(token: string): Promise<{ id: string; status: string; money: string }[]> {
+    return (await this.expectOk('GET', '/rental-request', undefined, token)) as {
+      id: string;
+      status: string;
+      money: string;
+    }[];
   }
 
   // Seule route qui rende l'identifiant d'une demande a un client : sans elle,
@@ -90,8 +138,9 @@ export class ApiClient {
     path: string,
     body?: unknown,
     token?: string,
+    extraHeaders: Record<string, string> = {},
   ): Promise<unknown> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...extraHeaders };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (token !== undefined) headers.Authorization = `Bearer ${token}`;
 

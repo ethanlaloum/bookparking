@@ -5,15 +5,14 @@ import {
   type Listing,
 } from '../../app/listing/domain/entities/Listing';
 import {
-  centerOf,
   CITY_ZOOM,
   distanceInKilometers,
+  frameOf,
   isWithinWalkingDistance,
-  spanInKilometers,
-  zoomForSpan,
   type AddressSuggestion,
   type Coordinates,
   type LocatedAddress,
+  type MapFrame,
 } from '../../app/listing/domain/entities/Coordinates';
 import {
   acceptsVehicle,
@@ -126,17 +125,6 @@ export const selectUnmappableCount = createSelector(
     listings.filter((listing) => locations[listing.id] === undefined).length,
 );
 
-const coordinatesOf = (mapped: MappedListing[]): Coordinates[] =>
-  mapped.map((entry) => entry.located.coordinates);
-
-export const selectMapCenter = createSelector([selectMappedListings], (mapped): Coordinates =>
-  centerOf(coordinatesOf(mapped)),
-);
-
-export const selectMapZoom = createSelector([selectMappedListings], (mapped): number =>
-  zoomForSpan(spanInKilometers(coordinatesOf(mapped))),
-);
-
 export const selectApproximateCount = createSelector(
   [selectMappedListings],
   (mapped) => mapped.filter((entry) => entry.located.precision === 'approximate').length,
@@ -186,12 +174,9 @@ export const selectNearbyCount = createSelector(
 // demande, et non plus le barycentre de toutes les annonces.
 export const selectMapFocus = createSelector(
   [selectMappedListings, selectSearchPoint],
-  (mapped, point): { center: Coordinates; zoom: number } =>
+  (mapped, point): MapFrame =>
     point === null
-      ? {
-          center: centerOf(mapped.map((entry) => entry.located.coordinates)),
-          zoom: zoomForSpan(spanInKilometers(mapped.map((entry) => entry.located.coordinates))),
-        }
+      ? frameOf(mapped.map((entry) => entry.located.coordinates))
       : { center: point, zoom: CITY_ZOOM + 2 },
 );
 

@@ -10,7 +10,7 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
     "test:unit:ci": "jest --config ./jest.unit.config.js",
-    "start": "node dist/main.js",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
     "migrate": "knex migrate:latest"
   },
   "dependencies": {
@@ -21,7 +21,8 @@
     "knex": "^3.3.0",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "stripe": "^22.6.2"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.2.5",

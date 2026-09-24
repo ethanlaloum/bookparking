@@ -114,6 +114,9 @@
       "action": "Action"
     },
     "status": {
+      "AWAITING_PAYMENT": "To pay",
+      "ABANDONED": "Abandoned",
+      "PAYMENT_FAILED": "Payment declined",
       "PENDING": "Pending",
       "CONFIRMED": "Confirmed",
       "EXPIRED": "Expired",
@@ -146,7 +149,7 @@
     },
     "cancelRequest": {
       "title": "Cancel this request",
-      "body": "No refund is issued: the site cannot take payment yet, so it cannot give it back."
+      "body": "The driver gets all their money back: the hold is released, or the payment refunded if it was already charged."
     }
   }
 }

@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Bookparking",
+    "slug": "bookparking",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "bookparking",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0b0d12",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.bookparking.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

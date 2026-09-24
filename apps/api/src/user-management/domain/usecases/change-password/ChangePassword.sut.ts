@@ -1,6 +1,10 @@
 import { Either } from 'effect/index';
 
+import { InMemoryEmailOutbox } from '../../../../shared/email-outbox/adapters/repositories/InMemoryEmailOutbox';
+import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnitOfWork';
 import { InMemoryAccountRepository } from '../../../adapters/repositories/account/InMemoryAccountRepository';
+import { InMemoryHumanProof } from '../../../adapters/services/human-proof/InMemoryHumanProof';
+import { HUMAN_PROOF_FOR_TEST } from '../register-account/RegisterAccount.sut';
 import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
 import { InMemorySignInFailureLog } from '../../../adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { slidingAccessToken } from '../../services/slidingAccessToken';
@@ -17,6 +21,9 @@ export const createChangePasswordSUT = () => {
   const passwordHasher = new ScryptPasswordHasher();
   const registerAccount = new RegisterAccount(
     accountRepository,
+    new InMemoryEmailOutbox(),
+    new InMemoryUnitOfWork(),
+    new InMemoryHumanProof(),
     passwordHasher,
   );
   const signIn = new SignIn(
@@ -38,6 +45,9 @@ export const createChangePasswordSUT = () => {
         email,
         password,
         registeredAt: new Date('2026-09-01T00:00:00.000Z'),
+        humanProof: HUMAN_PROOF_FOR_TEST,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
       });
       if (Either.isLeft(created))
         throw new Error('failed to arrange an existing account');

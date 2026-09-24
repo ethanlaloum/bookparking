@@ -1,4 +1,5 @@
-import { CalendarRange, MapPin } from 'lucide-react';
+import { ArrowRight, CalendarRange, Navigation } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
@@ -14,7 +15,7 @@ import {
 } from '../app/listing/domain/entities/SearchCriteria';
 import { cn } from '../lib/cn';
 import { formatCents, formatDay } from '../lib/format';
-import { Badge } from './ui/badge';
+import { BayThumbnail } from './art/BayThumbnail';
 import { VehicleBadges } from './VehicleBadges';
 
 interface SearchResultCardProps {
@@ -25,6 +26,8 @@ interface SearchResultCardProps {
   vehicle: VehicleType | null;
   focused: boolean;
   onFocus: () => void;
+  /** Rang d'apparition : les cartes montent l'une après l'autre, pas en bloc. */
+  revealOrder?: number;
 }
 
 export const SearchResultCard = ({
@@ -35,6 +38,7 @@ export const SearchResultCard = ({
   vehicle,
   focused,
   onFocus,
+  revealOrder = 0,
 }: SearchResultCardProps) => {
   const { t } = useTranslation(['listing', 'common']);
 
@@ -42,7 +46,7 @@ export const SearchResultCard = ({
   const nightly = cheapestNightlyRateInCents(listing.pricing);
 
   return (
-    <li>
+    <li className="animate-rise" style={{ '--i': Math.min(revealOrder, 8) } as CSSProperties}>
       {/*
        * L'article entier réagit au survol et au clic pour désigner le marqueur,
        * mais le lien reste le seul élément focalisable : un conducteur au
@@ -52,77 +56,99 @@ export const SearchResultCard = ({
         onMouseEnter={onFocus}
         onClick={onFocus}
         className={cn(
-          'rounded-[2px] border bg-bg-raised p-4 transition-[border-color,box-shadow] duration-200',
+          'group flex gap-3 rounded-2xl border bg-bg-raised p-3 sm:gap-4 transition-[border-color,box-shadow,translate] duration-200 ease-[var(--ease-signal)]',
           focused
-            ? 'border-accent shadow-[var(--shadow-lift)]'
-            : 'border-line hover:border-line-strong',
+            ? 'border-brand shadow-[var(--shadow-lift)] ring-4 ring-brand/15'
+            : 'border-line hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[var(--shadow-lift)]',
         )}
       >
-        <div className="flex items-start justify-between gap-3">
-          <p className="flex min-w-0 items-start gap-1.5 font-display text-[0.95rem] leading-snug font-semibold text-fg">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden="true" />
-            <span className="min-w-0">{listing.address}</span>
-          </p>
-          <Badge tone="accent" className="shrink-0 font-display">
-            {t('listing:card.box', { box: listing.box })}
-          </Badge>
-        </div>
-
-        <p className="tabular mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 pl-5.5 text-xs text-fg-subtle">
-          {distanceKm !== null && (
-            <span className={focused ? 'text-accent' : undefined}>
-              {t('listing:mapSearch.distance', { distance: formatDistance(distanceKm) })}
-            </span>
-          )}
-          <span className="flex items-center gap-1.5">
-            <CalendarRange className="size-3.5 shrink-0" aria-hidden="true" />
-            {t('listing:card.availableUntil', { date: formatDay(listing.availability.to) })}
-          </span>
-          {precision === 'approximate' && (
-            <span className="text-warn">{t('listing:map.approx')}</span>
-          )}
-        </p>
-
-        <VehicleBadges
-          acceptedVehicles={listing.acceptedVehicles}
-          highlighted={vehicle}
-          className="mt-3 pl-5.5"
+        <BayThumbnail
+          box={listing.box}
+          className="aspect-[4/5] w-20 shrink-0 self-start sm:aspect-auto sm:min-h-32 sm:w-28 sm:self-stretch"
         />
 
-        <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
-          <p className="tabular flex items-baseline gap-1.5">
-            {tier !== null ? (
-              tierPrice === null ? (
+        <div className="flex min-w-0 flex-1 flex-col py-1 pr-1">
+          {(distanceKm !== null || precision === 'approximate') && (
+            <p className="tabular flex flex-wrap items-center gap-1.5 text-xs font-medium">
+              {distanceKm !== null && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors',
+                    focused ? 'bg-brand text-on-brand' : 'bg-accent-soft text-accent',
+                  )}
+                >
+                  <Navigation className="size-3" aria-hidden="true" />
+                  {t('listing:mapSearch.distance', { distance: formatDistance(distanceKm) })}
+                </span>
+              )}
+              {precision === 'approximate' && (
+                <span className="rounded-full bg-warn-bg px-2 py-0.5 text-warn">
+                  {t('listing:map.approx')}
+                </span>
+              )}
+            </p>
+          )}
+
+          <p className="mt-2 font-display text-[1.05rem] leading-snug font-semibold text-fg">
+            {listing.address}
+          </p>
+
+          <p className="tabular mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-subtle">
+            <span className="font-mono font-medium text-fg-muted">
+              {t('listing:card.box', { box: listing.box })}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1">
+              <CalendarRange className="size-3.5 shrink-0" aria-hidden="true" />
+              {t('listing:card.availableUntil', { date: formatDay(listing.availability.to) })}
+            </span>
+          </p>
+
+          <VehicleBadges
+            acceptedVehicles={listing.acceptedVehicles}
+            highlighted={vehicle}
+            className="mt-3"
+          />
+
+          <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-2 pt-4">
+            <p className="tabular flex items-baseline gap-1.5">
+              {tier !== null ? (
+                tierPrice === null ? (
+                  <span className="text-sm text-fg-subtle">{t('listing:card.noPrice')}</span>
+                ) : (
+                  <>
+                    <span className="font-display text-2xl font-bold tracking-tight text-fg">
+                      {formatCents(tierPrice)}
+                    </span>
+                    <span className="text-xs text-fg-subtle">
+                      {t(`listing:criteria.tier.${tier}`).toLocaleLowerCase('fr-FR')}
+                    </span>
+                  </>
+                )
+              ) : nightly === null ? (
                 <span className="text-sm text-fg-subtle">{t('listing:card.noPrice')}</span>
               ) : (
                 <>
-                  <span className="font-display text-xl font-semibold text-fg">
-                    {formatCents(tierPrice)}
+                  <span className="text-xs text-fg-subtle">{t('listing:card.from')}</span>
+                  <span className="font-display text-2xl font-bold tracking-tight text-fg">
+                    {formatCents(nightly)}
                   </span>
-                  <span className="text-xs text-fg-subtle">
-                    {t(`listing:criteria.tier.${tier}`).toLocaleLowerCase('fr-FR')}
-                  </span>
+                  <span className="text-xs text-fg-subtle">{t('common:unit.perNight')}</span>
                 </>
-              )
-            ) : nightly === null ? (
-              <span className="text-sm text-fg-subtle">{t('listing:card.noPrice')}</span>
-            ) : (
-              <>
-                <span className="text-xs text-fg-subtle">{t('listing:card.from')}</span>
-                <span className="font-display text-xl font-semibold text-fg">
-                  {formatCents(nightly)}
-                </span>
-                <span className="text-xs text-fg-subtle">{t('common:unit.perNight')}</span>
-              </>
-            )}
-          </p>
+              )}
+            </p>
 
-          <Link
-            to={`/place/${listing.id}`}
-            className="rounded-[2px] text-sm font-medium text-accent underline-offset-4 hover:underline"
-          >
-            {t('listing:map.openListing')}
-          </Link>
+            <Link
+              to={`/place/${listing.id}`}
+              className="group/link -mr-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent-soft"
+            >
+              {t('listing:map.openListing')}
+              <ArrowRight
+                className="size-4 transition-transform group-hover/link:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </Link>
+          </div>
         </div>
       </article>
     </li>

@@ -11,13 +11,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Lire son propre compte
+         * @description Rend le compte porté par le jeton, et lui seul : la route ne prend aucun identifiant. C'est d'ici que le site et l'app tirent l'adresse et le pilote choisi comme avatar du compte connecté, `POST /session` ne rendant qu'un jeton. Ni empreinte du mot de passe, ni dates, ni suspension.
+         */
+        get: operations["readOwnAccount"];
         put?: never;
         /**
          * Inscrire un compte
-         * @description Crée un compte à partir d'une adresse e-mail et d'un mot de passe. Route publique.
+         * @description Crée un compte à partir d'une adresse e-mail, d'un mot de passe assez robuste et d'une preuve anti-robot (`GET /account/human-challenge`). Route publique.
          */
         post: operations["registerAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/human-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtenir un défi anti-robot
+         * @description Rend un défi à résoudre avant `POST /account` (SPEC-007). Route publique.
+         */
+        get: operations["issueHumanChallenge"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -187,9 +211,9 @@ export interface paths {
         put?: never;
         /**
          * Demander une location
-         * @description Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton.
+         * @description Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton, et ouvre la page de paiement Stripe au prix que l'api a figé.
          *
-         *     Une demande non confirmée expire au bout du délai configuré par `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut).
+         *     La demande reste en attente de paiement jusqu'à ce que Stripe annonce l'empreinte ; le délai de `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut) court ensuite depuis l'empreinte. Une page de paiement vaut trente minutes.
          */
         post: operations["requestRental"];
         delete?: never;
@@ -238,6 +262,8 @@ export interface paths {
          * @description Confirme une demande de location. Seul le propriétaire de la place peut confirmer.
          *
          *     Un identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.
+         *
+         *     Confirmer prélève l'empreinte du conducteur. Si sa banque refuse le prélèvement, la confirmation répond `409` et la demande passe en `PAYMENT_FAILED`.
          */
         post: operations["confirmRentalRequest"];
         delete?: never;
@@ -410,6 +436,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rental-request/{id}/abandonment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abandonner sa demande avant de payer
+         * @description Appelée quand le conducteur revient de Stripe sans payer : la page de paiement est fermée et les dates rendues aussitôt. Seul l'auteur de la demande peut l'abandonner.
+         */
+        post: operations["abandonRentalRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment/stripe-webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recevoir un événement de Stripe
+         * @description Appelée par Stripe seul, jamais par un client. Aucune garde de jeton : l'en-tête `Stripe-Signature` est vérifié sur le corps brut avec `STRIPE_WEBHOOK_SECRET`. Événements lus : `payment_intent.amount_capturable_updated` (empreinte posée) et `checkout.session.expired` (page de paiement expirée).
+         */
+        post: operations["receiveStripeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/cancellation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annuler une réservation
+         * @description Annule une demande qui attend le propriétaire ou une location confirmée, tant qu'elle n'a pas commencé. Le conducteur est remboursé en totalité jusqu'à l'échéance `freeCancellationUntil` incluse, et plus du tout après ; le propriétaire peut annuler à tout moment avant le début, et le conducteur récupère alors tout. Une empreinte non prélevée est toujours levée. Annuler deux fois rend le même effet sans rien refaire.
+         */
+        post: operations["cancelRental"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Changer d'avatar
+         * @description Remplace le pilote choisi comme avatar par le compte porté par le jeton, et lui seul.
+         */
+        patch: operations["chooseAvatar"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -430,7 +548,12 @@ export interface components {
              * @description Adresse e-mail. Les espaces, `@` surnuméraires, apostrophes, guillemets, antislashs et points-virgules sont refusés.
              */
             email: string;
+            /** @description Au moins 8 caractères, et une robustesse moyenne ou forte (SPEC-007 RG-02) ; un mot de passe faible est refusé en 400. */
             password: string;
+            humanProof: components["schemas"]["HumanProof"];
+            /** @description La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte. */
+            acceptsTerms: boolean;
+            avatar: components["schemas"]["Avatar"];
         };
         RegisterAccountResponse: {
             /** Format: uuid */
@@ -569,12 +692,30 @@ export interface components {
             toDay: string;
             /** @description Le montant figé au moment de la demande. */
             priceInCents: number;
-            /** @enum {string} */
-            status: "PENDING" | "CONFIRMED" | "EXPIRED";
+            /**
+             * @description `AWAITING_PAYMENT` : la page de paiement est ouverte, l'empreinte n'est pas constatée ; la demande retient ses dates mais le propriétaire ne la voit pas. `ABANDONED` : le paiement n'a jamais eu lieu. `PAYMENT_FAILED` : la banque a refusé le prélèvement à la confirmation.
+             * @enum {string}
+             */
+            status: "AWAITING_PAYMENT" | "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "ABANDONED" | "PAYMENT_FAILED";
+            /**
+             * @description Où en est l'argent du conducteur. `AUTHORIZED` : empreinte posée, rien de prélevé. `CAPTURED` : prélevé à la confirmation. `RELEASE_DUE` / `REFUND_DUE` : l'empreinte est en cours de levée, le remboursement en cours. `NONE` : demande faite avant l'encaissement.
+             * @enum {string}
+             */
+            money: "NONE" | "AUTHORIZED" | "CAPTURED" | "RELEASE_DUE" | "RELEASED" | "REFUND_DUE" | "REFUNDED";
             /** Format: date-time */
             requestedAt: string;
             /** Format: date-time */
             confirmedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Le premier instant de la location, heure de Paris. Une réservation ne s'annule plus à partir de cet instant.
+             */
+            startsAt: string;
+            /**
+             * Format: date-time
+             * @description L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité.
+             */
+            freeCancellationUntil: string | null;
         };
         /** @description Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention. */
         Overview: {
@@ -644,7 +785,7 @@ export interface components {
             toDay: string;
             priceInCents: number;
             /** @enum {string} */
-            status: "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED";
+            status: "AWAITING_PAYMENT" | "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "ABANDONED" | "PAYMENT_FAILED";
             /** Format: date-time */
             requestedAt: string;
             /** Format: date-time */
@@ -653,6 +794,60 @@ export interface components {
         /** @description Toute action de modération exige un motif. Ce n'est pas une formalité : c'est ce qui permet de répondre, six mois plus tard, à un propriétaire qui demande pourquoi son annonce a disparu. */
         ModerationRequest: {
             reason: string;
+        };
+        RequestRentalResponse: {
+            /**
+             * Format: uuid
+             * @description L'identifiant de la demande, en attente de paiement.
+             */
+            id: string;
+            /**
+             * Format: uri
+             * @description La page de paiement Stripe Checkout où le conducteur pose son empreinte. Toujours sur `https://checkout.stripe.com/`.
+             */
+            checkoutUrl: string;
+        };
+        CancellationResult: {
+            /**
+             * @description `RELEASED` : l'empreinte est levée, rien n'avait été prélevé. `REFUNDED` : le prélèvement est remboursé en totalité. `KEPT` : annulation tardive du conducteur, le prélèvement est gardé. `NOTHING_TO_RETURN` : demande faite avant l'encaissement.
+             * @enum {string}
+             */
+            outcome: "RELEASED" | "REFUNDED" | "KEPT" | "NOTHING_TO_RETURN";
+        };
+        /** @description Défi anti-robot (SPEC-007) : retrouver le nombre `n` ≤ `maxNumber` tel que SHA-256(`salt` + `n`) = `challenge`. Valable 20 minutes. */
+        HumanChallenge: {
+            /** @enum {string} */
+            algorithm: "SHA-256";
+            /** @description Condensé SHA-256 hexadécimal. */
+            challenge: string;
+            /** @description Sel, qui porte son échéance (`?expires=` en secondes Unix). */
+            salt: string;
+            maxNumber: number;
+            /** @description HMAC du condensé, par l'api. */
+            signature: string;
+        };
+        /** @description Le défi recopié, avec le nombre trouvé. Accepté une seule fois. */
+        HumanProof: {
+            algorithm: string;
+            challenge: string;
+            salt: string;
+            number: number;
+            signature: string;
+        };
+        OwnAccount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            avatar: components["schemas"]["Avatar"];
+        };
+        /**
+         * @description Le pilote choisi comme avatar : casque bleu signal, jaune marquage, Riviera, bitume ou damier. Les comptes d'avant le choix valent `SIGNAL`.
+         * @enum {string}
+         */
+        Avatar: "SIGNAL" | "MARKING" | "RIVIERA" | "ASPHALT" | "CHECKERED";
+        ChooseAvatarRequest: {
+            avatar: components["schemas"]["Avatar"];
         };
     };
     responses: {
@@ -697,6 +892,37 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readOwnAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le compte connecté. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le jeton désigne un compte qui n'existe plus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     registerAccount: {
         parameters: {
             query?: never;
@@ -719,7 +945,7 @@ export interface operations {
                     "application/json": components["schemas"]["RegisterAccountResponse"];
                 };
             };
-            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères. */
+            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées, avatar absent ou hors des cinq pilotes. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -738,6 +964,26 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    issueHumanChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Défi émis. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HumanChallenge"];
+                };
+            };
         };
     };
     changePassword: {
@@ -1081,7 +1327,10 @@ export interface operations {
     requestRental: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description L'identifiant d'intention, un UUID choisi par le client pour une place et une période. Renvoyé à l'identique, il rend la demande déjà créée — même identifiant, même page de paiement — au lieu d'en créer une seconde, et la réponse porte alors `Idempotent-Replayed: true`. Il est propre au compte qui l'envoie. */
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1091,14 +1340,16 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Demande enregistrée. Aucun corps de réponse. */
+            /** @description Demande enregistrée, en attente de paiement. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RequestRentalResponse"];
+                };
             };
-            /** @description Corps de requête invalide. */
+            /** @description Corps de requête invalide, ou en-tête `Idempotency-Key` absent ou qui n'est pas un UUID. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1108,7 +1359,16 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». */
+            /** @description Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ». */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1118,6 +1378,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas : la demande est abandonnée et ses dates rendues. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listReceivedRentalRequests: {
@@ -1184,6 +1453,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas : rien n'est prélevé ni confirmé, la confirmation peut être rejouée. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     confirmAdminAccess: {
@@ -1467,6 +1745,161 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             /** @description Cible inexistante, ou déjà dans l'état demandé. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    abandonRentalRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Demande abandonnée, ou déjà abandonnée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inexistante, identifiant mal formé, ou demande d'un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description L'empreinte est déjà posée : la demande attend le propriétaire. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    receiveStripeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Événement accusé, qu'il ait changé une demande ou non. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signature absente ou invalide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelRental: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Réservation annulée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inexistante, identifiant mal formé, ou demande que ce compte ne peut ni voir ni annuler. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description La location a commencé, ou la demande n'est ni en attente du propriétaire ni confirmée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    chooseAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseAvatarRequest"];
+            };
+        };
+        responses: {
+            /** @description Avatar changé. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Avatar absent ou hors des cinq pilotes. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le jeton désigne un compte qui n'existe plus. */
             404: {
                 headers: {
                     [name: string]: unknown;

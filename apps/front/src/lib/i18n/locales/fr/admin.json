@@ -114,6 +114,9 @@
       "action": "Action"
     },
     "status": {
+      "AWAITING_PAYMENT": "À payer",
+      "ABANDONED": "Abandonnée",
+      "PAYMENT_FAILED": "Paiement refusé",
       "PENDING": "En attente",
       "CONFIRMED": "Confirmée",
       "EXPIRED": "Expirée",
@@ -146,7 +149,7 @@
     },
     "cancelRequest": {
       "title": "Annuler cette demande",
-      "body": "Aucun remboursement n’est émis : le site ne sait pas encore encaisser, donc il ne sait pas rendre."
+      "body": "Le conducteur récupère tout son argent : l’empreinte est levée, ou le paiement remboursé s’il a déjà été prélevé."
     }
   }
 }

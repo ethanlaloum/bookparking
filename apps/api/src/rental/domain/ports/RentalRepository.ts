@@ -2,6 +2,13 @@ import { GenericTransaction } from '../../../shared/unit-of-work/GenericTransact
 import { ConfirmedRental } from '../entities/ConfirmedRental';
 import { RentalPlace } from '../entities/RentalPlace';
 import { RentalRequest } from '../entities/RentalRequest';
+import { RentalPeriod } from '../services/computeRentalPrice';
+import { CancellingParty } from '../entities/RentalCancellation';
+import {
+  MoneyOwed,
+  MoneyState,
+  RentalRequestStatus,
+} from '../entities/RentalMoney';
 
 // Ce que la confirmation a besoin de savoir d'une demande, et rien de plus :
 // qui possède l'annonce visée, qui a demandé, et si c'est déjà confirmé. Le
@@ -13,6 +20,12 @@ export interface RentalRequestSummary {
   renterId: string;
   isConfirmed: boolean;
   isExpired: boolean;
+  status: RentalRequestStatus;
+  money: MoneyState;
+  paymentId: string | null;
+  checkoutSessionId: string | null;
+  startsAt: Date;
+  freeCancellationUntil: Date | null;
 }
 
 // Ce qu'un tableau de bord montre d'une demande, et qu'aucune entité ne porte :
@@ -30,9 +43,25 @@ export interface RentalRequestView {
   fromDay: string;
   toDay: string;
   priceInCents: number;
-  status: string;
+  status: RentalRequestStatus;
+  money: MoneyState;
   requestedAt: Date;
   confirmedAt: Date | null;
+  startsAt: Date;
+  freeCancellationUntil: Date | null;
+}
+
+// Ce qu'une demande déjà créée sous un identifiant d'intention permet de
+// rejouer : la demande elle-même, et l'adresse de sa page de paiement — `null`
+// tant que la page n'est pas ouverte.
+export interface IdempotentRentalRequest {
+  rentalRequest: RentalRequest;
+  checkoutUrl: string | null;
+}
+
+export interface AbandonedUnpaidRequest {
+  requestId: string;
+  checkoutSessionId: string | null;
 }
 
 export interface RentalRepository {
@@ -67,4 +96,81 @@ export interface RentalRepository {
     ownerId: string,
     trx?: GenericTransaction,
   ): Promise<RentalRequestView[]>;
+
+  // Chaque transition ci-dessous filtre sur l'état qu'elle quitte : rejouée,
+  // elle ne trouve plus rien à changer et rend `false`. C'est là, et non dans
+  // les cas d'usage, qu'est l'idempotence face aux événements que Stripe
+  // renvoie et aux balayages qui se chevauchent.
+  attachPaymentPage(
+    requestId: string,
+    checkoutSessionId: string,
+    checkoutUrl: string,
+    trx?: GenericTransaction,
+  ): Promise<void>;
+  findByIdempotencyKey(
+    renterId: string,
+    idempotencyKey: string,
+    trx?: GenericTransaction,
+  ): Promise<IdempotentRentalRequest | null>;
+  forgetIdempotencyKey(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<void>;
+  // Ne touche que les demandes impayées de ce conducteur : celles d'un autre
+  // retiennent leurs dates, et c'est la contrainte d'exclusion qui tranche.
+  // Filtre sur `PENDING` et `CONFIRMED` : une seconde annulation ne trouve
+  // plus rien, et la dette envers le conducteur ne naît qu'une fois.
+  markCancelledBy(
+    requestId: string,
+    party: CancellingParty,
+    moneyAfter: MoneyState,
+    cancelledAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  abandonOwnUnpaidRequestsOverlapping(
+    renterId: string,
+    place: RentalPlace,
+    period: RentalPeriod,
+    trx?: GenericTransaction,
+  ): Promise<AbandonedUnpaidRequest[]>;
+  markHoldPlaced(
+    requestId: string,
+    paymentId: string,
+    placedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  markAbandoned(requestId: string, trx?: GenericTransaction): Promise<boolean>;
+  oweReleaseOfLateHold(
+    requestId: string,
+    paymentId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  markPaymentFailed(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  abandonUnpaidRequestsSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number>;
+  expireHoldsPlacedSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number>;
+  findMoneyOwed(trx?: GenericTransaction): Promise<MoneyOwed[]>;
+  markReleased(requestId: string, trx?: GenericTransaction): Promise<boolean>;
+  markRefunded(
+    requestId: string,
+    refundId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  recordMissedCapture(
+    requestId: string,
+    confirmedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
+  oweRefundOfMissedCapture(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
 }

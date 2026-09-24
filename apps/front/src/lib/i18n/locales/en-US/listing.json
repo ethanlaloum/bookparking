@@ -19,7 +19,8 @@
     "ownerHint": "These actions only succeed if the listing is yours.",
     "unpublish": "Unpublish",
     "editPricing": "Edit pricing",
-    "unpublished": "The listing has been unpublished."
+    "unpublished": "The listing has been unpublished.",
+    "photosHint": "References supplied by the owner."
   },
   "pricing": {
     "day": "Day",
@@ -41,7 +42,10 @@
     },
     "submit": "Publish the listing",
     "published": "Your listing is live.",
-    "seeIt": "See the spaces"
+    "seeIt": "See the spaces",
+    "preview": "Preview",
+    "previewHint": "What drivers will see, updated as you type.",
+    "previewAddress": "Address of the space"
   },
   "field": {
     "address": "Address",
@@ -67,7 +71,7 @@
   },
   "map": {
     "title": "Find a space",
-    "subtitle": "Every space published in Nice, on the map.",
+    "subtitle": "Every space published in France, on the map.",
     "nav": "Search",
     "located_one": "{{count}} space placed",
     "located_other": "{{count}} spaces placed",
@@ -88,9 +92,9 @@
     "mapTab": "Map"
   },
   "mapSearch": {
-    "label": "Search an address in Nice",
-    "placeholder": "Start typing a street in Nice…",
-    "hint": "At least 3 characters. Only addresses in Nice are offered.",
+    "label": "Search an address",
+    "placeholder": "An address, with its city…",
+    "hint": "At least 3 characters. Add the city to narrow the suggestions.",
     "clear": "Clear the address",
     "noResult": "No address matches.",
     "suggestions": "Address suggestions",
@@ -134,14 +138,53 @@
     "undeclaredKept_other": "{{count}} spaces stated nothing and stay visible."
   },
   "home": {
-    "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map.",
+    "live": "Right now in France",
+    "heroLead": "Parking spaces,",
+    "heroAccent": "between neighbors.",
+    "ticket": {
+      "title": "Starting rate",
+      "caption": "The lowest published price, brought down to one night."
+    },
+    "visual": {
+      "free": "Space available",
+      "confirmed": "Request confirmed"
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "Book in three moves.",
+      "step": {
+        "search": {
+          "title": "Search around an address",
+          "body": "Type an address anywhere in France: every space shows up on the map, closest first."
+        },
+        "dates": {
+          "title": "Pick your dates",
+          "body": "The price is worked out before you send, from the owner’s rates: by the day, the week or the month."
+        },
+        "park": {
+          "title": "Park",
+          "body": "Once the request is confirmed, you receive the access instructions: door code, level, landmarks."
+        }
+      }
+    },
+    "why": {
+      "eyebrow": "Why Bookparking",
+      "title": "Neighbors everywhere, a price that holds.",
+      "noFees": "in fees added once the price is shown"
+    },
+    "owner": {
+      "eyebrow": "Owners",
+      "title": "A space sitting idle? Rent it to your neighbors.",
+      "body": "Set a price by the day, the week or the month, pick the period, and confirm every request yourself."
+    },
+    "pitch": "Search an address anywhere in France, say which vehicle and for how long. Available spaces show up on the map.",
     "available_one": "{{count}} space available",
     "available_other": "{{count}} spaces available",
     "seeAll": "See every space on the map",
     "argument": {
       "local": {
-        "title": "Nice only",
-        "body": "Every space is in the city, listed by someone who lives there. No result three hundred kilometres away."
+        "title": "Everywhere in France",
+        "body": "Every space is listed by someone who lives in the neighborhood. Around the address you search, the closest come first."
       },
       "price": {
         "title": "The quoted price is the price paid",

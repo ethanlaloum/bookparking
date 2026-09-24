@@ -17,9 +17,15 @@ export class RentalRequestMapper {
       toDay: view.toDay,
       priceInCents: view.priceInCents,
       status: view.status,
+      money: view.money,
       requestedAt: view.requestedAt.toISOString(),
       confirmedAt:
         view.confirmedAt === null ? null : view.confirmedAt.toISOString(),
+      startsAt: view.startsAt.toISOString(),
+      freeCancellationUntil:
+        view.freeCancellationUntil === null
+          ? null
+          : view.freeCancellationUntil.toISOString(),
     };
   }
 }

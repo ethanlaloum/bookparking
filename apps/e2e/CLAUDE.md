@@ -15,6 +15,42 @@ Rien n'est simulé entre eux. `page.route()` n'apparaît nulle part sous
   le page object qui s'aligne sur l'interface, jamais l'inverse, parce que
   l'apostrophe courbe est la forme correcte en français.
 
+- **« Véhicule » et « Durée » ne sont plus des `<select>`.** Ce sont des combobox ARIA maison :
+  `selectOption()` y échoue et `toHaveValue()` n'a rien à lire. `SearchPage` expose
+  `chooseVehicle` / `chooseDuration` (ouvrir, puis cliquer l'option par son nom, `exact: true`) et
+  `expectVehicle` / `expectDuration`, qui lisent le libellé affiché par le déclencheur. Les champs de
+  date, eux, restent des `<input>` : `fill()` y écrit un jour ISO, que le front accepte comme saisie.
+
+- **Toute la suite exige Stripe en mode test, depuis SPEC-004.** L'api refuse de démarrer sans
+  `STRIPE_SECRET_KEY`, et `startLocalStack` la lit dans l'environnement ou dans `.env.stripe.local` à la
+  racine (ignoré par git) — une clé qui ne commence pas par `sk_test_` est refusée. La stack lance
+  `stripe listen`, qui relaie les événements de Stripe jusqu'à l'api locale ; il faut donc la CLI
+  (`brew install stripe/stripe-cli/stripe`), sans `stripe login` : la clé lui est passée par
+  `--api-key`. Le secret du webhook est celui que rend `stripe listen --print-secret`.
+
+- **Une demande ne se voit du propriétaire qu'une fois payée, et il n'existe aucun raccourci.**
+  `Seeder.paidRentalRequest` ouvre la vraie page Stripe, paie avec la carte `4242`, puis attend que
+  l'événement relayé fasse passer la demande `PENDING`. C'est lent — une quinzaine de secondes — et c'est
+  le prix du « rien n'est simulé ». Stripe refuse les domaines réservés comme `.test` : la page reçoit une
+  adresse `@example.com`, sans lien avec le compte.
+
+- **`StripeCheckoutPage` vise des identifiants de champ, pas des noms accessibles.** Ce n'est pas une
+  page de ce dépôt : ses libellés ne sont pas un contrat que bookparking tient. Si Stripe change sa page,
+  c'est ce page object seul qui casse.
+
+- **Chaque parcours démarre avec le consentement déjà accepté.** La fixture `page` pose
+  `bookparking.consent` (carte et polices permises) avant tout script, à chaque navigation.
+  Sans cela, le bandeau collant masquerait des boutons en bas d'écran et la carte laisserait place
+  à son encart : toutes les suites de carte échoueraient. Seul
+  `tests/real/consent/` s'en retire par `test.use({ consent: 'undecided' })`. Si le front
+  incrémente `CONSENT_VERSION`, la constante de `src/fixtures/test.ts` doit suivre ; sinon
+  l'enregistrement posé ne vaut plus, et c'est toute la suite de carte qui le signale.
+
+- **Le consentement se prouve par les requêtes, pas par l'écran.** `watchThirdParties` relève
+  tout ce qui part vers `fonts.googleapis.com`, `fonts.gstatic.com` et `tile.openstreetmap.org`.
+  Il se branche **avant** la première navigation : une requête partie avant l'écoute échapperait
+  au relevé, et le test conclurait à tort qu'elle n'a pas eu lieu.
+
 - **Playwright lit la signature des fixtures : le motif `{}` est obligatoire.**
   Une fixture qui ne consomme rien s'écrit `async ({}, use) => {}`. La remplacer
   par un paramètre nommé pour satisfaire `no-empty-pattern` fait échouer le
@@ -41,10 +77,12 @@ Rien n'est simulé entre eux. `page.route()` n'apparaît nulle part sous
   nettoyage se limite aux annonces, dépubliées en ordre inverse. Les comptes
   restent, sans effet : chaque email est unique et la base est éphémère.
 
-- **Le piège §9 du handbook ne s'applique pas ici.** Cette api n'a ni outbox, ni
-  `@Cron`, ni worker : rien d'asynchrone à drainer, donc aucun exemple n'est à
-  refouler vers le barreau `journey` pour cette raison. Si un outbox apparaît,
-  relire le §9 avant d'écrire le moindre test qui attend un effet de bord.
+- **Le piège §9 du handbook s'applique au balayage de SPEC-004, et à lui seul.**
+  L'api n'a ni outbox ni worker, mais `RentalSweepScheduler` expire les demandes et rend
+  l'argent dû toutes les cinq minutes. Aucun parcours e2e n'attend son passage : l'expiration
+  à 48 heures et la levée de l'empreinte sont prouvées au rung `unit`. Un parcours qui voudrait
+  l'observer devrait régler `RENTAL_SWEEP_INTERVAL_IN_SECONDS` dans la stack — relire le §9
+  avant de l'écrire.
 
 - **Les binaires Playwright peuvent refuser de s'installer en session agent.**
   `playwright install` se fait interrompre et laisse un cache tronqué (~600 Ko),
@@ -78,8 +116,10 @@ démarrés sur ces ports, ce qui évite de reconstruire l'api à chaque itérati
 ## Ce qui n'a pas d'équivalent ici
 
 Chaque spec porte en tête ce qu'elle couvre **et** ce qui n'a pas d'équivalent,
-avec la raison. Le cas le plus structurant : **confirmer une demande de
-location**. L'api ne rend l'identifiant d'une demande sur aucune route et
-n'en liste aucune, donc `POST /rental-request/:id/confirmation` est
-inatteignable depuis un navigateur. L'exemple reste au barreau `int-http` tant
-que le contrat n'expose pas cet identifiant.
+avec la raison. Confirmer une demande est atteignable depuis le tableau de bord
+du loueur, puisque `GET /rental-request/received` rend l'identifiant des
+demandes. Ce qui reste hors de ce barreau depuis SPEC-004 : l'expiration à
+48 heures, le prélèvement refusé par la banque et l'annulation par
+l'exploitant, qui demanderaient d'attendre deux jours ou une carte refusée au
+moment précis de la confirmation — tous prouvés aux barreaux `unit` et
+`int-repo` de l'api.

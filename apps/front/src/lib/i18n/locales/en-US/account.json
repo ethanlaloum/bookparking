@@ -65,14 +65,61 @@
     "awaiting": "Waiting for the owner to answer."
   },
   "status": {
+    "AWAITING_PAYMENT": "To pay",
     "PENDING": "Pending",
     "CONFIRMED": "Confirmed",
-    "EXPIRED": "Expired"
+    "EXPIRED": "Expired",
+    "CANCELLED": "Cancelled",
+    "ABANDONED": "Abandoned",
+    "PAYMENT_FAILED": "Declined"
   },
   "row": {
     "period": "From {{from}} to {{to}}",
     "nights_one": "{{count}} night",
     "nights_other": "{{count}} nights",
     "requestedOn": "Requested on {{date}}"
+  },
+  "money": {
+    "awaitingPayment": "Payment being verified",
+    "abandoned": "Payment abandoned",
+    "paymentFailed": "Payment declined by the bank",
+    "holdAwaitingOwner": "{{amount}} hold · awaiting the owner",
+    "captured": "Confirmed · {{amount}} charged",
+    "expiredReleasing": "Expired · hold being released",
+    "expiredReleased": "Expired · nothing was charged",
+    "cancelledReleasing": "Cancelled · hold being released",
+    "cancelledReleased": "Cancelled · nothing was charged",
+    "cancelledRefunding": "Cancelled · refund in progress",
+    "cancelledRefunded": "Cancelled · {{amount}} refunded",
+    "pendingWithoutPayment": "Awaiting the owner",
+    "confirmedWithoutPayment": "Confirmed",
+    "expiredWithoutPayment": "Expired",
+    "cancelledWithoutPayment": "Cancelled",
+    "cancelledKept": "Cancelled · {{amount}} not refunded"
+  },
+  "cancel": {
+    "action": "Cancel",
+    "title": "Cancel this booking?",
+    "confirm": "Cancel the booking",
+    "keep": "Keep my booking",
+    "ownerConfirm": "Cancel the rental",
+    "ownerKeep": "Keep the rental",
+    "terms": {
+      "refund": "You will be refunded {{amount}}.",
+      "nonRefundable": "The free-cancellation deadline has passed: the {{amount}} charged will not be refunded.",
+      "release": "The {{amount}} hold will be released: nothing was charged.",
+      "ownerFullReturn": "The driver will get all their money back.",
+      "nothingAtStake": "No payment is involved in this booking."
+    },
+    "deadline": "Free cancellation until {{date}}."
+  },
+  "profile": {
+    "avatar": "Your avatar: {{name}} driver",
+    "signedInAs": "Signed in as {{email}}"
+  },
+  "avatar": {
+    "title": "Your avatar",
+    "hint": "It shows in the header, on the website and in the app.",
+    "saved": "Avatar saved."
   }
 }

@@ -20,6 +20,22 @@ export class DashboardPage {
     await expect(this.page.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeVisible();
   }
 
+  // L'avatar de l'en-tête de page est une image nommée par son pilote.
+  async expectAvatar(pilot: string, email: string): Promise<void> {
+    await expect(this.page.getByRole('img', { name: `Votre avatar : pilote ${pilot}` })).toBeVisible();
+    await expect(this.page.getByText(`Connecté en tant que ${email}`)).toBeVisible();
+  }
+
+  // Le bouton radio est caché sous sa vignette : `force` le coche quand même,
+  // comme le ferait un clic sur la vignette.
+  async chooseAvatar(pilot: string): Promise<void> {
+    await this.page
+      .getByRole('radiogroup', { name: 'Choisissez votre pilote' })
+      .getByRole('radio', { name: pilot, exact: true })
+      .check({ force: true });
+    await expect(this.page.getByRole('status').getByText('Avatar enregistré.')).toBeVisible();
+  }
+
   async openTab(name: string): Promise<void> {
     await this.tab(name).click();
     await expect(this.tab(name)).toHaveAttribute('aria-selected', 'true');
@@ -43,8 +59,32 @@ export class DashboardPage {
     await this.listedPlace(address).getByRole('button', { name: 'Confirmer' }).click();
   }
 
+  async expectRequestLabel(address: string, label: RegExp): Promise<void> {
+    await expect(this.listedPlace(address)).toContainText(label);
+  }
+
   async expectRequestConfirmed(address: string): Promise<void> {
     await expect(this.listedPlace(address)).toContainText('Confirmée');
+  }
+
+  private cancellationDialog(): Locator {
+    return this.page.getByRole('dialog', { name: 'Annuler cette réservation ?' });
+  }
+
+  // `exact` : « Annuler » est un préfixe de « Annuler la réservation », le
+  // bouton de la fenêtre qui s'ouvre par-dessus la ligne.
+  async startCancellingFor(address: string): Promise<void> {
+    await this.listedPlace(address).getByRole('button', { name: 'Annuler', exact: true }).click();
+    await expect(this.cancellationDialog()).toBeVisible();
+  }
+
+  async expectCancellationTerms(text: string | RegExp): Promise<void> {
+    await expect(this.cancellationDialog()).toContainText(text);
+  }
+
+  async confirmCancellation(): Promise<void> {
+    await this.cancellationDialog().getByRole('button', { name: 'Annuler la réservation' }).click();
+    await expect(this.cancellationDialog()).toHaveCount(0);
   }
 
   async expectNoRequests(): Promise<void> {

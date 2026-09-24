@@ -28,6 +28,24 @@ const AccountPage = lazy(async () => ({
 const ConfirmRequestPage = lazy(async () => ({
   default: (await import('../pages/ConfirmRequestPage')).ConfirmRequestPage,
 }));
+const PaymentReturnPage = lazy(async () => ({
+  default: (await import('../pages/PaymentReturnPage')).PaymentReturnPage,
+}));
+const FaqPage = lazy(async () => ({
+  default: (await import('../pages/FaqPage')).FaqPage,
+}));
+const LegalNoticePage = lazy(async () => ({
+  default: (await import('../pages/legal/LegalNoticePage')).LegalNoticePage,
+}));
+const PrivacyPage = lazy(async () => ({
+  default: (await import('../pages/legal/PrivacyPage')).PrivacyPage,
+}));
+const TermsPage = lazy(async () => ({
+  default: (await import('../pages/legal/TermsPage')).TermsPage,
+}));
+const MobileAppPage = lazy(async () => ({
+  default: (await import('../pages/MobileAppPage')).MobileAppPage,
+}));
 const NotFoundPage = lazy(async () => ({
   default: (await import('../pages/NotFoundPage')).NotFoundPage,
 }));
@@ -40,10 +58,16 @@ export const Routes = () => (
       <Route path="/place/:id" element={<ListingDetailPage />} />
       <Route path="/connexion" element={<SignInPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/faq" element={<FaqPage />} />
+      <Route path="/application" element={<MobileAppPage />} />
+      <Route path="/mentions-legales" element={<LegalNoticePage />} />
+      <Route path="/donnees-personnelles" element={<PrivacyPage />} />
+      <Route path="/conditions-d-utilisation" element={<TermsPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/publier" element={<PublishPage />} />
         <Route path="/compte" element={<AccountPage />} />
         <Route path="/demande/:requestId/confirmation" element={<ConfirmRequestPage />} />
+        <Route path="/demande/:requestId/paiement" element={<PaymentReturnPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </RouterRoutes>

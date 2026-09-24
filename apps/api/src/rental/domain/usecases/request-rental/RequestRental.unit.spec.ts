@@ -1,4 +1,7 @@
 import { InvalidRequestedPeriodError } from '../../errors/InvalidRequestedPeriodError';
+import { NoPriceForRequestedPeriodError } from '../../errors/NoPriceForRequestedPeriodError';
+import { PaymentUnavailableError } from '../../errors/PaymentUnavailableError';
+import { IdempotencyKeyReusedError } from './errors/IdempotencyKeyReusedError';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
 import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
@@ -215,7 +218,7 @@ describe('RequestRental @SPEC-002', () => {
 
     it('keeps a request made exactly at the deadline alive', async () => {
       const sut = arrange();
-      await sut.whenRequestedAtInstantBy('Léa T.', FIRST_REQUEST_AT);
+      await sut.givenRequestWithoutPaymentAt('Léa T.', FIRST_REQUEST_AT);
 
       await sut.whenRequestedAtInstantBy(
         'Karim B.',
@@ -228,7 +231,7 @@ describe('RequestRental @SPEC-002', () => {
 
     it('expires a request one millisecond past the deadline', async () => {
       const sut = arrange();
-      await sut.whenRequestedAtInstantBy('Léa T.', FIRST_REQUEST_AT);
+      await sut.givenRequestWithoutPaymentAt('Léa T.', FIRST_REQUEST_AT);
 
       await sut.whenRequestedAtInstantBy(
         'Karim B.',
@@ -238,5 +241,215 @@ describe('RequestRental @SPEC-002', () => {
 
       sut.thenPendingRequestsExpired(1);
     });
+  });
+});
+
+describe('RequestRental @SPEC-004', () => {
+  const BARLA = { address: '12 rue Barla, 06300 Nice', box: '12' };
+  const LEA_ASKS_AT = new Date('2026-10-01T07:00:00.000Z');
+  const THREE_DAYS = { from: '2026-10-10', to: '2026-10-12' } as const;
+
+  it('opens a card hold for the price the api froze @EX-004-01', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenPaymentPageOpenedFor(result, { amountInCents: 4500 });
+  });
+
+  it('opens no payment page for a period no price covers @EX-004-03', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: null, week: 8000, month: null },
+    });
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenRequestIsRefusedWith(result, NoPriceForRequestedPeriodError);
+    sut.thenNoPaymentPageOpened();
+  });
+
+  it('lets the payment page expire thirty minutes after the request @EX-004-08', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenPaymentPageOpenedFor(result, {
+      amountInCents: 4500,
+      expiresAt: '2026-10-01T07:30:00.000Z',
+    });
+  });
+
+  it('abandons the request and frees its dates when Stripe does not answer @EX-004-09', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+    sut.givenStripeDoesNotAnswer();
+
+    const result = await sut.whenRequestedAtInstantBy(
+      'Léa T.',
+      LEA_ASKS_AT,
+      THREE_DAYS,
+    );
+
+    sut.thenRequestIsRefusedWith(result, PaymentUnavailableError);
+    sut.thenTheOnlyRequestIs('ABANDONED');
+  });
+});
+
+describe('RequestRental, one request per intent @SPEC-004', () => {
+  const BARLA = { address: '12 rue Barla, 06300 Nice', box: '12' };
+  const MALAUSSENA = { address: '3 avenue Malausséna, 06000 Nice', box: '4' };
+  const DAY_PRICE = { day: 1500, week: null, month: null };
+  const K1 = '9d3c1b2a-0f4e-4a5b-8c6d-7e8f9a0b1c2d';
+
+  it('answers the same request when the same intent is sent twice @EX-004-42', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({ ...BARLA, pricing: DAY_PRICE });
+    const intent = {
+      renterName: 'Léa T.',
+      idempotencyKey: K1,
+      place: BARLA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    };
+
+    const first = await sut.whenRequestingUnderIntent(intent);
+    const second = await sut.whenRequestingUnderIntent(intent);
+
+    sut.thenRecordedRequestCountIs(1);
+    sut.thenPaymentPagesOpenedCountIs(1);
+    sut.thenBothAnswersAreTheSame(first, second);
+  });
+
+  it('refuses an intent identifier reused for another period or another place @EX-004-43', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({ ...BARLA, pricing: DAY_PRICE });
+    sut.givenListing({ ...MALAUSSENA, pricing: DAY_PRICE });
+    await sut.whenRequestingUnderIntent({
+      renterName: 'Léa T.',
+      idempotencyKey: K1,
+      place: BARLA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    });
+
+    const reused = await sut.whenRequestingUnderIntent({
+      renterName: 'Léa T.',
+      idempotencyKey: K1,
+      place: BARLA,
+      from: '2026-10-20',
+      to: '2026-10-22',
+    });
+
+    const otherPlace = await sut.whenRequestingUnderIntent({
+      renterName: 'Léa T.',
+      idempotencyKey: K1,
+      place: MALAUSSENA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    });
+
+    sut.thenRequestIsRefusedWith(reused, IdempotencyKeyReusedError);
+    sut.thenRequestIsRefusedWith(otherPlace, IdempotencyKeyReusedError);
+    sut.thenRecordedRequestCountIs(1);
+  });
+
+  it('never answers another account request under the same identifier @EX-004-44', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({ ...BARLA, pricing: DAY_PRICE });
+    sut.givenListing({ ...MALAUSSENA, pricing: DAY_PRICE });
+    const lea = await sut.whenRequestingUnderIntent({
+      renterName: 'Léa T.',
+      idempotencyKey: K1,
+      place: BARLA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    });
+
+    const paul = await sut.whenRequestingUnderIntent({
+      renterName: 'Paul R.',
+      idempotencyKey: K1,
+      place: MALAUSSENA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    });
+
+    sut.thenRecordedRequestCountIs(2);
+    sut.thenTheAnswersDiffer(lea, paul);
+  });
+
+  it('does not spend the identifier on an attempt Stripe could not open @EX-004-45', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({ ...BARLA, pricing: DAY_PRICE });
+    const intent = {
+      renterName: 'Léa T.',
+      idempotencyKey: K1,
+      place: BARLA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    };
+    sut.givenStripeDoesNotAnswer();
+    const refused = await sut.whenRequestingUnderIntent(intent);
+    sut.thenRequestIsRefusedWith(refused, PaymentUnavailableError);
+
+    sut.givenStripeAnswersAgain();
+    const retried = await sut.whenRequestingUnderIntent(intent);
+
+    sut.thenPaymentPageOpenedFor(retried, { amountInCents: 4500 });
+  });
+});
+
+describe('RequestRental, never blocked by one own unpaid request @SPEC-004', () => {
+  const BARLA = { address: '12 rue Barla, 06300 Nice', box: '12' };
+
+  it('replaces its own unpaid request when asking the same place again @EX-004-50', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...BARLA,
+      pricing: { day: 1500, week: null, month: null },
+    });
+    const first = await sut.whenRequestingUnderIntent({
+      renterName: 'Léa T.',
+      idempotencyKey: '11111111-1111-4111-8111-111111111111',
+      place: BARLA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    });
+
+    const second = await sut.whenRequestingUnderIntent({
+      renterName: 'Léa T.',
+      idempotencyKey: '22222222-2222-4222-8222-222222222222',
+      place: BARLA,
+      from: '2026-10-11',
+      to: '2026-10-13',
+    });
+
+    sut.thenTheRequestIs(first, 'ABANDONED');
+    sut.thenItsPaymentPageWasClosed(first);
+    sut.thenTheRequestIs(second, 'AWAITING_PAYMENT');
   });
 });

@@ -6,6 +6,7 @@ export interface RecordedCall {
   method: string;
   path: string;
   body?: unknown;
+  headers?: Record<string, string>;
 }
 
 export class InMemoryHttpClient implements HttpClient {
@@ -26,8 +27,12 @@ export class InMemoryHttpClient implements HttpClient {
     return this.answer<T>('GET', path);
   }
 
-  post<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
-    return this.answer<T>('POST', path, body);
+  post<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Observable<HttpResponse<T>> {
+    return this.answer<T>('POST', path, body, headers);
   }
 
   patch<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
@@ -38,8 +43,14 @@ export class InMemoryHttpClient implements HttpClient {
     return this.answer<T>('DELETE', path, body);
   }
 
-  private answer<T>(method: string, path: string, body?: unknown): Observable<HttpResponse<T>> {
-    this.calls.push(body === undefined ? { method, path } : { method, path, body });
+  private answer<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Observable<HttpResponse<T>> {
+    const call: RecordedCall = body === undefined ? { method, path } : { method, path, body };
+    this.calls.push(headers === undefined ? call : { ...call, headers });
     const failure = this.failures.get(key(method, path));
     if (failure !== undefined) return throwError(() => failure);
     const data = this.responses.get(key(method, path));

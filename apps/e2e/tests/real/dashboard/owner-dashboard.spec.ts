@@ -22,16 +22,13 @@ test.describe('Dashboard', () => {
   test('shows the owner places, confirms a received request and moves the revenue', async ({
     page,
     seed,
-    api,
     app,
   }) => {
     const owner = await seed.user('dashboard-owner');
     const renter = await seed.user('dashboard-renter');
     const listing = await seed.listing(owner, { pricing: { dayInCents: 1500 } });
 
-    await api.requestRental(renter.token, {
-      address: listing.address,
-      box: listing.box,
+    await seed.paidRentalRequest(page, renter, listing, {
       fromDay: dayInDays(10),
       toDay: dayInDays(12),
     });

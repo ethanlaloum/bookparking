@@ -1,5 +1,5 @@
 import { getTestDbConnection } from '../../../../infra/testcontainers-setup';
-import { Account } from '../../../domain/entities/Account';
+import { Account, Avatar } from '../../../domain/entities/Account';
 import { ScryptPasswordHasher } from '../../services/password-hasher/ScryptPasswordHasher';
 import { KnexAccountRepository } from './KnexAccountRepository';
 import { SchemaAccountRepository } from './SchemaAccountRepository';
@@ -24,13 +24,18 @@ export const createKnexAccountRepositorySUT = () => {
   return {
     context,
 
-    async whenWritingAccountFor(email: string): Promise<unknown> {
+    async whenWritingAccountFor(
+      email: string,
+      avatar: Avatar = 'SIGNAL',
+    ): Promise<unknown> {
       const account = Account.register({
         email,
         passwordHash: context.passwordHasher.hash(
           context.testConstants.passwordForTest,
         ),
         registeredAt: context.testConstants.registeredAtForTest,
+        termsAcceptedAt: context.testConstants.registeredAtForTest,
+        avatar,
       });
       try {
         await context.accountRepository.create(account);
@@ -71,6 +76,43 @@ export const createKnexAccountRepositorySUT = () => {
 
     thenNoAccountFound(found: Account | null) {
       expect(found).toEqual(null);
+    },
+
+    async thenTermsAcceptedAtIsWrittenFor(email: string, acceptedAt: Date) {
+      const row = await context
+        .testDbConnection<SchemaAccountRepository>('accounts')
+        .where({ email })
+        .first();
+      expect(new Date(row?.terms_accepted_at ?? '')).toEqual(acceptedAt);
+    },
+
+    async thenAvatarIsWrittenFor(email: string, avatar: Avatar) {
+      const row = await context
+        .testDbConnection<SchemaAccountRepository>('accounts')
+        .where({ email })
+        .first();
+      expect(row?.avatar).toEqual(avatar);
+    },
+
+    // Comme une ligne d'avant le choix : la colonne est omise, et c'est la
+    // valeur par défaut de la migration qui la remplit.
+    async givenAccountRowWrittenWithoutAvatar(email: string) {
+      await context.testDbConnection('accounts').insert({
+        id: '0b9e1d2c-6a5f-4e3d-8c7b-9a1f2e3d4c5b',
+        email,
+        password_hash: 'stub-password-hash',
+        registered_at: context.testConstants.registeredAtForTest,
+      });
+    },
+
+    async whenReplacingAvatarOf(email: string, avatar: Avatar) {
+      const account = await context.accountRepository.findByEmail(email);
+      if (account === null) throw new Error(`no account for ${email}`);
+      await context.accountRepository.replaceAvatar(account.id, avatar);
+    },
+
+    thenFoundAccountAvatarIs(found: Account | null, avatar: Avatar) {
+      expect(found?.avatar).toEqual(avatar);
     },
 
     async thenAccountsTableHasOneRowFor(email: string) {

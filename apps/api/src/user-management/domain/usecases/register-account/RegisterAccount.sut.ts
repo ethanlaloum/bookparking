@@ -1,7 +1,11 @@
 import { Either } from 'effect/index';
 
+import { InMemoryEmailOutbox } from '../../../../shared/email-outbox/adapters/repositories/InMemoryEmailOutbox';
+import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnitOfWork';
 import { InMemoryAccountRepository } from '../../../adapters/repositories/account/InMemoryAccountRepository';
-import { Account } from '../../entities/Account';
+import { InMemoryHumanProof } from '../../../adapters/services/human-proof/InMemoryHumanProof';
+import { HumanProofSolution } from '../../ports/HumanProof';
+import { Account, Avatar } from '../../entities/Account';
 import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
 import { RegisterAccount } from './RegisterAccount';
 
@@ -9,13 +13,35 @@ interface RegistrationInput {
   email: string;
   password: string;
   registeredAt: Date;
+  humanProof: HumanProofSolution;
+  acceptsTerms: boolean;
+  avatar: Avatar;
 }
+
+// Une preuve de forme valide ; c'est `InMemoryHumanProof` qui décide si elle
+// est acceptée.
+export const HUMAN_PROOF_FOR_TEST: HumanProofSolution = {
+  algorithm: 'SHA-256',
+  challenge: 'challenge-for-test',
+  salt: 'salt-for-test',
+  number: 7,
+  signature: 'signature-for-test',
+};
 
 export const createRegisterAccountSUT = () => {
   const accountRepository = new InMemoryAccountRepository();
+  const emailOutbox = new InMemoryEmailOutbox();
+  const unitOfWork = new InMemoryUnitOfWork();
+  const humanProof = new InMemoryHumanProof();
   const passwordHasher = new ScryptPasswordHasher();
 
-  const outboundPorts = { accountRepository, passwordHasher };
+  const outboundPorts = {
+    accountRepository,
+    emailOutbox,
+    unitOfWork,
+    humanProof,
+    passwordHasher,
+  };
 
   const testConstants = {
     emailForTest: 'marc.d@example.com',
@@ -25,11 +51,15 @@ export const createRegisterAccountSUT = () => {
 
   const registerAccount = new RegisterAccount(
     outboundPorts.accountRepository,
+    outboundPorts.emailOutbox,
+    outboundPorts.unitOfWork,
+    outboundPorts.humanProof,
     outboundPorts.passwordHasher,
   );
 
   const context = {
     accountRepository,
+    emailOutbox,
     passwordHasher,
     outboundPorts,
     registerAccount,
@@ -58,11 +88,42 @@ export const createRegisterAccountSUT = () => {
       context.accountRepository.enableFailureOnEveryWrite();
     },
 
+    givenEveryHumanProofIsRejected() {
+      humanProof.rejectEveryProof();
+    },
+
+    thenProofWasPresented(times: number) {
+      expect(humanProof.presented).toHaveLength(times);
+    },
+
+    givenEmailOutboxFailsToWrite() {
+      context.emailOutbox.enableFailureOnEveryWrite();
+    },
+
+    // Posé directement dans le dépôt, sans passer par l'inscription : un
+    // compte existant n'a laissé aucun e-mail dans la file de ce test.
+    givenExistingAccountFor(email: string) {
+      context.accountRepository.accountList.push(
+        Account.register({
+          email,
+          passwordHash: context.passwordHasher.hash(
+            context.testConstants.passwordForTest,
+          ),
+          registeredAt: context.testConstants.registeredAtForTest,
+          termsAcceptedAt: context.testConstants.registeredAtForTest,
+          avatar: 'SIGNAL',
+        }),
+      );
+    },
+
     async whenRegistering(overrides?: Partial<RegistrationInput>) {
       const defaults: RegistrationInput = {
         email: context.testConstants.emailForTest,
         password: context.testConstants.passwordForTest,
         registeredAt: context.testConstants.registeredAtForTest,
+        humanProof: HUMAN_PROOF_FOR_TEST,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
       };
 
       return context.registerAccount.execute({ ...defaults, ...overrides });
@@ -104,11 +165,45 @@ export const createRegisterAccountSUT = () => {
       ).toEqual(true);
     },
 
-    thenNoEmailSent() {
-      expect(Object.keys(context.outboundPorts)).toEqual([
-        'accountRepository',
-        'passwordHasher',
+    thenWelcomeEmailQueuedFor(recipient: string, queuedAt: Date) {
+      expect(
+        context.emailOutbox.emails.map((email) => {
+          const state = email.toState();
+          return {
+            kind: state.kind,
+            recipient: state.recipient,
+            status: state.status,
+            queuedAt: state.queuedAt,
+          };
+        }),
+      ).toEqual([{ kind: 'WELCOME', recipient, status: 'PENDING', queuedAt }]);
+    },
+
+    thenNothingQueuedContains(secret: string) {
+      const queued = JSON.stringify(
+        context.emailOutbox.emails.map((email) => email.toState()),
+      );
+      expect(queued.includes(secret)).toEqual(false);
+    },
+
+    thenNoEmailQueued() {
+      expect(context.emailOutbox.emails).toEqual([]);
+    },
+
+    thenOnlyWelcomeEmailQueued() {
+      expect(context.emailOutbox.emails.map((email) => email.kind)).toEqual([
+        'WELCOME',
       ]);
+    },
+
+    thenAccountAcceptedTermsAt(email: string, acceptedAt: Date) {
+      expect(storedAccountFor(email).toState().termsAcceptedAt).toEqual(
+        acceptedAt,
+      );
+    },
+
+    thenAccountAvatarIs(email: string, avatar: Avatar) {
+      expect(storedAccountFor(email).avatar).toEqual(avatar);
     },
 
     thenNoAccountCreated() {
@@ -120,6 +215,9 @@ export const createRegisterAccountSUT = () => {
         email,
         password,
         registeredAt: context.testConstants.registeredAtForTest,
+        humanProof: HUMAN_PROOF_FOR_TEST,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
       });
       if (Either.isLeft(result)) {
         throw new Error('failed to arrange an existing account');
@@ -144,6 +242,8 @@ export const createRegisterAccountSUT = () => {
         'email',
         'passwordHash',
         'registeredAt',
+        'termsAcceptedAt',
+        'avatar',
         'id',
         'suspendedAt',
       ]);
@@ -152,6 +252,9 @@ export const createRegisterAccountSUT = () => {
     thenNoVerificationTokenWritten() {
       expect(Object.keys(context.outboundPorts)).toEqual([
         'accountRepository',
+        'emailOutbox',
+        'unitOfWork',
+        'humanProof',
         'passwordHasher',
       ]);
     },

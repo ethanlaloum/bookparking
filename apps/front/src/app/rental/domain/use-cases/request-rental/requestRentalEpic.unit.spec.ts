@@ -10,11 +10,28 @@ const PAYLOAD = {
 };
 
 describe('requesting a rental', () => {
-  it('keeps the submitted period because the api returns no identifier', () => {
+  it('sends the renter to the payment page the api opened', () => {
     const sut = createRequestRentalSut();
+    sut.givenTheApiOpensThePaymentPage('https://checkout.stripe.com/c/pay/cs_test_lea');
     sut.whenRequesting(PAYLOAD);
     sut.thenTheRequestSucceeded();
-    sut.thenTheSubmittedPeriodIsKept('2026-10-01', '2026-10-03');
+    sut.thenThePaymentPagesOpenedAre(['https://checkout.stripe.com/c/pay/cs_test_lea']);
+  });
+
+  it('follows no payment address outside Stripe, even one that starts like it', () => {
+    const sut = createRequestRentalSut();
+    sut.givenTheApiOpensThePaymentPage('https://checkout.stripe.com.exemple.fr/c/pay/cs_test_lea');
+    sut.whenRequesting(PAYLOAD);
+    sut.thenThePaymentPagesOpenedAre([]);
+    sut.thenTheErrorShownIs('Adresse de paiement inattendue');
+  });
+
+  it('goes nowhere, and says so, when the api answers without a payment page', () => {
+    const sut = createRequestRentalSut();
+    sut.givenTheApiAnswersWithoutBody();
+    sut.whenRequesting(PAYLOAD);
+    sut.thenThePaymentPagesOpenedAre([]);
+    sut.thenTheErrorShownIs('Le serveur n’a ouvert aucune page de paiement. Réessayez dans un instant.');
   });
 
   it('shows the api message when the dates are already rented', () => {
@@ -22,5 +39,6 @@ describe('requesting a rental', () => {
     sut.givenTheApiRejectsWith('Ces dates sont deja louees');
     sut.whenRequesting(PAYLOAD);
     sut.thenTheErrorShownIs('Ces dates sont deja louees');
+    sut.thenThePaymentPagesOpenedAre([]);
   });
 });

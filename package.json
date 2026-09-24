@@ -10,6 +10,7 @@
     "lint:all": "pnpm -r lint:check",
     "api": "pnpm --filter bookparking-api",
     "front": "pnpm --filter bookparking-front",
+    "mobile": "pnpm --filter bookparking-mobile",
     "e2e": "pnpm --filter bookparking-e2e"
   }
 }

@@ -26,6 +26,9 @@ import {
 import { useAppDispatch, useAppSelector } from '../../store/redux';
 
 const TONE_BY_STATUS: Record<AdminRentalRequestStatus, BadgeVariantProps['tone']> = {
+  AWAITING_PAYMENT: 'neutral',
+  ABANDONED: 'neutral',
+  PAYMENT_FAILED: 'danger',
   PENDING: 'warn',
   CONFIRMED: 'ok',
   EXPIRED: 'neutral',

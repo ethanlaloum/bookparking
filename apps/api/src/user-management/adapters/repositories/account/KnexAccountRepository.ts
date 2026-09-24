@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
-import { Account } from '../../../domain/entities/Account';
+import { Account, Avatar } from '../../../domain/entities/Account';
 import { AccountRepository } from '../../../domain/ports/AccountRepository';
 import { EmailAlreadyUsedError } from '../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
 import { SchemaAccountRepository } from './SchemaAccountRepository';
@@ -60,6 +60,8 @@ export class KnexAccountRepository implements AccountRepository {
       email: state.email,
       password_hash: state.passwordHash,
       registered_at: state.registeredAt,
+      terms_accepted_at: state.termsAcceptedAt,
+      avatar: state.avatar,
       suspended_at: state.suspendedAt,
     };
   }
@@ -89,12 +91,29 @@ export class KnexAccountRepository implements AccountRepository {
     await query;
   }
 
+  public async replaceAvatar(
+    accountId: string,
+    avatar: Avatar,
+    trx?: GenericTransaction,
+  ): Promise<void> {
+    const query = this.connection(this.tableName)
+      .where({ id: accountId })
+      .update({ avatar });
+    if (trx) query.transacting(trx);
+    await query;
+  }
+
   private static toEntity(row: SchemaAccountRepository): Account {
     return Account.fromState({
       id: row.id,
       email: row.email,
       passwordHash: row.password_hash,
       registeredAt: new Date(row.registered_at),
+      termsAcceptedAt:
+        row.terms_accepted_at === null || row.terms_accepted_at === undefined
+          ? null
+          : new Date(row.terms_accepted_at),
+      avatar: row.avatar,
       suspendedAt:
         row.suspended_at === null || row.suspended_at === undefined
           ? null

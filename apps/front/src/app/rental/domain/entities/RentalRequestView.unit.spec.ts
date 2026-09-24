@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { i18n } from '../../../../lib/i18n';
+
 import {
   confirmedRevenueInCents,
   countByStatus,
+  moneyLabelOf,
   pendingRevenueInCents,
   rentedNightCount,
   type RentalRequestView,
@@ -20,6 +23,10 @@ const aRequest = (overrides: Partial<RentalRequestView> = {}): RentalRequestView
   requestedAt: '2026-09-20T09:00:00.000Z',
   confirmedAt: null,
   ...overrides,
+  // Réaffirmés après l'étalement : `Partial` rend chaque champ `undefined`-able.
+  money: overrides.money ?? 'NONE',
+  startsAt: overrides.startsAt ?? '2026-09-30T22:00:00.000Z',
+  freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-09-29T22:00:00.000Z',
 });
 
 describe('the owner revenue', () => {
@@ -70,6 +77,55 @@ describe('the request counts', () => {
       aRequest({ status: 'PENDING' }),
       aRequest({ status: 'CONFIRMED' }),
     ];
-    expect(countByStatus(requests)).toEqual({ PENDING: 2, CONFIRMED: 1, EXPIRED: 0 });
+    expect(countByStatus(requests)).toEqual({
+      AWAITING_PAYMENT: 0,
+      PENDING: 2,
+      CONFIRMED: 1,
+      EXPIRED: 0,
+      CANCELLED: 0,
+      ABANDONED: 0,
+      PAYMENT_FAILED: 0,
+    });
   });
 });
+
+describe('where the renter money stands @SPEC-004', () => {
+  const read = (overrides: Partial<RentalRequestView>): string => {
+    const { key, amount } = moneyLabelOf(aRequest({ priceInCents: 4500, ...overrides }));
+    return i18n.getFixedT('fr', 'account')(`money.${key}`, { amount }).replace(/\s/g, ' ');
+  };
+
+  it('labels every state of the renter money @EX-004-37', () => {
+    expect(read({ status: 'AWAITING_PAYMENT', money: 'NONE' })).toBe(
+      'Paiement en cours de vérification',
+    );
+    expect(read({ status: 'PENDING', money: 'AUTHORIZED' })).toBe(
+      'Empreinte de 45,00 € · en attente du loueur',
+    );
+    expect(read({ status: 'CONFIRMED', money: 'CAPTURED' })).toBe('Confirmée · 45,00 € prélevés');
+    expect(read({ status: 'EXPIRED', money: 'RELEASED' })).toBe('Expirée · rien n’a été prélevé');
+    expect(read({ status: 'CANCELLED', money: 'REFUNDED' })).toBe('Annulée · 45,00 € remboursés');
+    expect(read({ status: 'CANCELLED', money: 'REFUND_DUE' })).toBe(
+      'Annulée · remboursement en cours',
+    );
+    expect(read({ status: 'EXPIRED', money: 'RELEASE_DUE' })).toBe(
+      'Expirée · empreinte en cours de levée',
+    );
+    expect(read({ status: 'ABANDONED', money: 'NONE' })).toBe('Paiement abandonné');
+    expect(read({ status: 'PAYMENT_FAILED', money: 'RELEASE_DUE' })).toBe(
+      'Paiement refusé par la banque',
+    );
+  });
+});
+
+describe('a late cancellation, read as such @SPEC-005', () => {
+  it('labels a rental cancelled without refund @EX-005-16', () => {
+    const { key, amount } = moneyLabelOf(
+      aRequest({ status: 'CANCELLED', money: 'CAPTURED', priceInCents: 4500 }),
+    );
+    expect(
+      i18n.getFixedT('fr', 'account')(`money.${key}`, { amount }).replace(/\s/g, ' '),
+    ).toBe('Annulée · 45,00 € non remboursés');
+  });
+});
+

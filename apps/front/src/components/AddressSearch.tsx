@@ -11,7 +11,7 @@ import {
 import { cn } from '../lib/cn';
 import { selectAddressSuggestions } from '../selectors/listing/listingSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
-import { Button } from './ui/button';
+import { CONTROL, LABEL, SEGMENT } from './searchFieldStyles';
 
 /**
  * Le motif ARIA du combobox, suivi à la lettre : `role="combobox"` sur l'entrée,
@@ -91,98 +91,100 @@ export const AddressSearch = ({ value, onChoose, onQueryStateChange }: AddressSe
 
   return (
     /*
-     * La colonne fait exactement la même hauteur que celles des sélecteurs :
-     * un libellé, puis un contrôle. L'aide et l'adresse retenue sont rendues
-     * par l'appelant sous la barre entière — les garder ici faisait grandir
-     * cette seule colonne dès que le texte passait sur deux lignes, et
-     * désalignait toute la rangée.
+     * La colonne a exactement la même forme que celles des sélecteurs : un
+     * libellé, puis un contrôle. L'aide et l'adresse retenue sont rendues par
+     * l'appelant sous la barre entière — les garder ici faisait grandir cette
+     * seule colonne dès que le texte passait sur deux lignes, et désalignait
+     * toute la rangée.
      */
-    <div ref={containerRef} className="flex min-w-0 flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-medium text-fg">
+    <div ref={containerRef} className={SEGMENT}>
+      <label htmlFor={inputId} className={LABEL}>
         {t('mapSearch.label')}
       </label>
 
-      <div className="flex min-w-0 gap-2">
-        {/* Ancre de la liste : elle se pose sous l'entrée, sans décalage codé en dur. */}
-        <div className="relative min-w-0 flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle"
-            aria-hidden="true"
-          />
-          <input
-            id={inputId}
-            type="text"
-            role="combobox"
-            autoComplete="off"
-            aria-expanded={expanded}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            aria-describedby={hintId}
-            aria-activedescendant={
-              highlighted >= 0 ? `${listId}-option-${String(highlighted)}` : undefined
-            }
-            placeholder={t('mapSearch.placeholder')}
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setOpen(true);
-              setHighlighted(-1);
-              onQueryStateChange?.({
-                tooShort:
-                  event.target.value.trim().length > 0 &&
-                  event.target.value.trim().length < MINIMUM_QUERY_LENGTH,
-              });
-              dispatch(addressQueryChanged({ query: event.target.value }));
-            }}
-            onFocus={() => setOpen(true)}
-            onKeyDown={onKeyDown}
-            className="min-h-11 w-full rounded-[2px] border border-line-strong bg-bg-raised pr-3 pl-9 text-fg placeholder:text-fg-subtle transition-colors duration-150 focus:border-accent"
-          />
-
-          <ul
-            id={listId}
-            role="listbox"
-            aria-label={t('mapSearch.suggestions')}
-            hidden={!expanded}
-            className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-[2px] border border-line-strong bg-bg-raised shadow-[var(--shadow-lift)]"
-          >
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={suggestion.id}
-                id={`${listId}-option-${String(index)}`}
-                role="option"
-                aria-selected={index === highlighted}
-                onMouseEnter={() => setHighlighted(index)}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  choose(suggestion);
-                }}
-                className={cn(
-                  'flex cursor-pointer items-center gap-2 px-3.5 py-2.5 text-sm',
-                  index === highlighted ? 'bg-accent text-on-accent' : 'text-fg',
-                )}
-              >
-                <MapPin
-                  className={cn('size-4 shrink-0', index === highlighted ? '' : 'text-accent')}
-                  aria-hidden="true"
-                />
-                {suggestion.label}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Ancre de la liste : elle se pose sous l'entrée, sans décalage codé en dur. */}
+      <div className="relative min-w-0">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-fg-subtle lg:left-0 lg:text-accent"
+          aria-hidden="true"
+        />
+        <input
+          id={inputId}
+          type="text"
+          role="combobox"
+          autoComplete="off"
+          aria-expanded={expanded}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-describedby={hintId}
+          aria-activedescendant={
+            highlighted >= 0 ? `${listId}-option-${String(highlighted)}` : undefined
+          }
+          placeholder={t('mapSearch.placeholder')}
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+            setHighlighted(-1);
+            onQueryStateChange?.({
+              tooShort:
+                event.target.value.trim().length > 0 &&
+                event.target.value.trim().length < MINIMUM_QUERY_LENGTH,
+            });
+            dispatch(addressQueryChanged({ query: event.target.value }));
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          className={cn(CONTROL, 'truncate pr-11 pl-10 placeholder:text-fg-subtle lg:pl-6')}
+        />
 
         {(value !== null || query !== '') && (
-          <Button
+          <button
             type="button"
-            variant="outline"
             onClick={clear}
             aria-label={t('mapSearch.clear')}
-            className="shrink-0"
+            title={t('mapSearch.clear')}
+            className="absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-fg-subtle transition-colors hover:bg-bg-sunken hover:text-fg lg:right-0 lg:size-8 lg:hover:bg-bg-raised"
           >
             <X className="size-4" aria-hidden="true" />
-          </Button>
+          </button>
         )}
+
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={t('mapSearch.suggestions')}
+          hidden={!expanded}
+          className="animate-fade absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-line bg-bg-raised p-1.5 shadow-[var(--shadow-float)] lg:-inset-x-4 lg:mt-4"
+        >
+          {suggestions.map((suggestion, index) => (
+            <li
+              key={suggestion.id}
+              id={`${listId}-option-${String(index)}`}
+              role="option"
+              aria-selected={index === highlighted}
+              onMouseEnter={() => setHighlighted(index)}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                choose(suggestion);
+              }}
+              className={cn(
+                'flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-sm text-fg transition-colors',
+                index === highlighted && 'bg-bg-sunken',
+              )}
+            >
+              <span
+                className={cn(
+                  'grid size-8 shrink-0 place-items-center rounded-lg transition-colors',
+                  index === highlighted ? 'bg-brand text-on-brand' : 'bg-accent-soft text-accent',
+                )}
+              >
+                <MapPin className="size-4" aria-hidden="true" />
+              </span>
+              {suggestion.label}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

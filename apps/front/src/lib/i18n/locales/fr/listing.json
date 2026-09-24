@@ -19,7 +19,8 @@
     "ownerHint": "Ces actions n’aboutissent que si l’annonce vous appartient.",
     "unpublish": "Dépublier",
     "editPricing": "Modifier les tarifs",
-    "unpublished": "L’annonce a été dépubliée."
+    "unpublished": "L’annonce a été dépubliée.",
+    "photosHint": "Références fournies par le propriétaire."
   },
   "pricing": {
     "day": "Jour",
@@ -41,7 +42,10 @@
     },
     "submit": "Publier l’annonce",
     "published": "Votre annonce est en ligne.",
-    "seeIt": "Voir les places"
+    "seeIt": "Voir les places",
+    "preview": "Aperçu",
+    "previewHint": "Ce que verront les conducteurs, mis à jour pendant que vous écrivez.",
+    "previewAddress": "Adresse de la place"
   },
   "field": {
     "address": "Adresse",
@@ -67,7 +71,7 @@
   },
   "map": {
     "title": "Rechercher une place",
-    "subtitle": "Toutes les places publiées à Nice, sur la carte.",
+    "subtitle": "Toutes les places publiées en France, sur la carte.",
     "nav": "Rechercher",
     "located_one": "{{count}} place située",
     "located_other": "{{count}} places situées",
@@ -88,9 +92,9 @@
     "mapTab": "Carte"
   },
   "mapSearch": {
-    "label": "Rechercher une adresse à Nice",
-    "placeholder": "Commencez à taper une rue niçoise…",
-    "hint": "Au moins 3 caractères. Seules les adresses de Nice sont proposées.",
+    "label": "Rechercher une adresse",
+    "placeholder": "Une adresse, avec sa ville…",
+    "hint": "Au moins 3 caractères. Ajoutez la ville pour resserrer les suggestions.",
     "clear": "Effacer l'adresse",
     "noResult": "Aucune adresse ne correspond.",
     "suggestions": "Suggestions d'adresses",
@@ -134,14 +138,53 @@
     "undeclaredKept_other": "{{count}} places n'ont rien déclaré et restent affichées."
   },
   "home": {
-    "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte.",
+    "live": "En ce moment en France",
+    "heroLead": "Des places de parking,",
+    "heroAccent": "entre voisins.",
+    "ticket": {
+      "title": "Tarif d'appel",
+      "caption": "Le prix publié le plus bas, ramené à la nuit."
+    },
+    "visual": {
+      "free": "Place libre",
+      "confirmed": "Demande confirmée"
+    },
+    "how": {
+      "eyebrow": "Comment ça marche",
+      "title": "Réserver, en trois gestes.",
+      "step": {
+        "search": {
+          "title": "Cherchez autour d’une adresse",
+          "body": "Tapez une adresse, n’importe où en France : toutes les places s’affichent sur la carte, les plus proches en tête."
+        },
+        "dates": {
+          "title": "Choisissez vos dates",
+          "body": "Le prix se calcule avant l’envoi, sur la grille du propriétaire : à la journée, à la semaine ou au mois."
+        },
+        "park": {
+          "title": "Garez-vous",
+          "body": "Une fois la demande confirmée, vous recevez les consignes d’accès : digicode, étage, repères."
+        }
+      }
+    },
+    "why": {
+      "eyebrow": "Pourquoi Bookparking",
+      "title": "Des voisins partout, un prix tenu.",
+      "noFees": "de frais ajoutés après le calcul du prix"
+    },
+    "owner": {
+      "eyebrow": "Propriétaires",
+      "title": "Une place qui dort ? Louez-la à vos voisins.",
+      "body": "Fixez un prix à la journée, à la semaine ou au mois, choisissez la période, et confirmez vous-même chaque demande."
+    },
+    "pitch": "Cherchez une adresse partout en France, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte.",
     "available_one": "{{count}} place disponible",
     "available_other": "{{count}} places disponibles",
     "seeAll": "Voir toutes les places sur la carte",
     "argument": {
       "local": {
-        "title": "Uniquement à Nice",
-        "body": "Chaque place est dans la ville, publiée par quelqu'un qui y habite. Pas de résultat à trois cents kilomètres."
+        "title": "Partout en France",
+        "body": "Chaque place est publiée par quelqu'un qui habite le quartier. Autour de l'adresse cherchée, les plus proches passent en tête."
       },
       "price": {
         "title": "Le prix annoncé est le prix payé",

@@ -31,6 +31,7 @@ export const createKnexAccountRepositorySUT = () => {
           context.testConstants.passwordForTest,
         ),
         registeredAt: context.testConstants.registeredAtForTest,
+        termsAcceptedAt: context.testConstants.registeredAtForTest,
       });
       try {
         await context.accountRepository.create(account);
@@ -71,6 +72,14 @@ export const createKnexAccountRepositorySUT = () => {
 
     thenNoAccountFound(found: Account | null) {
       expect(found).toEqual(null);
+    },
+
+    async thenTermsAcceptedAtIsWrittenFor(email: string, acceptedAt: Date) {
+      const row = await context
+        .testDbConnection<SchemaAccountRepository>('accounts')
+        .where({ email })
+        .first();
+      expect(new Date(row?.terms_accepted_at ?? '')).toEqual(acceptedAt);
     },
 
     async thenAccountsTableHasOneRowFor(email: string) {

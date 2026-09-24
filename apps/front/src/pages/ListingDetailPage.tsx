@@ -26,6 +26,7 @@ import {
 import { unpublishListingRequested } from '../app/listing/domain/use-cases/unpublish-listing/unpublishListingEpic';
 import { updateListingPricingRequested } from '../app/listing/domain/use-cases/update-listing-pricing/updateListingPricingEpic';
 import { problemWithRequestedPeriod } from '../app/rental/domain/entities/RentalRequest';
+import { keepOrRenewIntent, type RentalIntent } from '../app/rental/domain/entities/RentalIntent';
 import {
   requestRentalRequested,
   resetRequestRentalState,
@@ -80,6 +81,7 @@ export const ListingDetailPage = () => {
 
   const [fromDay, setFromDay] = useState('');
   const [toDay, setToDay] = useState('');
+  const [intent, setIntent] = useState<RentalIntent | null>(null);
   const [editingPricing, setEditingPricing] = useState(false);
 
   const bookingError = useAppSelector(selectRequestRentalError);
@@ -423,16 +425,23 @@ export const ListingDetailPage = () => {
                     size="lg"
                     className="mt-5"
                     disabled={!canBook || booking}
-                    onClick={() =>
+                    onClick={() => {
+                      const clicked = keepOrRenewIntent(
+                        intent,
+                        { listingId: listing.id, fromDay, toDay },
+                        () => crypto.randomUUID(),
+                      );
+                      setIntent(clicked);
                       dispatch(
                         requestRentalRequested({
                           address: listing.address,
                           box: listing.box,
                           fromDay,
                           toDay,
+                          idempotencyKey: clicked.key,
                         }),
-                      )
-                    }
+                      );
+                    }}
                   >
                     {booking && <Spinner />}
                     {t('rental:book.submit')}

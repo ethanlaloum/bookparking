@@ -1,4 +1,4 @@
-import { LogOut, Plus, Search, UserRound } from 'lucide-react';
+import { LogOut, Plus, Search, Smartphone, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink } from 'react-router-dom';
 
@@ -20,6 +20,25 @@ export const Header = () => {
         <BrandLink className="text-fg" />
 
         <nav aria-label={t('common:nav.browse')} className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+          {/* Sur grand écran seulement : sur un téléphone, l'en-tête ne tient que
+              trois boutons, et l'app se trouve par l'accueil et le pied de page. */}
+          <NavLink
+            to="/application"
+            className={({ isActive }) =>
+              cn(
+                'group relative mr-1 hidden h-9 items-center gap-2 overflow-hidden rounded-full bg-accent-soft py-1 pr-4 pl-1 text-sm font-semibold text-fg ring-1 ring-accent/25 ring-inset transition-[translate,box-shadow] duration-200 ease-[var(--ease-spring)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-brand)] hover:ring-accent/50 lg:inline-flex',
+                isActive && 'ring-accent/60',
+              )
+            }
+          >
+            <span
+              aria-hidden="true"
+              className="animate-glint pointer-events-none absolute inset-y-0 left-0 w-2/5 -skew-x-12 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+            />            <span className="relative grid size-7 place-items-center rounded-full bg-brand text-on-brand shadow-[var(--shadow-brand)] transition-transform duration-300 ease-[var(--ease-spring)] group-hover:scale-110 group-hover:-rotate-12">
+              <Smartphone className="size-3.5" aria-hidden="true" />
+            </span>
+            <span className="relative">{t('common:nav.app')}</span>
+          </NavLink>
           <NavLink
             to="/recherche"
             className={({ isActive }) =>

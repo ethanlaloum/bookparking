@@ -8,6 +8,8 @@ import { RentalRequestExpiredError } from '../../../../domain/usecases/confirm-r
 import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequestNotFoundError';
 import { RentalRequest } from '../../../../domain/entities/RentalRequest';
 import { AbandonRentalRequest } from '../../../../domain/usecases/abandon-rental-request/AbandonRentalRequest';
+import { CancelRental } from '../../../../domain/usecases/cancel-rental/CancelRental';
+import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-rental/errors/RentalAlreadyStartedError';
 import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
@@ -29,7 +31,11 @@ const aRequestedRental = () => {
   });
   if (Either.isLeft(rentalRequest))
     throw new Error('failed to arrange a requested rental');
-  return { rentalRequest: rentalRequest.right, checkoutUrl: A_CHECKOUT_URL };
+  return {
+    rentalRequest: rentalRequest.right,
+    checkoutUrl: A_CHECKOUT_URL,
+    replayed: false,
+  };
 };
 
 export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
@@ -40,6 +46,10 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
   >();
 
   const abandonRentalRequest = new UseCaseDouble();
+  const cancelRental = new UseCaseDouble<
+    { requestId: string; accountId: string; cancelledAt: Date },
+    Either.Either<string, Error>
+  >();
 
   const metadata: ModuleMetadata = {
     controllers: [RentalRequestController],
@@ -49,6 +59,7 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
       { provide: ListRenterRentalRequests, useValue: new UseCaseDouble() },
       { provide: ListOwnerRentalRequests, useValue: new UseCaseDouble() },
       { provide: AbandonRentalRequest, useValue: abandonRentalRequest },
+      { provide: CancelRental, useValue: cancelRental },
     ],
   };
 
@@ -57,6 +68,24 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     authState,
     requestRental,
     confirmRentalRequest,
+
+    givenTheCancellationRefunds() {
+      cancelRental.willResolve(Either.right('REFUNDED'));
+    },
+
+    givenTheRentalHasStarted() {
+      cancelRental.willResolve(Either.left(new RentalAlreadyStartedError()));
+    },
+
+    thenTheCancellationWasAskedBy(accountId: string, requestId: string) {
+      expect(cancelRental.calls).toEqual([
+        { requestId, accountId, cancelledAt: expect.any(Date) },
+      ]);
+    },
+
+    thenNoCancellationWasAsked() {
+      expect(cancelRental.calls).toHaveLength(0);
+    },
 
     givenConfirmationSucceeds() {
       confirmRentalRequest.willResolve(Either.right(undefined));

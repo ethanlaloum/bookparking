@@ -1,0 +1,54 @@
+{
+  "tab": {
+    "home": "Accueil",
+    "search": "Rechercher",
+    "bookings": "Réservations",
+    "account": "Compte"
+  },
+  "gate": {
+    "bookingsTitle": "Vos réservations, en un coup d’œil.",
+    "bookingsBody": "Connectez-vous pour suivre vos demandes, leur paiement et leurs dates.",
+    "accountTitle": "Vos places, vos demandes.",
+    "accountBody": "Connectez-vous pour publier une place, confirmer les demandes reçues et suivre ce qu’elles rapportent."
+  },
+  "search": {
+    "field": "Où cherchez-vous ?",
+    "summaryEmpty": "Toutes les places de France",
+    "clearAll": "Tout effacer"
+  },
+  "book": {
+    "stay": "Votre séjour",
+    "pickDates": "Choisir les dates",
+    "changeDates": "Modifier",
+    "book": "Réserver",
+    "nightsLabel": "{{nights}} · estimation",
+    "toPayment": "Vers le paiement"
+  },
+  "calendar": {
+    "title": "Choisir les dates",
+    "pickFrom": "Choisissez le jour d’arrivée",
+    "pickTo": "Choisissez le jour de départ",
+    "unavailable": "Indisponible"
+  },
+  "payment": {
+    "inBrowser": "Paiement en cours sur Stripe",
+    "inBrowserBody": "Saisissez votre carte dans la page sécurisée qui s’est ouverte. Rien n’est prélevé avant la confirmation du propriétaire.",
+    "left": "Vous avez quitté la page de paiement",
+    "leftBody": "Tant que l’empreinte n’est pas posée, rien n’est réservé sur votre carte. La page de Stripe reste valable trente minutes.",
+    "resume": "Reprendre le paiement",
+    "abandon": "Abandonner la demande",
+    "abandoned": "Demande abandonnée : vos dates sont rendues et rien n’a été réservé sur votre carte.",
+    "backToListing": "Revenir à la place"
+  },
+  "account": {
+    "publish": "Publier une place",
+    "admin": "L’administration du site reste sur le site web."
+  },
+  "offline": {
+    "title": "L’api ne répond pas",
+    "body": "L’app cherche l’api à {{url}}. Vérifiez qu’elle tourne sur le Mac et que le téléphone est sur le même réseau Wi-Fi."
+  },
+  "bookings": {
+    "subtitle": "Vos demandes, leur paiement et leurs dates."
+  }
+}

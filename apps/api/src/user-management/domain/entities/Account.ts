@@ -8,6 +8,9 @@ interface Props {
   email: string;
   passwordHash: string;
   registeredAt: Date;
+  // SPEC-008 : l'instant où le titulaire a coché la case des conditions
+  // d'utilisation. `null` pour les comptes inscrits avant qu'elle existe.
+  termsAcceptedAt: Date | null;
   suspendedAt: Date | null;
 }
 
@@ -30,6 +33,7 @@ export class Account {
     email: string;
     passwordHash: string;
     registeredAt: Date;
+    termsAcceptedAt: Date;
   }): Account {
     return new Account({
       ...params,

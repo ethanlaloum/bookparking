@@ -1,0 +1,11 @@
+{
+  "label": "The iPhone app",
+  "title": "The Bookparking app",
+  "hero": { "lead": "Bookparking,", "accent": "in your pocket.", "pitch": "The map, booking, your requests and your space to rent: the whole site, designed for your thumb." },
+  "store": { "download": "Download on the App Store", "soon": "Coming soon to the App Store", "iphoneOnly": "For iPhone.", "meanwhile": "Until it ships, everything already works on the website." },
+  "features": { "eyebrow": "In the app", "title": "Everything the site does, at your fingertips.", "search": {"title": "A space, on the map", "body": "Search by address, dates and vehicle, then switch between the list and the map in one gesture."}, "book": {"title": "Book without being charged", "body": "Your card is only authorised when you request: nothing is charged until the owner confirms."}, "follow": {"title": "Your bookings at a glance", "body": "Follow each request, from the payment page to the owner’s answer."}, "publish": {"title": "Your space, from your phone", "body": "List it with its address, prices and availability, then confirm the requests you receive."}},
+  "same": { "title": "One account, everywhere.", "body": "The app and the site share the same account: your bookings and your spaces follow you from one to the other." },
+  "cta": { "title": "No iPhone at hand?", "body": "The website does the same, on any screen.", "search": "Find a space" },
+  "mockup": { "title": "Search", "address": "Around you", "tab": {"home": "Home", "search": "Search", "bookings": "Bookings", "account": "Account"}},
+  "home": { "title": "Bookparking is also an app.", "body": "Search, book and follow your requests from your iPhone." }
+}

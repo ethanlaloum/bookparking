@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Either } from 'effect/index';
 
 import { InMemoryPublishedListingReader } from '../../../adapters/repositories/published-listing/InMemoryPublishedListingReader';
@@ -74,6 +76,7 @@ export const createRequestRentalSUT = () => {
     rentalRepository,
     paymentGateway,
     testConstants.requestExpiryInHoursForTest,
+    24,
   );
 
   const accountIdsByPersonName: Record<string, string> = {
@@ -159,6 +162,7 @@ export const createRequestRentalSUT = () => {
       const input = { ...defaults, ...overrides };
 
       return context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: input.address,
         box: input.box,
@@ -174,6 +178,7 @@ export const createRequestRentalSUT = () => {
       overrides?: Partial<{ from: CalendarDay; to: CalendarDay }>,
     ) {
       return context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: context.testConstants.addressForTest,
         box: context.testConstants.boxForTest,
@@ -185,6 +190,7 @@ export const createRequestRentalSUT = () => {
 
     async givenRequestWithoutPaymentAt(renterName: string, requestedAt: Date) {
       const result = await context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: context.testConstants.addressForTest,
         box: context.testConstants.boxForTest,
@@ -201,6 +207,86 @@ export const createRequestRentalSUT = () => {
 
     givenStripeDoesNotAnswer() {
       context.paymentGateway.unavailable = true;
+    },
+
+    givenStripeAnswersAgain() {
+      context.paymentGateway.unavailable = false;
+    },
+
+    async whenRequestingUnderIntent(params: {
+      renterName: string;
+      idempotencyKey: string;
+      place: RentalPlace;
+      from: CalendarDay;
+      to: CalendarDay;
+    }) {
+      return context.requestRental.execute({
+        renterId: toAccountId(params.renterName),
+        address: params.place.address,
+        box: params.place.box,
+        fromDay: params.from,
+        toDay: params.to,
+        requestedAt: new Date('2026-10-01T07:00:00.000Z'),
+        idempotencyKey: params.idempotencyKey,
+      });
+    },
+
+    thenTheRequestIs(
+      result: Either.Either<RequestedRental, unknown>,
+      status: string,
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (Either.isRight(result))
+        expect(
+          context.rentalRepository.statusOf(result.right.rentalRequest.id),
+        ).toEqual(status);
+    },
+
+    thenItsPaymentPageWasClosed(
+      result: Either.Either<RequestedRental, unknown>,
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (Either.isRight(result))
+        expect(context.paymentGateway.closedPages).toEqual([
+          `cs_test_${result.right.rentalRequest.id}`,
+        ]);
+    },
+
+    thenRecordedRequestCountIs(count: number) {
+      expect(context.rentalRepository.rentalRequestList).toHaveLength(count);
+    },
+
+    thenPaymentPagesOpenedCountIs(count: number) {
+      expect(context.paymentGateway.openedPages).toHaveLength(count);
+    },
+
+    thenBothAnswersAreTheSame(
+      first: Either.Either<RequestedRental, unknown>,
+      second: Either.Either<RequestedRental, unknown>,
+    ) {
+      expect(Either.isRight(first) && Either.isRight(second)).toEqual(true);
+      if (Either.isRight(first) && Either.isRight(second)) {
+        expect(second.right.rentalRequest.id).toEqual(
+          first.right.rentalRequest.id,
+        );
+        expect(second.right.checkoutUrl).toEqual(first.right.checkoutUrl);
+      }
+    },
+
+    thenTheAnswersDiffer(
+      first: Either.Either<RequestedRental, unknown>,
+      second: Either.Either<RequestedRental, unknown>,
+    ) {
+      expect(Either.isRight(first) && Either.isRight(second)).toEqual(true);
+      if (Either.isRight(first) && Either.isRight(second)) {
+        expect(second.right.rentalRequest.id).not.toEqual(
+          first.right.rentalRequest.id,
+        );
+        expect(second.right.checkoutUrl).not.toEqual(first.right.checkoutUrl);
+        expect(second.right.rentalRequest.toState().renterId).not.toEqual(
+          first.right.rentalRequest.toState().renterId,
+        );
+      }
     },
 
     thenPaymentPageOpenedFor(
@@ -248,6 +334,7 @@ export const createRequestRentalSUT = () => {
       const input = { ...defaults, ...overrides };
 
       return context.requestRental.execute({
+        idempotencyKey: randomUUID(),
         renterId: toAccountId(renterName),
         address: input.address,
         box: input.box,

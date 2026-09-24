@@ -289,6 +289,8 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
         money_status: this.connection.raw(
           "CASE money_status WHEN 'AUTHORIZED' THEN 'RELEASE_DUE' WHEN 'CAPTURED' THEN 'REFUND_DUE' ELSE money_status END",
         ),
+        cancelled_at: new Date(),
+        cancelled_by: 'OPERATOR',
         updated_at: new Date(),
       });
     if (trx) query.transacting(trx);

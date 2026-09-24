@@ -80,6 +80,9 @@ export const startLocalStack = async (): Promise<void> => {
     STRIPE_SECRET_KEY: stripeSecretKey,
     STRIPE_WEBHOOK_SECRET: stripeListener.webhookSecret,
     FRONT_BASE_URL: target.frontUrl,
+    // SPEC-006 Q-03 : les parcours s'inscrivent avec des adresses
+    // `@bookparking.test`, qui ne doivent jamais atteindre Resend.
+    EMAIL_SENDING: 'disabled',
   };
 
   await run('pnpm', ['exec', 'knex', 'migrate:latest'], API_DIR, apiEnv);

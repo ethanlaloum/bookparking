@@ -47,7 +47,7 @@
         ],
         "operationId": "registerAccount",
         "summary": "Inscrire un compte",
-        "description": "Crée un compte à partir d'une adresse e-mail et d'un mot de passe. Route publique.",
+        "description": "Crée un compte à partir d'une adresse e-mail, d'un mot de passe assez robuste et d'une preuve anti-robot (`GET /account/human-challenge`). Route publique.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -61,7 +61,15 @@
                   "summary": "Inscription valide",
                   "value": {
                     "email": "alice@example.com",
-                    "password": "motdepasse123"
+                    "password": "Barla2026!",
+                    "humanProof": {
+                      "algorithm": "SHA-256",
+                      "challenge": "9f2c…",
+                      "salt": "a1b2c3d4e5f6a7b8c9d0e1f2?expires=1790000000",
+                      "number": 1234,
+                      "signature": "4be1…"
+                    },
+                    "acceptsTerms": true
                   }
                 }
               }
@@ -88,7 +96,7 @@
             }
           },
           "400": {
-            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères.",
+            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées.",
             "content": {
               "application/json": {
                 "schema": {
@@ -99,6 +107,24 @@
                     "value": {
                       "statusCode": 400,
                       "message": "password: Le mot de passe doit contenir au moins 8 caractères"
+                    }
+                  },
+                  "motDePasseFaible": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Ce mot de passe est trop faible : allongez-le, ou mêlez minuscules, majuscules, chiffres et symboles"
+                    }
+                  },
+                  "preuveRefusee": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "La vérification anti-robot a échoué. Rechargez la page et réessayez."
+                    }
+                  },
+                  "conditionsNonAcceptees": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Cochez la case pour accepter les conditions d'utilisation."
                     }
                   }
                 }
@@ -125,6 +151,29 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/account/human-challenge": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "issueHumanChallenge",
+        "summary": "Obtenir un défi anti-robot",
+        "description": "Rend un défi à résoudre avant `POST /account` (SPEC-007). Route publique.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Défi émis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HumanChallenge"
+                }
+              }
+            }
           }
         }
       }
@@ -728,7 +777,7 @@
             }
           },
           "400": {
-            "description": "Corps de requête invalide.",
+            "description": "Corps de requête invalide, ou en-tête `Idempotency-Key` absent ou qui n'est pas un UUID.",
             "content": {
               "application/json": {
                 "schema": {
@@ -749,7 +798,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ».",
+            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ».",
             "content": {
               "application/json": {
                 "schema": {
@@ -790,8 +839,30 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "L'identifiant d'intention, un UUID choisi par le client pour une place et une période. Renvoyé à l'identique, il rend la demande déjà créée — même identifiant, même page de paiement — au lieu d'en créer une seconde, et la réponse porte alors `Idempotent-Replayed: true`. Il est propre au compte qui l'envoie.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
       },
       "get": {
         "tags": [
@@ -1414,6 +1485,64 @@
           }
         }
       }
+    },
+    "/rental-request/{id}/cancellation": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Identifiant de la demande de location (UUID).",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "example": "9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c"
+        }
+      ],
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "cancelRental",
+        "summary": "Annuler une réservation",
+        "description": "Annule une demande qui attend le propriétaire ou une location confirmée, tant qu'elle n'a pas commencé. Le conducteur est remboursé en totalité jusqu'à l'échéance `freeCancellationUntil` incluse, et plus du tout après ; le propriétaire peut annuler à tout moment avant le début, et le conducteur récupère alors tout. Une empreinte non prélevée est toujours levée. Annuler deux fois rend le même effet sans rien refaire.",
+        "responses": {
+          "200": {
+            "description": "Réservation annulée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancellationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Demande inexistante, identifiant mal formé, ou demande que ce compte ne peut ni voir ni annuler.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La location a commencé, ou la demande n'est ni en attente du propriétaire ni confirmée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1517,7 +1646,9 @@
         "type": "object",
         "required": [
           "email",
-          "password"
+          "password",
+          "humanProof",
+          "acceptsTerms"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1530,7 +1661,15 @@
           },
           "password": {
             "type": "string",
-            "minLength": 8
+            "minLength": 8,
+            "description": "Au moins 8 caractères, et une robustesse moyenne ou forte (SPEC-007 RG-02) ; un mot de passe faible est refusé en 400."
+          },
+          "humanProof": {
+            "$ref": "#/components/schemas/HumanProof"
+          },
+          "acceptsTerms": {
+            "type": "boolean",
+            "description": "La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte."
           }
         }
       },
@@ -1922,7 +2061,9 @@
           "status",
           "money",
           "requestedAt",
-          "confirmedAt"
+          "confirmedAt",
+          "startsAt",
+          "freeCancellationUntil"
         ],
         "properties": {
           "id": {
@@ -1988,6 +2129,19 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Le premier instant de la location, heure de Paris. Une réservation ne s'annule plus à partir de cet instant."
+          },
+          "freeCancellationUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité."
           }
         }
       },
@@ -2277,6 +2431,94 @@
             "type": "string",
             "format": "uri",
             "description": "La page de paiement Stripe Checkout où le conducteur pose son empreinte. Toujours sur `https://checkout.stripe.com/`."
+          }
+        }
+      },
+      "CancellationResult": {
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "RELEASED",
+              "REFUNDED",
+              "KEPT",
+              "NOTHING_TO_RETURN"
+            ],
+            "description": "`RELEASED` : l'empreinte est levée, rien n'avait été prélevé. `REFUNDED` : le prélèvement est remboursé en totalité. `KEPT` : annulation tardive du conducteur, le prélèvement est gardé. `NOTHING_TO_RETURN` : demande faite avant l'encaissement."
+          }
+        }
+      },
+      "HumanChallenge": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "challenge",
+          "salt",
+          "maxNumber",
+          "signature"
+        ],
+        "additionalProperties": false,
+        "description": "Défi anti-robot (SPEC-007) : retrouver le nombre `n` ≤ `maxNumber` tel que SHA-256(`salt` + `n`) = `challenge`. Valable 20 minutes.",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "SHA-256"
+            ]
+          },
+          "challenge": {
+            "type": "string",
+            "description": "Condensé SHA-256 hexadécimal."
+          },
+          "salt": {
+            "type": "string",
+            "description": "Sel, qui porte son échéance (`?expires=` en secondes Unix)."
+          },
+          "maxNumber": {
+            "type": "integer"
+          },
+          "signature": {
+            "type": "string",
+            "description": "HMAC du condensé, par l'api."
+          }
+        }
+      },
+      "HumanProof": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "challenge",
+          "salt",
+          "number",
+          "signature"
+        ],
+        "additionalProperties": false,
+        "description": "Le défi recopié, avec le nombre trouvé. Accepté une seule fois.",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "challenge": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "salt": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 128
           }
         }
       }

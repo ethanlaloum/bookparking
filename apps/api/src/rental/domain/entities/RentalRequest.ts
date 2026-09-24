@@ -21,6 +21,21 @@ import { designatesSamePlace, RentalPlace } from './RentalPlace';
 
 export const MAX_REQUESTED_PERIOD_IN_DAYS = 366;
 
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+
+// L'échéance se compte en heures depuis le premier instant de la location,
+// heure de Paris — jamais en jours locaux : c'est elle qui est figée sur la
+// demande, et un délai modifié plus tard ne la déplace pas.
+const freeCancellationUntilOf = (
+  period: RentalPeriod,
+  freeCancellationHours: number | undefined,
+): Date | null =>
+  freeCancellationHours === undefined
+    ? null
+    : new Date(
+        period.from.getTime() - freeCancellationHours * MILLISECONDS_PER_HOUR,
+      );
+
 interface Props {
   id: string;
   renterId: string;
@@ -30,6 +45,8 @@ interface Props {
   period: RentalPeriod;
   priceInCents: number;
   requestedAt: Date;
+  idempotencyKey?: string | null;
+  freeCancellationUntil?: Date | null;
 }
 
 export class RentalRequest {
@@ -50,6 +67,8 @@ export class RentalRequest {
     days: CalendarDayRange;
     pricing: RentalPricing;
     requestedAt: Date;
+    idempotencyKey?: string | null;
+    freeCancellationHours?: number;
   }): Either.Either<
     RentalRequest,
     | InvalidRequestedPeriodError
@@ -82,6 +101,11 @@ export class RentalRequest {
         period: parisPeriodOfDays(params.days),
         priceInCents: price.amountInCents,
         requestedAt: params.requestedAt,
+        idempotencyKey: params.idempotencyKey ?? null,
+        freeCancellationUntil: freeCancellationUntilOf(
+          parisPeriodOfDays(params.days),
+          params.freeCancellationHours,
+        ),
       }),
     );
   }

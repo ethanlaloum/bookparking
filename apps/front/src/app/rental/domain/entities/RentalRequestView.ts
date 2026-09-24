@@ -74,6 +74,7 @@ export type MoneyLabelKey =
   | 'cancelledReleased'
   | 'cancelledRefunding'
   | 'cancelledRefunded'
+  | 'cancelledKept'
   | 'pendingWithoutPayment'
   | 'confirmedWithoutPayment'
   | 'expiredWithoutPayment'
@@ -108,5 +109,6 @@ export const moneyLabelOf = (
   if (money === 'RELEASED') return label('cancelledReleased');
   if (money === 'REFUND_DUE') return label('cancelledRefunding');
   if (money === 'REFUNDED') return label('cancelledRefunded');
+  if (money === 'CAPTURED') return label('cancelledKept');
   return label('cancelledWithoutPayment');
 };

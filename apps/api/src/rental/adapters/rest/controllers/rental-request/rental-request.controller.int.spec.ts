@@ -9,6 +9,8 @@ import {
   MARC_ACCOUNT_ID,
 } from './rental-request.controller.sut';
 
+const AN_INTENT = '9d3c1b2a-0f4e-4a5b-8c6d-7e8f9a0b1c2d';
+
 const RENTAL_REQUEST_BODY = {
   address: '12 rue Barla, 06300 Nice',
   box: '12',
@@ -47,6 +49,7 @@ describe('RentalRequestController @SPEC-002', () => {
       const response = await http()
         .post('/rental-request')
         .set('Authorization', 'Bearer token-of-lea')
+        .set('Idempotency-Key', AN_INTENT)
         .send({ ...RENTAL_REQUEST_BODY, renterId: MARC_ACCOUNT_ID });
 
       expect(response.status).toEqual(201);
@@ -139,6 +142,7 @@ describe('RentalRequestController @SPEC-004', () => {
     const response = await http()
       .post('/rental-request')
       .set('Authorization', 'Bearer token-of-lea')
+      .set('Idempotency-Key', AN_INTENT)
       .send({ ...RENTAL_REQUEST_BODY, priceInCents: 1 });
 
     expect(response.status).toEqual(201);
@@ -149,6 +153,7 @@ describe('RentalRequestController @SPEC-004', () => {
       fromDay: RENTAL_REQUEST_BODY.fromDay,
       toDay: RENTAL_REQUEST_BODY.toDay,
       requestedAt: expect.any(Date),
+      idempotencyKey: AN_INTENT,
     });
   });
 
@@ -160,6 +165,7 @@ describe('RentalRequestController @SPEC-004', () => {
     const response = await http()
       .post('/rental-request')
       .set('Authorization', 'Bearer token-of-lea')
+      .set('Idempotency-Key', AN_INTENT)
       .send(RENTAL_REQUEST_BODY);
 
     expect(response.status).toEqual(201);
@@ -167,5 +173,60 @@ describe('RentalRequestController @SPEC-004', () => {
       id: requestId,
       checkoutUrl: A_CHECKOUT_URL,
     });
+  });
+
+  it('refuses a request that carries no intent identifier, or a malformed one @EX-004-47', async () => {
+    sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+    sut.givenRentalRequestSucceeds();
+
+    const without = await http()
+      .post('/rental-request')
+      .set('Authorization', 'Bearer token-of-lea')
+      .send(RENTAL_REQUEST_BODY);
+    const malformed = await http()
+      .post('/rental-request')
+      .set('Authorization', 'Bearer token-of-lea')
+      .set('Idempotency-Key', 'clic-1')
+      .send(RENTAL_REQUEST_BODY);
+
+    expect(without.status).toEqual(400);
+    expect(malformed.status).toEqual(400);
+    sut.thenNoRentalRequestWasMade();
+  });
+});
+
+describe('RentalRequestController @SPEC-005', () => {
+  let sut: ReturnType<typeof createRentalRequestControllerSUT>;
+  let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
+
+  const http = () => request(testApp.app.getHttpServer());
+
+  afterEach(async () => {
+    await testApp.close();
+  });
+
+  it('answers the effect on the money, 404 for a malformed id, 409 once started @EX-005-17', async () => {
+    sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+    sut.givenTheCancellationRefunds();
+
+    const cancelled = await http()
+      .post(`/rental-request/${A_REQUEST_ID}/cancellation`)
+      .set('Authorization', 'Bearer token-of-lea');
+    const malformed = await http()
+      .post('/rental-request/pas-un-uuid/cancellation')
+      .set('Authorization', 'Bearer token-of-lea');
+
+    expect(cancelled.status).toEqual(200);
+    expect(cancelled.body).toEqual({ outcome: 'REFUNDED' });
+    expect(malformed.status).toEqual(404);
+    sut.thenTheCancellationWasAskedBy(LEA_ACCOUNT_ID, A_REQUEST_ID);
+
+    sut.givenTheRentalHasStarted();
+    const started = await http()
+      .post(`/rental-request/${A_REQUEST_ID}/cancellation`)
+      .set('Authorization', 'Bearer token-of-lea');
+    expect(started.status).toEqual(409);
   });
 });

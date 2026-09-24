@@ -2,7 +2,18 @@ import { describe, it } from 'vitest';
 
 import { createRegisterAccountSut } from './registerAccountEpic.sut';
 
-const PAYLOAD = { email: 'alice@example.com', password: 'motdepasse123' };
+const PAYLOAD = {
+  email: 'alice@example.com',
+  password: 'motdepasse123',
+  humanProof: {
+    algorithm: 'SHA-256',
+    challenge: 'condense',
+    salt: 'sel?expires=1790000000',
+    number: 7,
+    signature: 'signature',
+  },
+  acceptsTerms: true,
+};
 
 describe('registering an account', () => {
   it('signs the new account in with the credentials it just submitted', () => {

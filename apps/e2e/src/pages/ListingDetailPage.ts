@@ -44,6 +44,10 @@ export class ListingDetailPage {
     await this.bookButton().click();
   }
 
+  async doubleClickContinueToPayment(): Promise<void> {
+    await this.bookButton().dblclick();
+  }
+
   async expectNothingWasHeld(): Promise<void> {
     await expect(
       this.page.getByText('Paiement abandonné : rien n’a été réservé sur votre carte.'),

@@ -14,6 +14,16 @@ change côté api casse la compilation du front plutôt que sa production.
 
 ## Things that will bite you
 
+- **L'hexagone de ce front a deux clients : le site et `apps/mobile`.**
+  L'app iPhone importe `src/app/**`, `src/store/{coreReducer,AppState,AppEpic,CommonState,
+  dependencies.interface}.ts`, `src/store/epics/`, `src/selectors/`, `src/lib/http/`,
+  `src/lib/format.ts` et les locales `fr`/`en-US` par l'alias `@front/*`. Renommer une action,
+  changer la forme d'un état ou ajouter un port à `Dependencies` casse le mobile : après toute
+  modification de ces fichiers, lancer aussi `pnpm --filter bookparking-mobile typecheck`.
+  Deux contraintes en découlent : ces fichiers n'importent ni le DOM, ni `window`, ni
+  `import.meta` (seuls les adaptateurs du front y ont droit — le mobile a les siens), et un
+  nouveau port exige un adaptateur dans `apps/mobile/src/store/createMobileStore.ts`.
+
 - **`estimateRentalPriceInCents` est un report ligne à ligne de `computeRentalPrice` de l'api.**
   Le montant affiché au locataire avant l'envoi doit être celui que le back facturera ; un
   écart d'un centime, et l'écran promet un prix que `POST /rental-request` refusera. Les deux
@@ -45,6 +55,15 @@ change côté api casse la compilation du front plutôt que sa production.
   Une règle `no-restricted-imports` bannit l'import brut partout ailleurs, avec une dérogation
   explicite sur ce fichier dans `eslint.config.js`. Passer par `useAppDispatch` /
   `useAppSelector`.
+
+- **`Password.ts` est une copie à la lettre de `passwordStrength.ts` de l'api** (SPEC-007).
+  La jauge de l'inscription est bloquante : le site doit refuser exactement ce que l'api refuse.
+  `Password.unit.spec.ts` rejoue les niveaux de l'api (EX-08) ; toute évolution se reporte des deux côtés.
+
+- **L'inscription a besoin d'une preuve anti-robot, calculée par `humanProofEpic`** dès que l'écran s'ouvre,
+  et redemandée après chaque inscription refusée : l'api dépense la preuve à chaque essai. Le SHA-256 vient de
+  `@noble/hashes`, pas de `crypto.subtle`, absent de l'app iPhone. « Créer mon compte » reste désactivé tant que
+  la preuve n'est pas prête.
 
 - **Cinq registres, tous à la main, à chaque nouveau cas d'usage.**
   `dependencies.interface.ts` · `buildDependencies.ts` · `coreReducer.ts` · `AppState.ts` ·
@@ -240,6 +259,13 @@ change côté api casse la compilation du front plutôt que sa production.
   sont transmises nulle part) et quand le loueur est payé (le reversement n'existe pas). À l'inverse
   des pages légales, elle est traduite : namespace `faq`, dans les deux locales.
 
+- **La page `/application` ne promet que ce que `apps/mobile` fait.** Ses quatre arguments suivent les
+  écrans de l'app (recherche et carte, paiement par empreinte, « Réservations », publication et
+  confirmation des demandes) ; l'annulation n'y figure pas, parce que l'app ne la propose pas encore.
+  Le bouton de l'App Store dit « Bientôt » tant que `VITE_APP_STORE_URL` manque au build, et n'accepte
+  qu'une adresse `https://apps.apple.com/`. Le bouton « Télécharger l'app » de l'en-tête n'existe qu'à
+  partir de `lg` : sur un téléphone, l'app se trouve par l'encart de l'accueil et le pied de page.
+
 ## Le système de design « Signal Riviera »
 
 Trois matières, prises à la rue niçoise : le **bleu du panneau P** (la marque), l'**encre du
@@ -406,9 +432,33 @@ prélevé avant que le propriétaire confirme. Le front ne voit jamais une carte
   `formatCents` (« 45 € ») reste la règle partout ailleurs. Le statut seul ne dit pas où en est
   l'argent : une demande expirée dont l'empreinte est à lever et une demande expirée dont rien n'a jamais
   été pris ne se lisent pas pareil.
+- **Le bouton « Continuer vers le paiement » porte un identifiant d'intention** (`RentalIntent`,
+  RG-10), envoyé dans l'en-tête `Idempotency-Key` — jamais dans le corps, que le schéma de l'api ne
+  connaît pas. `keepOrRenewIntent` garde le même identifiant tant que la place et la période ne
+  changent pas, et en tire un neuf (`crypto.randomUUID()`) dès qu'elles changent : deux clics, ou un
+  clic rejoué après une réponse perdue, rendent la même demande au lieu d'en créer une seconde.
+  L'identifiant vit dans l'état de la page : un rechargement, ou le retour depuis un paiement
+  abandonné, commence une nouvelle intention. `HttpClient.post` prend des en-têtes pour cela.
+- **Une réponse sans page de paiement ne doit jamais atteindre `checkoutUrl`.** Une api antérieure à
+  SPEC-004 répond 201 sans corps ; lire le champ levait un `TypeError` affiché tel quel à l'écran.
+  `requestRentalEpic` le traduit en message, et c'est aussi ce qui se verrait pendant un déploiement
+  où le front serait en avance sur l'api.
 - **Sept statuts et sept états d'argent viennent du contrat.** Toute table indexée par statut
   (`TONE`, `countByStatus`, les libellés `account:status` et `admin:requests.status`) doit les couvrir
   tous — `tsc` le rappelle, à condition que la table soit typée `Record<RentalRequestStatus, …>`.
+
+## L'annulation d'une réservation (SPEC-005)
+
+- **`cancellationTermsOf` dit ce que coûte l'annulation avant qu'on la confirme, et l'api reste le
+  juge.** Le partage est le même que `moneyAfterCancellation` côté api ; si les deux divergent, la
+  fenêtre promettrait un remboursement que l'api refuserait. L'instant de comparaison est figé au
+  montage de la page (`useMemo`, comme `AdminRequestsPanel`) : une page restée ouverte peut proposer
+  une annulation devenue impossible, et l'api répond alors 409.
+- **Un seul bouton « Annuler » par ligne, mais deux boutons dont le nom commence par « Annuler »
+  quand la fenêtre est ouverte.** Le page object e2e désigne celui de la ligne avec `exact: true`.
+- **L'annulation relit les deux listes** (« Mes réservations » et « Demandes reçues ») : l'api ne rend
+  que l'effet sur l'argent, jamais la demande. Oublier cette relecture laisse la ligne afficher une
+  réservation active — seul le barreau e2e le voit.
 
 ## L'administration du site vit ici, et pas ailleurs
 

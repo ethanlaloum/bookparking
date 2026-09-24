@@ -95,4 +95,25 @@ test.describe('Rental payment', () => {
     await dashboard.openTab('Demandes reçues');
     await expect(page.getByText(listing.address).first()).toBeVisible();
   });
+
+  test('leaves a single request after a double click @SPEC-004 @EX-004-49', async ({
+    page,
+    seed,
+    app,
+    api,
+  }) => {
+    const owner = await seed.user('double-click-owner');
+    const renter = await seed.user('double-click-renter');
+    const listing = await seed.listing(owner, { pricing: { dayInCents: 1500 } });
+
+    await app.openAs(renter);
+    await page.goto(`/place/${listing.id}`);
+    const detail = new ListingDetailPage(page);
+    await detail.choosePeriod(dayInDays(10), dayInDays(12));
+    await detail.doubleClickContinueToPayment();
+
+    await new StripeCheckoutPage(page).expectOpen();
+    expect(await api.myRequests(renter.token)).toHaveLength(1);
+  });
 });
+

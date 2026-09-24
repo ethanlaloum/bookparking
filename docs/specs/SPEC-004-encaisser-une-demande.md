@@ -3,7 +3,7 @@ id: SPEC-004
 titre: Encaisser une demande de location par empreinte bancaire, et rendre l'argent au conducteur
 slug: encaisser-une-demande
 statut: valide
-revision: 2
+revision: 4
 derive_de: BR-20260910-reserver-et-louer-une-place
 amont: present
 langue: fr
@@ -12,8 +12,8 @@ valide_par: JP
 apps: [api, front, e2e]
 code_sha: { api: 6afdc8a, front: 82c55bd, e2e: 82c55bd }
 ux: absent
-regles: 9
-exemples: 41
+regles: 10
+exemples: 51
 questions_ouvertes: 0
 milestone: null
 epic: null
@@ -36,7 +36,7 @@ Décisions de séance reprises telles quelles : D-10 (l'application encaisse le 
 
 **Dedans.** L'ouverture d'une page de paiement Stripe au montant que l'api a figé pour la demande. L'état « en attente de paiement » d'une demande, qui bloque ses dates sans la montrer au loueur. Le constat de l'empreinte par un événement signé de Stripe, qui seul fait passer la demande au loueur. L'abandon d'un paiement, par le conducteur ou par expiration. Le prélèvement de l'empreinte au moment où le loueur confirme. La levée de l'empreinte quand la demande expire sans confirmation. Le retour de l'argent quand l'exploitant annule. La reprise de ces opérations quand Stripe est indisponible, sans jamais doubler un prélèvement ni un remboursement. L'état de son argent que le conducteur lit sur chacune de ses demandes. Le balayage périodique qui rend l'expiration indépendante de l'arrivée d'une nouvelle demande.
 
-**Dehors.** Le reversement au loueur, la vérification de son identité et la commission de l'exploitant, qui passeront par Stripe Connect dans une spec ultérieure. L'annulation par le conducteur et son délai (D-12). L'annulation par le loueur d'une location confirmée (D-23 côté loueur), qui n'a aucune route aujourd'hui. La confirmation d'arrivée, le délai de libération et les réclamations (D-17, D-20, D-22). Les factures et reçus émis par bookparking. Les remboursements partiels. Toute autre devise que l'euro. Les moyens de paiement autres que la carte.
+**Dehors.** L'identifiant d'intention sur les autres actions : confirmer, abandonner, annuler et recevoir un événement de Stripe sont déjà idempotents par l'état qu'ils quittent (EX-12, EX-22, RG-08). Le reversement au loueur, la vérification de son identité et la commission de l'exploitant, qui passeront par Stripe Connect dans une spec ultérieure. L'annulation par le conducteur et son délai (D-12). L'annulation par le loueur d'une location confirmée (D-23 côté loueur), qui n'a aucune route aujourd'hui. La confirmation d'arrivée, le délai de libération et les réclamations (D-17, D-20, D-22). Les factures et reçus émis par bookparking. Les remboursements partiels. Toute autre devise que l'euro. Les moyens de paiement autres que la carte.
 
 ## 3. Glossaire
 
@@ -54,6 +54,7 @@ Décisions de séance reprises telles quelles : D-10 (l'application encaisse le 
 | Événement Stripe | une notification envoyée par Stripe à l'api, signée avec le secret du webhook. La seule source qui fait foi sur l'état d'un paiement. |
 | Balayage | la tâche périodique de l'api qui expire, abandonne et rend l'argent dû. |
 | Clé d'idempotence | l'identifiant joint à une opération Stripe pour qu'une seconde tentative rende le résultat de la première au lieu de la refaire. |
+| Identifiant d'intention | l'identifiant que le front attache à une intention de demande — une place et une période — et envoie dans l'en-tête `Idempotency-Key`. Il reste le même tant que l'intention ne change pas. Jamais « jeton », jamais « nonce ». |
 
 ## 4. Règles et exemples
 
@@ -187,7 +188,7 @@ Et l'empreinte n'est pas levée
 
 <!-- jp-way:ex {"id":"EX-14","regle":"RG-03","origine":"mapping","barreau":"unit","empreinte":"0919eaa3"} -->
 
-### RG-04 · un paiement abandonné libère les dates sans rien réserver sur la carte ; une empreinte qui arrive malgré tout après l'abandon est levée
+### RG-04 · un paiement abandonné libère les dates sans rien réserver sur la carte ; une empreinte qui arrive malgré tout après l'abandon est levée ; un conducteur n'est jamais bloqué par sa propre demande impayée
 
 #### EX-15 · la page de paiement expirée libère les dates
 
@@ -243,6 +244,26 @@ Alors l'abandon est refusé avec `RentalRequestAlreadyPaidError`
 Et la demande attend toujours le loueur
 
 <!-- jp-way:ex {"id":"EX-20","regle":"RG-04","origine":"mapping","barreau":"unit","empreinte":"382d1537"} -->
+
+#### EX-50 · redemander la même place remplace sa propre demande impayée
+
+Étant donné la demande de `Léa T.` en attente de paiement, du `10/10/2026` au `12/10/2026`, sa page de paiement laissée ouverte
+Et sa demande en attente de paiement sur la même place du `20/10/2026` au `22/10/2026`
+Quand elle redemande la même place du `11/10/2026` au `13/10/2026`, sous un autre identifiant d'intention
+Alors sa demande du `10/10/2026` au `12/10/2026` est abandonnée et sa page de paiement fermée
+Et sa demande du `20/10/2026` au `22/10/2026`, qui ne chevauche pas, attend toujours son paiement
+Et la nouvelle demande attend son paiement
+
+<!-- jp-way:ex {"id":"EX-50","regle":"RG-04","origine":"bug","barreau":"unit","empreinte":"a3645412"} -->
+
+#### EX-51 · la demande impayée d'un autre conducteur n'est jamais abandonnée à sa place
+
+Étant donné la demande de `Paul R.` en attente de paiement, du `10/10/2026` au `12/10/2026`
+Quand `Léa T.` demande la même place du `11/10/2026` au `13/10/2026`
+Alors la demande de `Léa T.` est refusée avec `DatesAlreadyRentedError`
+Et la demande de `Paul R.` attend toujours son paiement
+
+<!-- jp-way:ex {"id":"EX-51","regle":"RG-04","origine":"bug","barreau":"int-repo","empreinte":"5475d7a1"} -->
 
 ### RG-05 · le conducteur n'est prélevé qu'au moment où le loueur confirme ; si le prélèvement échoue, la confirmation échoue avec lui
 
@@ -454,9 +475,87 @@ Et `Marc D.` voit la demande de `Léa T.` sur son tableau de bord
 
 <!-- jp-way:ex {"id":"EX-40","regle":"RG-09","origine":"mapping","barreau":"e2e","empreinte":"97903df4"} -->
 
+### RG-10 · une même intention de demande, envoyée plusieurs fois, ne crée qu'une demande et n'ouvre qu'une page de paiement ; l'identifiant d'intention appartient au compte qui l'envoie
+
+Valeurs de cette règle : l'identifiant d'intention `K1` ; la seconde place `3 avenue Malausséna, 06000 Nice`, `box 4`, au tarif de `15,00 €` la journée.
+
+#### EX-42 · la même intention envoyée deux fois rend la même demande
+
+Étant donné `Léa T.` qui a demandé la période du `10/10/2026` au `12/10/2026` sous l'identifiant `K1`
+Quand elle renvoie la même demande sous `K1`
+Alors une seule demande est enregistrée
+Et une seule page de paiement est ouverte
+Et les deux réponses portent la même demande et la même adresse de paiement
+
+<!-- jp-way:ex {"id":"EX-42","regle":"RG-10","origine":"demande","barreau":"unit","empreinte":"445f6b0f"} -->
+
+#### EX-43 · un identifiant réutilisé pour une autre période ou une autre place est refusé
+
+Étant donné la demande de `Léa T.` sur la place `12 rue Barla`, `box 12`, du `10/10/2026` au `12/10/2026`, sous `K1`
+Quand elle demande la période du `20/10/2026` au `22/10/2026` sous `K1`
+Alors la demande est refusée avec `IdempotencyKeyReusedError`
+Quand elle demande la place `3 avenue Malausséna`, `box 4`, du `10/10/2026` au `12/10/2026`, sous `K1`
+Alors la demande est refusée avec `IdempotencyKeyReusedError`
+Et aucune nouvelle demande n'est enregistrée
+
+<!-- jp-way:ex {"id":"EX-43","regle":"RG-10","origine":"demande","barreau":"unit","empreinte":"8995bb61"} -->
+
+#### EX-44 · l'identifiant d'un autre compte ne rend jamais sa demande
+
+Étant donné la demande de `Léa T.` sur la place `12 rue Barla`, `box 12`, sous `K1`
+Quand `Paul R.` demande la place `3 avenue Malausséna`, `box 4`, sous `K1`
+Alors une nouvelle demande est enregistrée pour `Paul R.`
+Et la réponse ne porte ni la demande ni la page de paiement de `Léa T.`
+
+<!-- jp-way:ex {"id":"EX-44","regle":"RG-10","origine":"demande","barreau":"unit","empreinte":"7107f523"} -->
+
+#### EX-45 · une tentative que Stripe n'a pas pu ouvrir ne consomme pas l'identifiant
+
+Étant donné Stripe qui ne répond pas, et `Léa T.` dont la demande sous `K1` est refusée avec `PaymentUnavailableError`
+Quand Stripe répond de nouveau et qu'elle renvoie la même demande sous `K1`
+Alors une page de paiement est ouverte
+Et la nouvelle demande attend son paiement
+
+<!-- jp-way:ex {"id":"EX-45","regle":"RG-10","origine":"demande","barreau":"unit","empreinte":"91aab2d5"} -->
+
+#### EX-46 · deux écritures simultanées sous le même identifiant laissent une seule ligne
+
+Étant donné le même compte et le même identifiant `K1`
+Quand deux demandes sous `K1` sont écrites en même temps
+Alors la table des demandes ne porte qu'une ligne sous `K1` pour ce compte
+
+<!-- jp-way:ex {"id":"EX-46","regle":"RG-10","origine":"demande","barreau":"int-repo","empreinte":"29b72289"} -->
+
+#### EX-47 · une demande sans identifiant d'intention est refusée
+
+Quand `POST /rental-request` arrive sans en-tête `Idempotency-Key`, ou avec un en-tête qui n'est pas un UUID
+Alors la réponse est `400`
+Et aucune demande n'est tentée
+
+<!-- jp-way:ex {"id":"EX-47","regle":"RG-10","origine":"demande","barreau":"int-http","empreinte":"81f29067"} -->
+
+#### EX-48 · l'identifiant suit l'intention, pas le clic
+
+Étant donné `Léa T.` sur la fiche de la place, la période du `10/10/2026` au `12/10/2026` choisie
+Quand elle clique deux fois sur « Continuer vers le paiement »
+Alors les deux envois portent le même identifiant
+Quand elle choisit ensuite la période du `20/10/2026` au `22/10/2026`
+Alors l'envoi suivant porte un autre identifiant
+
+<!-- jp-way:ex {"id":"EX-48","regle":"RG-10","origine":"demande","barreau":"unit","empreinte":"e483649f"} -->
+
+#### EX-49 · un double clic ne laisse qu'une demande
+
+Étant donné `Léa T.` connectée, sur la fiche de la place de `Marc D.`, la période du `10/10/2026` au `12/10/2026` choisie
+Quand elle double-clique sur « Continuer vers le paiement »
+Alors son navigateur arrive sur la page de paiement de Stripe
+Et elle n'a qu'une demande
+
+<!-- jp-way:ex {"id":"EX-49","regle":"RG-10","origine":"demande","barreau":"e2e","empreinte":"97148f5e"} -->
+
 ## 5. Sonde de couverture
 
-Neuf règles croisées avec les dix dimensions : 90 intersections, toutes résolues — 40 cases portées par un exemple, 13 par un filet structurel, 37 écartées avec leur raison.
+Dix règles croisées avec les dix dimensions : 100 intersections, toutes résolues — 40 cases portées par un exemple, 13 par un filet structurel, 37 écartées avec leur raison.
 
 | Règle | Limites | Vide | Temps | Concurrence | Autorisation | État | Argent | Volume | Panne | Données |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -469,6 +568,7 @@ Neuf règles croisées avec les dix dimensions : 90 intersections, toutes résol
 | RG-07 | écarté⁹ | EX-32 | écarté² | filet²⁰ | filet²¹ | EX-30 EX-31 EX-41 | EX-30 EX-31 EX-41 | écarté⁶ | filet¹⁹ | écarté¹³ |
 | RG-08 | écarté⁹ | écarté¹² | écarté² | EX-34 | écarté¹⁷ | EX-36 | EX-36 | filet¹⁸ | EX-33 EX-35 | écarté¹³ |
 | RG-09 | écarté⁹ | filet²² | écarté² | écarté³ | filet²³ | EX-37 | EX-38 | écarté⁶ | EX-39 | EX-40 |
+| RG-10 | écarté⁹ | EX-47 | écarté² | EX-46 EX-49 | EX-44 | EX-42 EX-48 | EX-42 | écarté⁶ | EX-45 | EX-43 |
 
 ¹ une demande sans période est refusée par le schéma de la requête avant toute ouverture de paiement, comportement de SPEC-001 que cette spec ne change pas.
 ² la règle ne lit aucune heure : ce sont RG-02, RG-03, RG-04 et RG-06 qui portent les délais.
@@ -564,4 +664,6 @@ Les demandes déjà en base ont été faites avant l'encaissement : elles n'ont 
 |---|---|---|
 | 1 | 23/09/2026 | Création, à partir des décisions D-10, D-23 et D-24 du brainstorm du 10/09 et de trois décisions de JP du jour : Stripe Checkout, empreinte bancaire, reversement hors de ce lot. Neuf règles, quarante exemples. Validée par JP le 23/09/2026, sans correction. |
 | 2 | 23/09/2026 | EX-41 ajouté sous RG-07, `origine: construction`. En écrivant le règlement de l'argent dû, un cas est apparu que la spec ne tranchait pas : une empreinte prélevée chez Stripe sans que la base le sache — le loueur a confirmé, l'écriture a échoué — puis annulée par l'exploitant. Lever l'empreinte échoue alors sur « déjà prélevé », et EX-25 relirait la demande comme confirmée ; or l'exploitant l'a annulée. Seule une demande *expirée* sur ce malentendu est relue confirmée ; toute autre est remboursée. La sonde gagne EX-41 dans les cases `RG-07 × État` et `RG-07 × Argent`. À relire par JP. |
+| 3 | 23/09/2026 | RG-10 ajoutée, `origine: demande`, sur demande de JP : « il faut que tu mettes en place l'idempotence, pour pas que des actions se répètent, par exemple en mettant un id dans le bouton ». Constat déclencheur : trois clics sur « Continuer vers le paiement », contre une api restée sur le code d'avant SPEC-004, ont laissé trois demandes sans paiement. Le front attache désormais un identifiant d'intention à chaque demande, et l'api rend la demande déjà créée sous cet identifiant. Huit exemples, EX-42 à EX-49. Les autres actions ne changent pas : elles sont déjà idempotentes par leur état, et le §2 le dit. |
+| 4 | 23/09/2026 | EX-50 et EX-51 ajoutés sous RG-04, `origine: bug`, et RG-04 complétée : un conducteur n'est jamais bloqué par sa propre demande impayée. Constaté par JP en s'en servant : « Ces dates sont déjà louées » sur des dates qu'il avait lui-même demandées sans payer. Le cas immédiat venait de trois demandes créées par une api périmée ; mais le même blocage survient avec le code de SPEC-004 dès que le conducteur quitte la page de Stripe autrement que par son lien de retour, puis redemande. Redemander la même place abandonne désormais sa propre demande impayée qui chevauche, et jamais celle d'un autre (EX-51). |
 

@@ -15,9 +15,29 @@ export interface paths {
         put?: never;
         /**
          * Inscrire un compte
-         * @description Crée un compte à partir d'une adresse e-mail et d'un mot de passe. Route publique.
+         * @description Crée un compte à partir d'une adresse e-mail, d'un mot de passe assez robuste et d'une preuve anti-robot (`GET /account/human-challenge`). Route publique.
          */
         post: operations["registerAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/human-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtenir un défi anti-robot
+         * @description Rend un défi à résoudre avant `POST /account` (SPEC-007). Route publique.
+         */
+        get: operations["issueHumanChallenge"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -458,6 +478,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rental-request/{id}/cancellation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annuler une réservation
+         * @description Annule une demande qui attend le propriétaire ou une location confirmée, tant qu'elle n'a pas commencé. Le conducteur est remboursé en totalité jusqu'à l'échéance `freeCancellationUntil` incluse, et plus du tout après ; le propriétaire peut annuler à tout moment avant le début, et le conducteur récupère alors tout. Une empreinte non prélevée est toujours levée. Annuler deux fois rend le même effet sans rien refaire.
+         */
+        post: operations["cancelRental"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -478,7 +524,11 @@ export interface components {
              * @description Adresse e-mail. Les espaces, `@` surnuméraires, apostrophes, guillemets, antislashs et points-virgules sont refusés.
              */
             email: string;
+            /** @description Au moins 8 caractères, et une robustesse moyenne ou forte (SPEC-007 RG-02) ; un mot de passe faible est refusé en 400. */
             password: string;
+            humanProof: components["schemas"]["HumanProof"];
+            /** @description La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte. */
+            acceptsTerms: boolean;
         };
         RegisterAccountResponse: {
             /** Format: uuid */
@@ -631,6 +681,16 @@ export interface components {
             requestedAt: string;
             /** Format: date-time */
             confirmedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Le premier instant de la location, heure de Paris. Une réservation ne s'annule plus à partir de cet instant.
+             */
+            startsAt: string;
+            /**
+             * Format: date-time
+             * @description L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité.
+             */
+            freeCancellationUntil: string | null;
         };
         /** @description Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention. */
         Overview: {
@@ -722,6 +782,33 @@ export interface components {
              */
             checkoutUrl: string;
         };
+        CancellationResult: {
+            /**
+             * @description `RELEASED` : l'empreinte est levée, rien n'avait été prélevé. `REFUNDED` : le prélèvement est remboursé en totalité. `KEPT` : annulation tardive du conducteur, le prélèvement est gardé. `NOTHING_TO_RETURN` : demande faite avant l'encaissement.
+             * @enum {string}
+             */
+            outcome: "RELEASED" | "REFUNDED" | "KEPT" | "NOTHING_TO_RETURN";
+        };
+        /** @description Défi anti-robot (SPEC-007) : retrouver le nombre `n` ≤ `maxNumber` tel que SHA-256(`salt` + `n`) = `challenge`. Valable 20 minutes. */
+        HumanChallenge: {
+            /** @enum {string} */
+            algorithm: "SHA-256";
+            /** @description Condensé SHA-256 hexadécimal. */
+            challenge: string;
+            /** @description Sel, qui porte son échéance (`?expires=` en secondes Unix). */
+            salt: string;
+            maxNumber: number;
+            /** @description HMAC du condensé, par l'api. */
+            signature: string;
+        };
+        /** @description Le défi recopié, avec le nombre trouvé. Accepté une seule fois. */
+        HumanProof: {
+            algorithm: string;
+            challenge: string;
+            salt: string;
+            number: number;
+            signature: string;
+        };
     };
     responses: {
         /** @description Jeton d'accès absent, mal formé ou invalide. */
@@ -787,7 +874,7 @@ export interface operations {
                     "application/json": components["schemas"]["RegisterAccountResponse"];
                 };
             };
-            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères. */
+            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -806,6 +893,26 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    issueHumanChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Défi émis. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HumanChallenge"];
+                };
+            };
         };
     };
     changePassword: {
@@ -1149,7 +1256,10 @@ export interface operations {
     requestRental: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description L'identifiant d'intention, un UUID choisi par le client pour une place et une période. Renvoyé à l'identique, il rend la demande déjà créée — même identifiant, même page de paiement — au lieu d'en créer une seconde, et la réponse porte alors `Idempotent-Replayed: true`. Il est propre au compte qui l'envoie. */
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1168,7 +1278,7 @@ export interface operations {
                     "application/json": components["schemas"]["RequestRentalResponse"];
                 };
             };
-            /** @description Corps de requête invalide. */
+            /** @description Corps de requête invalide, ou en-tête `Idempotency-Key` absent ou qui n'est pas un UUID. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1178,7 +1288,16 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». */
+            /** @description Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ». */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1631,6 +1750,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    cancelRental: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Réservation annulée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inexistante, identifiant mal formé, ou demande que ce compte ne peut ni voir ni annuler. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description La location a commencé, ou la demande n'est ni en attente du propriétaire ni confirmée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };

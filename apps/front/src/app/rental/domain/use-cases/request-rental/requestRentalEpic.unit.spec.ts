@@ -26,6 +26,14 @@ describe('requesting a rental', () => {
     sut.thenTheErrorShownIs('Adresse de paiement inattendue');
   });
 
+  it('goes nowhere, and says so, when the api answers without a payment page', () => {
+    const sut = createRequestRentalSut();
+    sut.givenTheApiAnswersWithoutBody();
+    sut.whenRequesting(PAYLOAD);
+    sut.thenThePaymentPagesOpenedAre([]);
+    sut.thenTheErrorShownIs('Le serveur n’a ouvert aucune page de paiement. Réessayez dans un instant.');
+  });
+
   it('shows the api message when the dates are already rented', () => {
     const sut = createRequestRentalSut();
     sut.givenTheApiRejectsWith('Ces dates sont deja louees');

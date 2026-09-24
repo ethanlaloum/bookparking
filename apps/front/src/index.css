@@ -351,6 +351,13 @@
   animation: pulse-ring 2.2s var(--ease-signal) infinite;
 }
 
+/* Le reflet qui traverse le bouton « Télécharger l'app » : un passage bref,
+   puis un long repos, pour attirer l'œil sans l'agacer. La règle
+   `prefers-reduced-motion` le réduit à un seul passage instantané. */
+@utility animate-glint {
+  animation: glint 7s ease-in-out 1.2s infinite backwards;
+}
+
 @utility animate-shimmer {
   background-image: linear-gradient(
     100deg,
@@ -360,6 +367,16 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes glint {
+  0% {
+    translate: -110% 0;
+  }
+  16%,
+  100% {
+    translate: 260% 0;
+  }
 }
 
 @keyframes rise {

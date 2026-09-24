@@ -6,11 +6,16 @@ import {
 } from '../../../domain/entities/RentalMoney';
 import { RentalPlace } from '../../../domain/entities/RentalPlace';
 import { RentalRequest } from '../../../domain/entities/RentalRequest';
+import { RentalPeriod } from '../../../domain/services/computeRentalPrice';
+import { CancellingParty } from '../../../domain/entities/RentalCancellation';
 import {
+  AbandonedUnpaidRequest,
+  IdempotentRentalRequest,
   RentalRepository,
   RentalRequestSummary,
   RentalRequestView,
 } from '../../../domain/ports/RentalRepository';
+import { DuplicateIdempotencyKeyError } from '../../../domain/usecases/request-rental/errors/DuplicateIdempotencyKeyError';
 
 export class InMemoryRentalRepository implements RentalRepository {
   public confirmedRentalList: ConfirmedRental[] = [];
@@ -34,8 +39,26 @@ export class InMemoryRentalRepository implements RentalRepository {
   public checkoutSessionIdById = new Map<string, string>();
   public holdPlacedAtById = new Map<string, Date>();
   public refundIdById = new Map<string, string>();
+  public checkoutUrlById = new Map<string, string>();
+  public idempotencyKeyById = new Map<string, string>();
+  public cancellationById = new Map<
+    string,
+    { party: CancellingParty; cancelledAt: Date }
+  >();
 
   public async createRequest(rentalRequest: RentalRequest): Promise<void> {
+    const { renterId, idempotencyKey } = rentalRequest.toState();
+    if (
+      idempotencyKey &&
+      this.rentalRequestList.some(
+        (existing) =>
+          existing.toState().renterId === renterId &&
+          this.idempotencyKeyById.get(existing.id) === idempotencyKey,
+      )
+    )
+      throw new DuplicateIdempotencyKeyError();
+    if (idempotencyKey)
+      this.idempotencyKeyById.set(rentalRequest.id, idempotencyKey);
     this.rentalRequestList.push(rentalRequest);
     this.statusById.set(rentalRequest.id, 'AWAITING_PAYMENT');
   }
@@ -98,6 +121,8 @@ export class InMemoryRentalRepository implements RentalRepository {
       money: this.moneyOf(requestId),
       paymentId: this.paymentIdById.get(requestId) ?? null,
       checkoutSessionId: this.checkoutSessionIdById.get(requestId) ?? null,
+      startsAt: request.toState().period.from,
+      freeCancellationUntil: request.toState().freeCancellationUntil ?? null,
     };
   }
 
@@ -137,6 +162,8 @@ export class InMemoryRentalRepository implements RentalRepository {
         status: this.statusOf(request.id),
         money: this.moneyOf(request.id),
         requestedAt: state.requestedAt,
+        startsAt: state.period.from,
+        freeCancellationUntil: state.freeCancellationUntil ?? null,
         confirmedAt:
           this.confirmations.find(
             (confirmation) => confirmation.requestId === request.id,
@@ -161,8 +188,63 @@ export class InMemoryRentalRepository implements RentalRepository {
   public async attachPaymentPage(
     requestId: string,
     checkoutSessionId: string,
+    checkoutUrl: string,
   ): Promise<void> {
     this.checkoutSessionIdById.set(requestId, checkoutSessionId);
+    this.checkoutUrlById.set(requestId, checkoutUrl);
+  }
+
+  public async findByIdempotencyKey(
+    renterId: string,
+    idempotencyKey: string,
+  ): Promise<IdempotentRentalRequest | null> {
+    const found = this.rentalRequestList.find(
+      (request) =>
+        request.toState().renterId === renterId &&
+        this.idempotencyKeyById.get(request.id) === idempotencyKey,
+    );
+    if (!found) return null;
+    return {
+      rentalRequest: found,
+      checkoutUrl: this.checkoutUrlById.get(found.id) ?? null,
+    };
+  }
+
+  public async forgetIdempotencyKey(requestId: string): Promise<void> {
+    this.idempotencyKeyById.delete(requestId);
+  }
+
+  public async markCancelledBy(
+    requestId: string,
+    party: CancellingParty,
+    moneyAfter: MoneyState,
+    cancelledAt: Date,
+  ): Promise<boolean> {
+    const status = this.statusOf(requestId);
+    if (status !== 'PENDING' && status !== 'CONFIRMED') return false;
+    this.setStatus(requestId, 'CANCELLED');
+    this.moneyById.set(requestId, moneyAfter);
+    this.cancellationById.set(requestId, { party, cancelledAt });
+    return true;
+  }
+
+  public async abandonOwnUnpaidRequestsOverlapping(
+    renterId: string,
+    place: RentalPlace,
+    period: RentalPeriod,
+  ): Promise<AbandonedUnpaidRequest[]> {
+    const abandoned: AbandonedUnpaidRequest[] = [];
+    for (const request of this.rentalRequestList) {
+      if (request.toState().renterId !== renterId) continue;
+      if (this.statusOf(request.id) !== 'AWAITING_PAYMENT') continue;
+      if (!request.designates(place) || !request.overlaps(period)) continue;
+      this.setStatus(request.id, 'ABANDONED');
+      abandoned.push({
+        requestId: request.id,
+        checkoutSessionId: this.checkoutSessionIdById.get(request.id) ?? null,
+      });
+    }
+    return abandoned;
   }
 
   public async markHoldPlaced(

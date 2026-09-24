@@ -43,6 +43,9 @@ const PrivacyPage = lazy(async () => ({
 const TermsPage = lazy(async () => ({
   default: (await import('../pages/legal/TermsPage')).TermsPage,
 }));
+const MobileAppPage = lazy(async () => ({
+  default: (await import('../pages/MobileAppPage')).MobileAppPage,
+}));
 const NotFoundPage = lazy(async () => ({
   default: (await import('../pages/NotFoundPage')).NotFoundPage,
 }));
@@ -56,6 +59,7 @@ export const Routes = () => (
       <Route path="/connexion" element={<SignInPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/faq" element={<FaqPage />} />
+      <Route path="/application" element={<MobileAppPage />} />
       <Route path="/mentions-legales" element={<LegalNoticePage />} />
       <Route path="/donnees-personnelles" element={<PrivacyPage />} />
       <Route path="/conditions-d-utilisation" element={<TermsPage />} />

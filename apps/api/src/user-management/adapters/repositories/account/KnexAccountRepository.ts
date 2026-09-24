@@ -60,6 +60,7 @@ export class KnexAccountRepository implements AccountRepository {
       email: state.email,
       password_hash: state.passwordHash,
       registered_at: state.registeredAt,
+      terms_accepted_at: state.termsAcceptedAt,
       suspended_at: state.suspendedAt,
     };
   }
@@ -95,6 +96,10 @@ export class KnexAccountRepository implements AccountRepository {
       email: row.email,
       passwordHash: row.password_hash,
       registeredAt: new Date(row.registered_at),
+      termsAcceptedAt:
+        row.terms_accepted_at === null || row.terms_accepted_at === undefined
+          ? null
+          : new Date(row.terms_accepted_at),
       suspendedAt:
         row.suspended_at === null || row.suspended_at === undefined
           ? null

@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   SquareParking,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -21,9 +21,13 @@ import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEp
 import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
 import { moneyLabelOf, rentedNightCount } from '../app/rental/domain/entities/RentalRequestView';
+import { cancellationTermsOf } from '../app/rental/domain/entities/RentalCancellation';
+import type { RentalRequestView } from '../app/rental/domain/entities/RentalRequestView';
+import { cancelRentalRequested } from '../app/rental/domain/use-cases/cancel-rental/cancelRentalEpic';
 import { confirmRentalRequestRequested } from '../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import { listReceivedRentalRequestsRequested } from '../app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
+import { CancelRentalDialog, type CancelRentalTarget } from '../components/CancelRentalDialog';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
 import { MetricTile } from '../components/MetricTile';
@@ -53,6 +57,9 @@ import {
   selectOwnerListingsLoading,
 } from '../selectors/listing/listingSelectors';
 import {
+  selectCancelRentalError,
+  selectCancelRentalLoading,
+  selectCancelledRentalRequestId,
   selectConfirmRentalError,
   selectConfirmRentalLoading,
   selectConfirmedRevenueInCents,
@@ -123,6 +130,39 @@ export const AccountPage = () => {
   const pendingRevenue = useAppSelector(selectPendingRevenueInCents);
   const confirming = useAppSelector(selectConfirmRentalLoading);
   const confirmError = useAppSelector(selectConfirmRentalError);
+  const cancelling = useAppSelector(selectCancelRentalLoading);
+  const cancelError = useAppSelector(selectCancelRentalError);
+  const cancelledId = useAppSelector(selectCancelledRentalRequestId);
+  const [cancelTarget, setCancelTarget] = useState<CancelRentalTarget | null>(null);
+  // Figé pour le rendu, comme dans le panneau des demandes de l'administration :
+  // chaque ligne lit la même horloge. Une page restée ouverte peut proposer
+  // une annulation devenue impossible ; l'api reste le juge et le dit en 409.
+  const now = useMemo(() => new Date(), []);
+  // La fenêtre se ferme par dérivation une fois l'annulation faite, jamais par
+  // un setState dans un effet — même règle que la modale de modération.
+  const openCancelTarget =
+    cancelTarget !== null && cancelTarget.requestId !== cancelledId ? cancelTarget : null;
+
+  const cancelButtonFor = (request: RentalRequestView, perspective: 'renter' | 'owner') => {
+    const terms = cancellationTermsOf(request, perspective, now);
+    if (terms.kind === 'unavailable') return null;
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() =>
+          setCancelTarget({
+            requestId: request.id,
+            label: `${request.address} · ${request.box}`,
+            terms: t(`account:cancel.terms.${terms.kind}`, { amount: terms.amount }),
+            perspective,
+          })
+        }
+      >
+        {t('account:cancel.action')}
+      </Button>
+    );
+  };
 
   const passwordLoading = useAppSelector(selectChangePasswordLoading);
   const passwordError = useAppSelector(selectChangePasswordError);
@@ -339,19 +379,22 @@ export const AccountPage = () => {
                     key={request.id}
                     request={request}
                     action={
-                      request.status === 'PENDING' ? (
-                        <Button
-                          size="sm"
-                          disabled={confirming}
-                          onClick={() =>
-                            dispatch(confirmRentalRequestRequested({ requestId: request.id }))
-                          }
-                        >
-                          {confirming && <Spinner />}
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
-                          {t('account:received.confirm')}
-                        </Button>
-                      ) : undefined
+                      <div className="flex flex-wrap items-center gap-2">
+                        {cancelButtonFor(request, 'owner')}
+                        {request.status === 'PENDING' && (
+                          <Button
+                            size="sm"
+                            disabled={confirming}
+                            onClick={() =>
+                              dispatch(confirmRentalRequestRequested({ requestId: request.id }))
+                            }
+                          >
+                            {confirming && <Spinner />}
+                            <CheckCircle2 className="size-4" aria-hidden="true" />
+                            {t('account:received.confirm')}
+                          </Button>
+                        )}
+                      </div>
                     }
                   />
                 ))}
@@ -382,6 +425,7 @@ export const AccountPage = () => {
                       key={request.id}
                       request={request}
                       moneyLabel={t(`account:money.${money.key}`, { amount: money.amount })}
+                      action={cancelButtonFor(request, 'renter') ?? undefined}
                     />
                   );
                 })}
@@ -472,6 +516,13 @@ export const AccountPage = () => {
           </Card>
         </section>
       )}
+      <CancelRentalDialog
+        target={openCancelTarget}
+        pending={cancelling}
+        error={cancelError}
+        onConfirm={(requestId) => dispatch(cancelRentalRequested({ requestId }))}
+        onClose={() => setCancelTarget(null)}
+      />
     </div>
   );
 };

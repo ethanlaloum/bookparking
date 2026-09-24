@@ -1,13 +1,13 @@
 ---
 spec: SPEC-004
 statut: valide
-revision: 3
+revision: 5
 valide_le: 2026-09-23
 valide_par: JP
-derive_de: SPEC-004
+derive_de: SPEC-004@a91d6ee6024c7dc7b8a9b1f91027b4645717fb22
 apps: [api, front, e2e]
-cas: 43
-stories: 9
+cas: 55
+stories: 12
 ---
 
 # SPEC-004 · Plan
@@ -43,6 +43,10 @@ GitHub par story.
 **Deux exemples portés à deux barreaux — EX-15 et EX-24** (T7). Leur cas `unit` prouve que le
 domaine fait passer la demande à `ABANDONED` ou `PAYMENT_FAILED` ; leur cas `int-repo` prouve que
 la contrainte d'exclusion rend alors les dates — ce qu'aucun double en mémoire ne sait dire.
+
+**EX-44 porté à deux barreaux** (T7). Le cas `unit` prouve que le cas d'usage ne rejoue que la
+demande du compte qui l'envoie ; le cas `int-repo` prouve que c'est vrai du `SELECT` réel — c'est
+lui, pas le double, qui empêche un compte de relire la page de paiement d'un autre.
 
 **Une précision de barreau — EX-02.** La spec dit « la page de paiement ouverte porte 4500
 centimes ». Au barreau `int-http`, le cas d'usage est une doublure : ce qui s'observe à la frontière,
@@ -96,6 +100,18 @@ prix figé est EX-01.
 | EX-41 | unit | api | US-028 | `apps/api/src/rental/domain/usecases/sweep-rental-requests/SweepRentalRequests.unit.spec.ts` | refunds, and never confirms, a cancelled request whose capture the database missed |
 | EX-15 | int-repo | api | US-023 | `apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts` | frees the dates of an abandoned request |
 | EX-24 | int-repo | api | US-023 | `apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts` | frees the dates of a request whose capture the bank declined |
+| EX-42 | unit | api | US-032 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | answers the same request when the same intent is sent twice |
+| EX-43 | unit | api | US-032 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | refuses an intent identifier reused for another period or another place |
+| EX-44 | unit | api | US-032 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | never answers another account request under the same identifier |
+| EX-44 | int-repo | api | US-032 | `apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts` | never reads another account request under the same identifier |
+| EX-45 | unit | api | US-032 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | does not spend the identifier on an attempt Stripe could not open |
+| EX-46 | int-repo | api | US-032 | `apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts` | keeps a single row when two writes under one intent arrive at once |
+| EX-47 | int-http | api | US-032 | `apps/api/src/rental/adapters/rest/controllers/rental-request/rental-request.controller.int.spec.ts` | refuses a request that carries no intent identifier, or a malformed one |
+| EX-48 | unit | front | US-033 | `apps/front/src/app/rental/domain/entities/RentalIntent.unit.spec.ts` | follows the intent, not the click |
+| EX-49 | e2e | e2e | US-033 | `apps/e2e/tests/real/rental/pay-a-rental-request.spec.ts` | leaves a single request after a double click |
+| EX-50 | unit | api | US-034 | `apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts` | replaces its own unpaid request when asking the same place again |
+| EX-50 | int-repo | api | US-034 | `apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts` | replaces its own unpaid request when asking the same place again |
+| EX-51 | int-repo | api | US-034 | `apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts` | never abandons another renter unpaid request in their place |
 
 <!-- jp-way:cas {"ex": "EX-07", "barreau": "int-repo", "app": "api", "story": "US-023", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "refuses a second request on dates still awaiting payment","empreinte":"9f71f794"} -->
 <!-- jp-way:cas {"ex": "EX-35", "barreau": "int-repo", "app": "api", "story": "US-023", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "writes the expiry and the release owed on the same row, in one statement","empreinte":"4149a4f3"} -->
@@ -140,6 +156,18 @@ prix figé est EX-01.
 <!-- jp-way:cas {"ex": "EX-41", "barreau": "unit", "app": "api", "story": "US-028", "chemin": "apps/api/src/rental/domain/usecases/sweep-rental-requests/SweepRentalRequests.unit.spec.ts", "titre": "refunds, and never confirms, a cancelled request whose capture the database missed","empreinte":"7cb1d6df"} -->
 <!-- jp-way:cas {"ex": "EX-15", "barreau": "int-repo", "app": "api", "story": "US-023", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "frees the dates of an abandoned request","empreinte":"972a25c0"} -->
 <!-- jp-way:cas {"ex": "EX-24", "barreau": "int-repo", "app": "api", "story": "US-023", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "frees the dates of a request whose capture the bank declined","empreinte":"bba70aa5"} -->
+<!-- jp-way:cas {"ex": "EX-42", "barreau": "unit", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts", "titre": "answers the same request when the same intent is sent twice","empreinte":"445f6b0f"} -->
+<!-- jp-way:cas {"ex": "EX-43", "barreau": "unit", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts", "titre": "refuses an intent identifier reused for another period or another place","empreinte":"8995bb61"} -->
+<!-- jp-way:cas {"ex": "EX-44", "barreau": "unit", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts", "titre": "never answers another account request under the same identifier","empreinte":"7107f523"} -->
+<!-- jp-way:cas {"ex": "EX-44", "barreau": "int-repo", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "never reads another account request under the same identifier","empreinte":"7107f523"} -->
+<!-- jp-way:cas {"ex": "EX-45", "barreau": "unit", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts", "titre": "does not spend the identifier on an attempt Stripe could not open","empreinte":"91aab2d5"} -->
+<!-- jp-way:cas {"ex": "EX-46", "barreau": "int-repo", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "keeps a single row when two writes under one intent arrive at once","empreinte":"29b72289"} -->
+<!-- jp-way:cas {"ex": "EX-47", "barreau": "int-http", "app": "api", "story": "US-032", "chemin": "apps/api/src/rental/adapters/rest/controllers/rental-request/rental-request.controller.int.spec.ts", "titre": "refuses a request that carries no intent identifier, or a malformed one","empreinte":"81f29067"} -->
+<!-- jp-way:cas {"ex": "EX-48", "barreau": "unit", "app": "front", "story": "US-033", "chemin": "apps/front/src/app/rental/domain/entities/RentalIntent.unit.spec.ts", "titre": "follows the intent, not the click","empreinte":"e483649f"} -->
+<!-- jp-way:cas {"ex": "EX-49", "barreau": "e2e", "app": "e2e", "story": "US-033", "chemin": "apps/e2e/tests/real/rental/pay-a-rental-request.spec.ts", "titre": "leaves a single request after a double click","empreinte":"97148f5e"} -->
+<!-- jp-way:cas {"ex": "EX-50", "barreau": "unit", "app": "api", "story": "US-034", "chemin": "apps/api/src/rental/domain/usecases/request-rental/RequestRental.unit.spec.ts", "titre": "replaces its own unpaid request when asking the same place again","empreinte":"a3645412"} -->
+<!-- jp-way:cas {"ex": "EX-50", "barreau": "int-repo", "app": "api", "story": "US-034", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "replaces its own unpaid request when asking the same place again","empreinte":"a3645412"} -->
+<!-- jp-way:cas {"ex": "EX-51", "barreau": "int-repo", "app": "api", "story": "US-034", "chemin": "apps/api/src/rental/adapters/repositories/rental-request/KnexRentalRequestRepository.int.spec.ts", "titre": "never abandons another renter unpaid request in their place","empreinte":"5475d7a1"} -->
 
 ## Stories
 
@@ -158,6 +186,9 @@ prix figé est EX-01.
 US-024 et US-028 dépassent le plafond de cinq exemples : leurs exemples partagent un seul cas
 d'usage chacun (`RequestRental`, `SweepRentalRequests`), et les couper ferait deux stories sur le
 même fichier.
+| 10 | US-032 | Une intention, une demande | api | unit int-repo int-http | EX-42 EX-43 EX-44 EX-45 EX-46 EX-47 | — |
+| 11 | US-033 | L'identifiant d'intention porté par le bouton | front e2e | unit e2e | EX-48 EX-49 | — |
+| 12 | US-034 | Jamais bloqué par sa propre demande impayée | api | unit int-repo | EX-50 EX-51 | — |
 
 ## Dépendances
 
@@ -171,6 +202,9 @@ même fichier.
 | US-029 | US-023 | schéma |
 | US-030 | US-024 | contrat — `GET /rental-request` et ses champs d'argent |
 | US-031 | US-024 US-025 US-026 US-030 | contrat — le parcours entier |
+| US-032 | US-024 | contrat — `RequestRental` et la page qu'il ouvre |
+| US-033 | US-032 | contrat — l'en-tête `Idempotency-Key` exigé par l'api |
+| US-034 | US-024 | schéma — la contrainte d'exclusion et le statut d'attente |
 
 ## Ce qui n'est pas testé, et pourquoi
 

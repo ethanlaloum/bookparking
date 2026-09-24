@@ -44,4 +44,15 @@ describe('KnexAccountRepository @SPEC-002', () => {
     await sut.thenFoundAccountIsTheStoredOneFor(found, MARC_EMAIL);
     sut.thenNoAccountFound(missing);
   });
+
+  it('writes when the terms were accepted @SPEC-008 @EX-008-03', async () => {
+    const sut = createKnexAccountRepositorySUT();
+
+    await sut.whenWritingAccountFor(MARC_EMAIL);
+
+    await sut.thenTermsAcceptedAtIsWrittenFor(
+      MARC_EMAIL,
+      sut.context.testConstants.registeredAtForTest,
+    );
+  });
 });

@@ -21,6 +21,11 @@ export class RentalRequestMapper {
       requestedAt: view.requestedAt.toISOString(),
       confirmedAt:
         view.confirmedAt === null ? null : view.confirmedAt.toISOString(),
+      startsAt: view.startsAt.toISOString(),
+      freeCancellationUntil:
+        view.freeCancellationUntil === null
+          ? null
+          : view.freeCancellationUntil.toISOString(),
     };
   }
 }

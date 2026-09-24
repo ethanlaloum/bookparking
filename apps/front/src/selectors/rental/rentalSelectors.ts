@@ -32,6 +32,17 @@ export const selectAbandonRentalRequestFailed = (state: AppState): boolean =>
 export const selectAbandonedRentalRequestId = (state: AppState): string | null =>
   state.core.rental.abandonedRequestId;
 
+export const selectCancelRentalLoading = (state: AppState): boolean =>
+  state.core.rental.cancel.state === 'pending';
+
+export const selectCancelRentalError = (state: AppState): string | null =>
+  state.core.rental.cancel.state === 'failed'
+    ? (state.core.rental.cancel.errorCode ?? null)
+    : null;
+
+export const selectCancelledRentalRequestId = (state: AppState): string | null =>
+  state.core.rental.cancelledRequestId;
+
 export const selectConfirmRentalLoading = (state: AppState): boolean =>
   state.core.rental.confirm.state === 'pending';
 

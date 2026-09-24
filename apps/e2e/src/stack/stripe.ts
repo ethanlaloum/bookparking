@@ -61,6 +61,15 @@ const ensureCli = async (): Promise<void> => {
   }
 };
 
+// La clé passe par `STRIPE_API_KEY`, que la CLI lit, et jamais par
+// `--api-key` : un argument se lit dans la liste des processus, et Node le
+// recopie en entier dans le message d'erreur d'une commande qui échoue — c'est
+// ainsi qu'une clé de test s'est retrouvée dans un journal le 23/09/2026.
+const cliEnv = (secretKey: string): NodeJS.ProcessEnv => ({
+  ...process.env,
+  STRIPE_API_KEY: secretKey,
+});
+
 /**
  * Stripe ne peut pas joindre une api qui écoute sur localhost : la CLI tient
  * une connexion ouverte et relaie chaque événement vers l'api locale, signé
@@ -72,13 +81,22 @@ export const startStripeListener = async (
   forwardTo: string,
 ): Promise<StripeListener> => {
   await ensureCli();
-  const { stdout } = await runFile('stripe', ['listen', '--api-key', secretKey, '--print-secret']);
-  const webhookSecret = stdout.trim();
+  let webhookSecret: string;
+  try {
+    const { stdout } = await runFile('stripe', ['listen', '--print-secret'], {
+      env: cliEnv(secretKey),
+    });
+    webhookSecret = stdout.trim();
+  } catch {
+    throw new Error(
+      "stripe listen --print-secret a échoué : vérifiez la clé de .env.stripe.local et l'accès réseau à Stripe.",
+    );
+  }
 
   const listener: ChildProcess = spawn(
     'stripe',
-    ['listen', '--api-key', secretKey, '--events', FORWARDED_EVENTS, '--forward-to', forwardTo],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
+    ['listen', '--events', FORWARDED_EVENTS, '--forward-to', forwardTo],
+    { stdio: ['ignore', 'pipe', 'pipe'], env: cliEnv(secretKey) },
   );
 
   await new Promise<void>((ready, fail) => {

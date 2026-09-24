@@ -1,4 +1,7 @@
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { WeakPasswordError } from '../../errors/WeakPasswordError';
+import { HumanProofRejectedError } from './errors/HumanProofRejectedError';
+import { TermsNotAcceptedError } from './errors/TermsNotAcceptedError';
 import { EmailAlreadyUsedError } from './errors/EmailAlreadyUsedError';
 import { createRegisterAccountSUT } from './RegisterAccount.sut';
 
@@ -26,7 +29,6 @@ describe('RegisterAccount @SPEC-002', () => {
     sut.thenResultIsRight(result);
     sut.thenAccountExistsFor(MARC_EMAIL);
     sut.thenStoredPasswordIsNot(MARC_EMAIL, MARC_PASSWORD);
-    sut.thenNoEmailSent();
   });
 
   it('converts a repository failure into an unknown error @EX-002-08', async () => {
@@ -101,7 +103,7 @@ describe('RegisterAccount @SPEC-002', () => {
     sut.thenResultIsLeftWithError(second, EmailAlreadyUsedError);
     sut.thenOnlyOneAccountExistsFor(LEA_ACCENTED_EMAIL_LOWERCASED);
   });
-  it('makes the account usable without sending any email @EX-002-35', async () => {
+  it('makes the account usable without any address verification @EX-002-35', async () => {
     const sut = createRegisterAccountSUT();
 
     const result = await sut.whenRegistering({
@@ -111,7 +113,113 @@ describe('RegisterAccount @SPEC-002', () => {
 
     sut.thenResultIsRight(result);
     sut.thenAccountIsImmediatelyUsableAsOwner(MARC_EMAIL);
-    sut.thenNoEmailSent();
     sut.thenNoVerificationTokenWritten();
+    sut.thenOnlyWelcomeEmailQueued();
+  });
+});
+
+describe('RegisterAccount @SPEC-006', () => {
+  const REGISTERED_AT = new Date('2026-10-01T07:00:00.000Z');
+
+  it('queues a welcome email with the new account @EX-006-01', async () => {
+    const sut = createRegisterAccountSUT();
+    sut.givenNoAccountFor(MARC_EMAIL);
+
+    const result = await sut.whenRegistering({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+      registeredAt: REGISTERED_AT,
+    });
+
+    sut.thenResultIsRight(result);
+    sut.thenWelcomeEmailQueuedFor(MARC_EMAIL, REGISTERED_AT);
+    sut.thenNothingQueuedContains(MARC_PASSWORD);
+  });
+
+  it('addresses the welcome email to the normalised address @EX-006-02', async () => {
+    const sut = createRegisterAccountSUT();
+
+    await sut.whenRegistering({
+      email: MARC_EMAIL_CASED_AND_SPACED,
+      registeredAt: REGISTERED_AT,
+    });
+
+    sut.thenWelcomeEmailQueuedFor(MARC_EMAIL, REGISTERED_AT);
+  });
+
+  it('queues nothing when the address already has an account @EX-006-03', async () => {
+    const sut = createRegisterAccountSUT();
+    sut.givenExistingAccountFor(MARC_EMAIL);
+
+    const result = await sut.whenRegistering({ email: MARC_EMAIL });
+
+    sut.thenResultIsLeftWithError(result, EmailAlreadyUsedError);
+    sut.thenNoEmailQueued();
+  });
+
+  it('fails the registration when the email outbox is unreachable @EX-006-04', async () => {
+    const sut = createRegisterAccountSUT();
+    sut.givenEmailOutboxFailsToWrite();
+
+    const result = await sut.whenRegistering({ email: MARC_EMAIL });
+
+    sut.thenResultIsLeftWithError(result, UnknownError);
+  });
+});
+
+describe('RegisterAccount @SPEC-007', () => {
+  it('refuses a registration with a weak password @EX-007-10', async () => {
+    const sut = createRegisterAccountSUT();
+
+    const result = await sut.whenRegistering({
+      email: MARC_EMAIL,
+      password: 'motdepasse',
+    });
+
+    sut.thenResultIsLeftWithError(result, WeakPasswordError);
+    sut.thenNoAccountCreated();
+    sut.thenNoEmailQueued();
+  });
+
+  it('refuses a registration without an accepted proof @EX-007-17', async () => {
+    const sut = createRegisterAccountSUT();
+    sut.givenEveryHumanProofIsRejected();
+
+    const result = await sut.whenRegistering({ email: MARC_EMAIL });
+
+    sut.thenResultIsLeftWithError(result, HumanProofRejectedError);
+    sut.thenProofWasPresented(1);
+    sut.thenNoAccountCreated();
+    sut.thenNoEmailQueued();
+  });
+});
+
+describe('RegisterAccount @SPEC-008', () => {
+  const REGISTERED_AT = new Date('2026-10-01T07:00:00.000Z');
+
+  it('notes when the terms were accepted @EX-008-01', async () => {
+    const sut = createRegisterAccountSUT();
+
+    const result = await sut.whenRegistering({
+      email: MARC_EMAIL,
+      registeredAt: REGISTERED_AT,
+      acceptsTerms: true,
+    });
+
+    sut.thenResultIsRight(result);
+    sut.thenAccountAcceptedTermsAt(MARC_EMAIL, REGISTERED_AT);
+  });
+
+  it('refuses a registration without accepting the terms @EX-008-02', async () => {
+    const sut = createRegisterAccountSUT();
+
+    const result = await sut.whenRegistering({
+      email: MARC_EMAIL,
+      acceptsTerms: false,
+    });
+
+    sut.thenResultIsLeftWithError(result, TermsNotAcceptedError);
+    sut.thenNoAccountCreated();
+    sut.thenNoEmailQueued();
   });
 });

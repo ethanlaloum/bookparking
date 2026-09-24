@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpException,
   HttpStatus,
@@ -13,15 +14,19 @@ import { Either, Schema } from 'effect/index';
 import { AuthGuard } from '../../guards/auth.guard';
 import { ChangePassword } from '../../../../domain/usecases/change-password/ChangePassword';
 import { InvalidCredentialsError } from '../../../../domain/usecases/sign-in/errors/InvalidCredentialsError';
-import { WeakPasswordError } from '../../../../domain/usecases/change-password/errors/WeakPasswordError';
+import { WeakPasswordError } from '../../../../domain/errors/WeakPasswordError';
 import { ChangePasswordSchema } from '../../dtos/ChangePasswordSchema';
 import { TokenRequest } from '../../dtos/TokenRequest';
 
 import { controllerErrorHandler } from '../../../../../shared/error/controllerErrorHandler';
 import { UnknownError } from '../../../../../shared/error/errors/UnknownError';
 import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
+import { HumanChallenge } from '../../../../domain/ports/HumanProof';
+import { IssueHumanChallenge } from '../../../../domain/usecases/issue-human-challenge/IssueHumanChallenge';
 import { RegisterAccount } from '../../../../domain/usecases/register-account/RegisterAccount';
 import { EmailAlreadyUsedError } from '../../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
+import { HumanProofRejectedError } from '../../../../domain/usecases/register-account/errors/HumanProofRejectedError';
+import { TermsNotAcceptedError } from '../../../../domain/usecases/register-account/errors/TermsNotAcceptedError';
 import { AccountMapper } from '../../../mappers/AccountMapper';
 import { RegisterAccountResponseDto } from '../../dtos/RegisterAccountResponseDto';
 import { RegisterAccountSchema } from '../../dtos/RegisterAccountSchema';
@@ -31,7 +36,25 @@ export class AccountController {
   constructor(
     private readonly registerAccountUseCase: RegisterAccount,
     private readonly changePasswordUseCase: ChangePassword,
+    private readonly issueHumanChallengeUseCase: IssueHumanChallenge,
   ) {}
+
+  // SPEC-007 RG-03 : le défi que le navigateur résout avant de s'inscrire.
+  // Public, comme l'inscription elle-même.
+  @Get('human-challenge')
+  async issueHumanChallenge(): Promise<HumanChallenge | void> {
+    try {
+      const result = await this.issueHumanChallengeUseCase.execute({
+        now: new Date(),
+      });
+      if (Either.isRight(result)) return result.right;
+    } catch (error) {
+      controllerErrorHandler(error, {
+        name: 'AccountController',
+        method: 'issueHumanChallenge',
+      });
+    }
+  }
 
   @Post()
   async registerAccount(
@@ -52,12 +75,21 @@ export class AccountController {
         email: parsedBody.email,
         password: parsedBody.password,
         registeredAt: new Date(),
+        humanProof: parsedBody.humanProof,
+        acceptsTerms: parsedBody.acceptsTerms,
       });
 
       if (Either.isLeft(result)) {
         const error = result.left;
         if (error instanceof EmailAlreadyUsedError) {
           throw new HttpException(error.message, HttpStatus.CONFLICT);
+        }
+        if (
+          error instanceof WeakPasswordError ||
+          error instanceof HumanProofRejectedError ||
+          error instanceof TermsNotAcceptedError
+        ) {
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
         if (error instanceof UnknownError) {
           throw new HttpException(

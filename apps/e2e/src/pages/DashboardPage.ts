@@ -43,8 +43,32 @@ export class DashboardPage {
     await this.listedPlace(address).getByRole('button', { name: 'Confirmer' }).click();
   }
 
+  async expectRequestLabel(address: string, label: RegExp): Promise<void> {
+    await expect(this.listedPlace(address)).toContainText(label);
+  }
+
   async expectRequestConfirmed(address: string): Promise<void> {
     await expect(this.listedPlace(address)).toContainText('Confirmée');
+  }
+
+  private cancellationDialog(): Locator {
+    return this.page.getByRole('dialog', { name: 'Annuler cette réservation ?' });
+  }
+
+  // `exact` : « Annuler » est un préfixe de « Annuler la réservation », le
+  // bouton de la fenêtre qui s'ouvre par-dessus la ligne.
+  async startCancellingFor(address: string): Promise<void> {
+    await this.listedPlace(address).getByRole('button', { name: 'Annuler', exact: true }).click();
+    await expect(this.cancellationDialog()).toBeVisible();
+  }
+
+  async expectCancellationTerms(text: string | RegExp): Promise<void> {
+    await expect(this.cancellationDialog()).toContainText(text);
+  }
+
+  async confirmCancellation(): Promise<void> {
+    await this.cancellationDialog().getByRole('button', { name: 'Annuler la réservation' }).click();
+    await expect(this.cancellationDialog()).toHaveCount(0);
   }
 
   async expectNoRequests(): Promise<void> {

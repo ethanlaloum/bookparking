@@ -1,13 +1,13 @@
 {
   "brand": "Bookparking",
   "tagline": "Des places de parking, entre voisins.",
-  "nav": { "browse": "Les places", "publish": "Publier une place", "account": "Mon compte", "signIn": "Se connecter", "signOut": "Se déconnecter", "register": "Créer un compte" },
+  "nav": { "app": "Télécharger l’app", "browse": "Les places", "publish": "Publier une place", "account": "Mon compte", "signIn": "Se connecter", "signOut": "Se déconnecter", "register": "Créer un compte" },
   "action": { "retry": "Réessayer", "cancel": "Annuler", "back": "Retour", "close": "Fermer" },
   "state": { "loading": "Chargement…", "empty": "Rien à afficher pour l’instant." },
   "error": { "title": "Un problème est survenu", "unexpected": "Une erreur inattendue est survenue. Réessayez dans un instant.", "notFound": "Page introuvable", "notFoundBody": "Le lien que vous avez suivi ne mène nulle part.", "notFoundSign": "Stationnement interdit ici.", "notFoundPath": "Rien n’est garé à l’adresse <path>{{path}}</path>.", "notFoundSearch": "Vous cherchiez une place ? Commencez par une adresse.", "notFoundElsewhere": "Ailleurs sur Bookparking", "notFoundHome": "Retour à l’accueil", "notFoundDocumentTitle": "Page introuvable — Bookparking" },
   "form": { "required": "Ce champ est obligatoire.", "problemTitle": "Votre demande n’a pas pu être envoyée", "problemIntro": "Corrigez les points suivants :" },
   "unit": { "perNight": "par nuit", "night_one": "{{count}} nuit", "night_other": "{{count}} nuits" },
-  "footer": { "explore": "Explorer", "search": "Rechercher une place", "city": "Partout en France", "madeIn": "Pensé à Nice, pour toute la France.", "faq": "Questions fréquentes", "legal": "Informations légales", "legalNotice": "Mentions légales", "privacy": "Données personnelles", "terms": "Conditions d’utilisation" },
+  "footer": { "app": "L’app iPhone", "explore": "Explorer", "search": "Rechercher une place", "city": "Partout en France", "madeIn": "Pensé à Nice, pour toute la France.", "faq": "Questions fréquentes", "legal": "Informations légales", "legalNotice": "Mentions légales", "privacy": "Données personnelles", "terms": "Conditions d’utilisation" },
   "date": { "placeholder": "jj/mm/aaaa", "openCalendar": "Ouvrir le calendrier", "dialog": "Choisir les dates", "picking": "Choisissez : {{label}}", "clear": "Effacer", "done": "Valider", "empty": "—", "previousMonth": "Mois précédent", "nextMonth": "Mois suivant", "selectedSuffix": ", sélectionné" },
   "skipToContent": "Aller au contenu"
 }

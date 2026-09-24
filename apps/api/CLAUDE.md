@@ -18,6 +18,8 @@
 
 `src/rental` porte le second contexte métier, avec son propre `domain/ports/` (`PublishedListingReader`, `RentalRepository`) et leurs doublures en mémoire sous `adapters/repositories/` : le cas d'usage `domain/usecases/request-rental/` (`RequestRental.ts`, son `.sut.ts`, son sous-dossier `errors/`) ne dépend d'aucune classe de `listing/`, même pour lire la grille d'une annonce publiée — l'issue de US-006 interdisait cet import (`docs/autonomous/SPEC-001.md`, AUTO-16). Les entités `domain/entities/RentalPlace`, `RentalRequest` et `ConfirmedRental` sont construites par `fromState()` ou par `RentalRequest.request()`, jamais par un constructeur public. `domain/services/computeRentalPrice.ts` reste la seule fonction pure du contexte ; `RequestRental` l'appelle désormais au moment de la demande (voir « Things that will bite you »). Les deux ports ont désormais une implémentation Knex, sous le même schéma que `listing/` : `adapters/repositories/rental-request/` (`KnexRentalRequestRepository`, sa migration, son `Schema...`) et `adapters/repositories/published-listing/` (`KnexPublishedListingReader`, qui lit la table `listings` sans importer aucune classe de `listing/` — voir « Things that will bite you »).
 
+`src/notification` porte l'envoi des e-mails (SPEC-006) : la rédaction (`domain/services/composeEmail`), le balayage de la file (`domain/usecases/send-queued-emails/`), le port `EmailSender` et son adaptateur `adapters/services/resend/ResendEmailSender`, et `adapters/cron/EmailSweepScheduler`. La file elle-même vit dans le noyau partagé, `src/shared/email-outbox/` (entité `OutgoingEmail`, port `EmailOutbox`, `KnexEmailOutbox`, `InMemoryEmailOutbox`), parce que chaque contexte y écrit sans importer `notification/`. `src/shared/unit-of-work/` porte `UnitOfWork` et ses deux implémentations, `src/shared/scheduler/SweepScheduler` le minuteur que partagent les deux balayages.
+
 `src/infra` porte ce qui parle à une vraie base : les migrations Knex (`infra/migrations`) et l'outillage du barreau `int` (`testKnexfile.ts`, `testcontainers-setup.ts`, qui démarre un conteneur `postgres:15` par exécution). `src/shared/test/http` porte les doublures communes aux tests `int-http` (`TestAuthGuard`, `UseCaseDouble`, `createControllerTestApp`).
 
 Chaque cas d'usage ou contrôleur porte un fichier `<Nom>.sut.ts` à côté de son test (`PublishListing.sut.ts`, `listing.controller.sut.ts`) : il construit le double — en mémoire, ou le module de test Nest — et les fonctions `given/when/then`, et n'est importé que par ce test-là.
@@ -31,8 +33,8 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
 | Quoi | Commande |
 | --- | --- |
 | build | `pnpm --filter bookparking-api build` |
-| unit (**78 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-22) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
-| int-repo + int-http (**7 specs** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-22 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
+| unit (**162 specs** — `find apps/api/src -name '*.unit.spec.ts' -exec grep -o '  it(' {} + \| wc -l`, 2026-09-24) | `TZ=UTC pnpm --filter bookparking-api exec jest --config ./jest.unit.config.js` |
+| int-repo + int-http (**10 fichiers** — `find apps/api/src -name '*.int.spec.ts' \| wc -l`, 2026-09-24 ; Docker requis) | `pnpm --filter bookparking-api exec jest --config ./jest.int.config.js` |
 | lint, vérification seule, fichiers touchés | `pnpm --filter bookparking-api exec eslint <fichiers>` |
 
 ## Things that will bite you
@@ -431,8 +433,114 @@ quand le loueur confirme, levée sinon. Le contexte `rental` porte le port `Paym
 - **Les demandes d'avant l'encaissement ont `money_status = 'NONE'`.** Elles gardent l'expiration de
   SPEC-002 (depuis `requested_at`, `expireRequestsPendingSince`) et n'ont jamais rien à rendre ; les
   demandes payées expirent depuis `hold_placed_at` (`expireHoldsPlacedSince`).
+- **`POST /rental-request` exige l'en-tête `Idempotency-Key` (un UUID), et c'est ce qui empêche un
+  double clic de faire deux demandes** (RG-10). `RequestRental` cherche d'abord une demande du même
+  compte sous cet identifiant et la rejoue — même identifiant, même page de paiement, en-tête
+  `Idempotent-Replayed: true` — ou refuse `IdempotencyKeyReusedError` si la place ou la période
+  diffèrent. Deux écritures simultanées sont départagées par l'index unique partiel
+  `rental_requests_renter_idempotency_key_unique` sur `(renter_id, idempotency_key)` : la seconde lève
+  `DuplicateIdempotencyKeyError` et rejoue la première. Deux pièges : le filtre `renter_id` de
+  `findByIdempotencyKey` est la seule chose qui empêche un compte de relire la page de paiement d'un
+  autre — le retirer ne ferait échouer qu'EX-44 au barreau `int-repo`, jamais au barreau `unit` ; et
+  une page que Stripe n'a pas pu ouvrir **rend** son identifiant (`forgetIdempotencyKey`), sans quoi
+  le conducteur qui réessaie rejouerait une demande abandonnée. Confirmer, abandonner, annuler et
+  recevoir un événement de Stripe n'ont pas d'identifiant d'intention : ils sont idempotents par
+  l'état qu'ils quittent.
+- **Un conducteur n'est jamais bloqué par sa propre demande impayée** (EX-50, EX-51).
+  `RequestRental` abandonne, avant d'écrire, les demandes `AWAITING_PAYMENT` **de ce conducteur** qui
+  chevauchent la nouvelle sur la même place, et ferme leur page de paiement. Sans cela, quitter Stripe
+  sans son lien de retour — onglet fermé, fiche rechargée — puis redemander les mêmes dates répondait
+  « Ces dates sont déjà louées » pendant deux heures, au conducteur lui-même. Le chevauchement est jugé
+  en SQL avec le même `tstzrange` que la contrainte d'exclusion ; le filtre `renter_id` est ce qui
+  empêche de libérer les dates d'un autre, et seul EX-51 au barreau `int-repo` le garde.
 - **Aucune clé `sk_live_…` avant la spec du reversement.** Sans Stripe Connect, l'exploitant encaisserait
   sur son propre compte de l'argent dû aux loueurs — une activité réglementée (SPEC-004 §11).
+
+## L'annulation d'une réservation (SPEC-005)
+
+`POST /rental-request/:id/cancellation`, une route pour le conducteur et le loueur : `CancelRental`
+reconnaît qui annule. `moneyAfterCancellation` (`domain/entities/RentalCancellation.ts`) est la seule
+règle d'argent : une empreinte est toujours levée ; un prélèvement est remboursé si le loueur annule,
+ou si le conducteur annule jusqu'à l'échéance **incluse** ; au-delà, il est gardé.
+
+- **L'échéance d'annulation gratuite est figée sur la demande** (`free_cancellation_until`), calculée
+  par `RentalRequest.request()` depuis `FREE_CANCELLATION_HOURS_BEFORE_START` (24 par défaut) et le
+  premier instant de la location, heure de Paris — en heures, jamais en jours locaux. Un délai
+  modifié plus tard ne la déplace pas (Q-13 tranchée par JP). `CancelRental` ne relit le délai courant
+  que pour une ligne sans échéance, ce que la migration a rendu impossible en la calculant pour les
+  demandes d'avant ; ce repli est aussi ce qui donne des dents à EX-10.
+- **Le conducteur passe avant le loueur** dans `partyOf` : un compte qui louerait sa propre place
+  annule selon les règles du conducteur, les plus strictes. Le loueur n'annule que ce qu'il voit
+  (`hasReachedTheOwner`).
+- **On n'annule plus une location commencée** (`RentalAlreadyStartedError`, 409), ni une demande en
+  attente de paiement (`RentalNotCancellableError`, 409), qui s'abandonne.
+- **`markCancelledBy` filtre sur `PENDING` et `CONFIRMED`**, dans le même `UPDATE` que l'argent dû, et
+  note `cancelled_by` (`RENTER`, `OWNER`, `OPERATOR` pour le back-office) et `cancelled_at`. La garde de
+  statut du cas d'usage double ce filtre : la retirer ne fait échouer aucun test, c'est un mutant
+  équivalent assumé.
+- **L'argent est rendu aussitôt** par `settleMoneyOwed` quand Stripe répond, sinon au balayage.
+- **Après une annulation tardive, l'argent gardé reste `CAPTURED` sur une ligne `CANCELLED`** : le
+  balayage ne le voit pas (il ne lit que les dettes), et il ne compte pas dans les revenus du loueur.
+  Il attend la spec du reversement.
+
+## Les e-mails (SPEC-006)
+
+Une inscription écrit le compte **et** un e-mail de bienvenue dans la table `outgoing_emails`, dans la
+même transaction (`KnexUnitOfWork`). `EmailSweepScheduler` passe toutes les 30 secondes : il lit au plus
+50 e-mails `PENDING`, les rédige, les envoie à Resend par `fetch` (pas de SDK), et les passe `SENT`,
+`FAILED`, ou les laisse en file avec un essai de plus.
+
+- **Aucun cas d'usage n'envoie d'e-mail.** Il en met un en file, dans sa transaction, avec
+  `emailOutbox.enqueue(email, trx)`. Envoyer depuis le cas d'usage ferait dépendre l'inscription de
+  Resend, et un e-mail partirait pour un compte dont l'écriture a ensuite échoué.
+- **Ajouter un moment clé, c'est trois endroits à la fois** : `OutgoingEmailKind` (`OutgoingEmail.ts`),
+  `outgoing_emails_kind_check` (une nouvelle migration) et le `Record` `composers` de `composeEmail.ts`.
+  Le `Record` refuse de compiler sans rédaction ; rien ne rattrape un oubli dans le `CHECK`, sinon une
+  insertion qui échoue — et avec elle toute la transaction du cas d'usage.
+- **`RESEND_API_KEY` et `MAIL_FROM` n'ont pas de repli** : `main.ts` refuse de démarrer sans eux, sauf
+  `EMAIL_SENDING=disabled`, qui laisse les e-mails en file sans rien construire. La pile e2e locale le
+  pose (`startLocalStack.ts`) : ses comptes sont en `@bookparking.test`, et chaque rebond abîme la
+  réputation du domaine d'expédition. Une pile de développement qu'un parcours e2e vise doit le poser
+  aussi.
+- **Le `.env` n'est chargé que par `pnpm --filter bookparking-api start`** (`--env-file-if-exists=../../.env`,
+  donc le `.env` à la racine du dépôt, ignoré par git). `node dist/main.js` et la pile e2e ne le lisent
+  pas, exprès : la vraie clé ne doit jamais atteindre un parcours e2e.
+- **La fenêtre de 24 heures n'est pas un réglage.** C'est la durée de vie d'une clé d'idempotence chez
+  Resend, et la clé est l'identifiant de l'e-mail : au-delà, un renvoi après une réponse perdue
+  pourrait doubler l'envoi. Ne pas l'allonger.
+- **Seuls `400` et `422` abandonnent un e-mail.** Une clé ou un domaine refusés (`401`, `403`) sont un
+  défaut de réglage : les e-mails restent `PENDING` et repartent dès la correction, dans les 24 heures.
+  Le symptôme est un journal `ResendEmailSender` en `warn` avec `status: 403` à chaque balayage —
+  aucune erreur ne remonte ailleurs.
+- **`ResendEmailSender` coupe une requête au bout de 10 secondes.** `SweepScheduler` saute un balayage
+  tant que le précédent n'a pas rendu la main : sans délai, une requête pendue gèlerait la file.
+- **Un balayage qui rend `Either.left` n'est pas journalisé**, ni pour les e-mails ni pour les demandes :
+  `SweepScheduler` ne journalise que ce qui est levé. Les e-mails restent en file, rien n'est perdu,
+  mais rien ne le dit.
+- **`ChangePassword.sut.ts` construit aussi `RegisterAccount`.** Changer son constructeur compile avec
+  `pnpm build` (qui exclut les `.sut.ts`) et casse quatre tests de `ChangePassword` — constaté pendant
+  cette spec.
+- **`outgoing_emails.recipient` garde l'adresse de chaque e-mail envoyé.** Son effacement suit celui du
+  compte, que porte SPEC-003 avec la dette #18.
+
+## L'inscription plus sûre (SPEC-007)
+
+- **`passwordStrength.ts` a une copie à la lettre dans le site** (`apps/front/src/app/account/domain/entities/Password.ts`).
+  Le site bloque ce que l'api refuse ; changer la règle ou la liste des mots de passe courants d'un côté
+  seulement, et l'un acceptera ce que l'autre refuse. `Password.unit.spec.ts` (EX-08) rejoue les niveaux de l'api.
+- **`WeakPasswordError` vit dans `domain/errors/`** : l'inscription et le changement de mot de passe la partagent.
+- **`POST /account` exige `humanProof`** : le défi vient de `GET /account/human-challenge` (`HashcashHumanProof`,
+  preuve de travail à la manière d'ALTCHA, 50 000 essais au plus, 20 minutes). Tout client qui inscrit un
+  compte — le site, l'app, `apps/e2e/src/seed/ApiClient.ts` — doit résoudre le défi.
+- **La clé des défis dérive de `ACCESS_TOKEN_SECRET`** (`app.module.ts`) : changer ce secret invalide aussi les
+  défis en cours.
+- **Les preuves servies vivent en mémoire, dans l'unique fournisseur `HumanProof`** — même limite que le journal
+  des échecs de connexion : un redémarrage ou une seconde instance permet de rejouer une preuve pendant 20 minutes.
+- **`POST /account` exige aussi `acceptsTerms` (SPEC-008)** : `false` répond 400 (`TermsNotAcceptedError`), et
+  `accounts.terms_accepted_at` note l'instant de la case cochée — `null` pour les comptes d'avant. Tout client
+  qui inscrit un compte doit l'envoyer, y compris `apps/e2e/src/seed/ApiClient.ts`.
+- **`RegisterAccount` dépense la preuve avant de juger le mot de passe et l'adresse**, exprès : une preuve ne sert
+  pas à sonder plusieurs adresses. Ne pas déplacer ce contrôle après `create`.
 
 ## Frozen versions — do not bump without reading the reason
 

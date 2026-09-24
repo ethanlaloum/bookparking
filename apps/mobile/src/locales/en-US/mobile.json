@@ -1,0 +1,54 @@
+{
+  "tab": {
+    "home": "Home",
+    "search": "Search",
+    "bookings": "Bookings",
+    "account": "Account"
+  },
+  "gate": {
+    "bookingsTitle": "Your bookings, at a glance.",
+    "bookingsBody": "Sign in to follow your requests, their payment and their dates.",
+    "accountTitle": "Your spaces, your requests.",
+    "accountBody": "Sign in to list a space, confirm the requests you receive and track what they earn."
+  },
+  "search": {
+    "field": "Where are you looking?",
+    "summaryEmpty": "Every space in France",
+    "clearAll": "Clear all"
+  },
+  "book": {
+    "stay": "Your stay",
+    "pickDates": "Pick dates",
+    "changeDates": "Change",
+    "book": "Book",
+    "nightsLabel": "{{nights}} · estimate",
+    "toPayment": "To payment"
+  },
+  "calendar": {
+    "title": "Pick your dates",
+    "pickFrom": "Pick the arrival day",
+    "pickTo": "Pick the departure day",
+    "unavailable": "Unavailable"
+  },
+  "payment": {
+    "inBrowser": "Payment in progress on Stripe",
+    "inBrowserBody": "Enter your card on the secure page that just opened. Nothing is charged before the owner confirms.",
+    "left": "You left the payment page",
+    "leftBody": "Until the hold is placed, nothing is reserved on your card. The Stripe page stays valid for thirty minutes.",
+    "resume": "Resume payment",
+    "abandon": "Abandon the request",
+    "abandoned": "Request abandoned: your dates are released and nothing was held on your card.",
+    "backToListing": "Back to the space"
+  },
+  "account": {
+    "publish": "List a space",
+    "admin": "Site administration stays on the website."
+  },
+  "offline": {
+    "title": "The api is not answering",
+    "body": "The app is looking for the api at {{url}}. Check that it runs on the Mac and that the phone is on the same Wi-Fi network."
+  },
+  "bookings": {
+    "subtitle": "Your requests, their payment and their dates."
+  }
+}

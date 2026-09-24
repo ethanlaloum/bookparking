@@ -26,6 +26,11 @@ export interface SchemaRentalRequestRepository {
   payment_id: string | null;
   hold_placed_at: Date | string | null;
   refund_id: string | null;
+  idempotency_key: string | null;
+  checkout_url: string | null;
+  free_cancellation_until: Date | string | null;
+  cancelled_at: Date | string | null;
+  cancelled_by: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }

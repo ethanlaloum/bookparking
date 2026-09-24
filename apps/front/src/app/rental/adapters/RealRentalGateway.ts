@@ -3,6 +3,7 @@ import { map, type Observable } from 'rxjs';
 import type { HttpClient, HttpResponse } from '../../../lib/http/HttpClient';
 import type { RentalRequestView } from '../domain/entities/RentalRequestView';
 import type {
+  CancellationOutcome,
   RentalGateway,
   RequestedRental,
   RequestRentalPayload,
@@ -11,10 +12,18 @@ import type {
 export class BookparkingRxRentalGateway implements RentalGateway {
   constructor(private readonly httpClient: HttpClient) {}
 
-  request(payload: RequestRentalPayload): Observable<RequestedRental> {
+  request(payload: RequestRentalPayload, idempotencyKey: string): Observable<RequestedRental> {
     return this.httpClient
-      .post<RequestedRental>('/rental-request', payload)
+      .post<RequestedRental>('/rental-request', payload, { 'Idempotency-Key': idempotencyKey })
       .pipe(map((response: HttpResponse<RequestedRental>) => response.data));
+  }
+
+  cancel(requestId: string): Observable<CancellationOutcome> {
+    return this.httpClient
+      .post<{ outcome: CancellationOutcome }>(
+        `/rental-request/${encodeURIComponent(requestId)}/cancellation`,
+      )
+      .pipe(map((response) => response.data.outcome));
   }
 
   abandon(requestId: string): Observable<void> {

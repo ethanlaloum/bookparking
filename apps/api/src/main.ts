@@ -9,6 +9,7 @@ async function bootstrap(): Promise<void> {
   environment.stripeSecretKey();
   environment.stripeWebhookSecret();
   environment.frontBaseUrl();
+  environment.emailSending();
 
   // Le corps brut est gardé pour le webhook de Stripe, dont la signature porte
   // sur les octets reçus et non sur le JSON décodé.

@@ -5,7 +5,9 @@ import { UnknownError } from '../../../../../shared/error/errors/UnknownError';
 import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { Account } from '../../../../domain/entities/Account';
+import { HumanChallenge } from '../../../../domain/ports/HumanProof';
 import { ChangePassword } from '../../../../domain/usecases/change-password/ChangePassword';
+import { IssueHumanChallenge } from '../../../../domain/usecases/issue-human-challenge/IssueHumanChallenge';
 import { RegisterAccount } from '../../../../domain/usecases/register-account/RegisterAccount';
 import { EmailAlreadyUsedError } from '../../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
 import { AccountController } from './account.controller';
@@ -22,6 +24,10 @@ export const createAccountControllerSUT = () => {
     Either.Either<Account, EmailAlreadyUsedError | UnknownError>
   >();
   const changePassword = new UseCaseDouble();
+  const issueHumanChallenge = new UseCaseDouble<
+    { now: Date },
+    Either.Either<HumanChallenge, never>
+  >();
   const authState: TestAuthState = { user: null };
 
   const metadata: ModuleMetadata = {
@@ -29,6 +35,7 @@ export const createAccountControllerSUT = () => {
     providers: [
       { provide: RegisterAccount, useValue: registerAccount },
       { provide: ChangePassword, useValue: changePassword },
+      { provide: IssueHumanChallenge, useValue: issueHumanChallenge },
     ],
   };
 
@@ -47,6 +54,7 @@ export const createAccountControllerSUT = () => {
         email,
         passwordHash: 'stub-password-hash',
         registeredAt: new Date(),
+        termsAcceptedAt: new Date(),
       });
       registerAccount.willResolve(Either.right(account));
       return { account };
@@ -55,6 +63,10 @@ export const createAccountControllerSUT = () => {
     thenAccountWasRegisteredFor(email: string) {
       expect(registerAccount.calls).toHaveLength(1);
       expect(registerAccount.lastCall?.email).toEqual(email);
+    },
+
+    givenChallenge(challenge: HumanChallenge) {
+      issueHumanChallenge.willResolve(Either.right(challenge));
     },
 
     thenNoAccountWasRegistered() {

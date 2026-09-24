@@ -6,6 +6,7 @@ import type {
   RegisterAccountPayload,
 } from '../../app/account/domain/ports/AccountGateway';
 import type { Account } from '../../app/account/domain/entities/Account';
+import type { HumanChallenge } from '../../app/account/domain/entities/HumanProof';
 import type { Session } from '../../app/auth/domain/entities/Session';
 import type { Credentials, SessionGateway } from '../../app/auth/domain/ports/SessionGateway';
 import type { AdminAccount } from '../../app/back-office/domain/entities/AdminAccount';
@@ -36,6 +37,7 @@ import type {
 import type { RentalRequestView } from '../../app/rental/domain/entities/RentalRequestView';
 import type { PaymentPageNavigator } from '../../app/rental/domain/ports/PaymentPageNavigator';
 import type {
+  CancellationOutcome,
   RentalGateway,
   RequestedRental,
   RequestRentalPayload,
@@ -148,8 +150,11 @@ export class InMemoryListingGateway implements ListingGateway {
 export class InMemoryRentalGateway implements RentalGateway {
   public rejection: string | null = null;
   public readonly requested: RequestRentalPayload[] = [];
+  public readonly intents: string[] = [];
   public readonly confirmed: string[] = [];
   public readonly abandoned: string[] = [];
+  public readonly cancelled: string[] = [];
+  public cancellationOutcome: CancellationOutcome = 'REFUNDED';
   public requestedRental: RequestedRental = {
     id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
     checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_lea',
@@ -158,9 +163,15 @@ export class InMemoryRentalGateway implements RentalGateway {
   public receivedRequests: RentalRequestView[] = [];
   public listReceivedCallCount = 0;
 
-  request(payload: RequestRentalPayload): Observable<RequestedRental> {
+  request(payload: RequestRentalPayload, idempotencyKey: string): Observable<RequestedRental> {
     this.requested.push(payload);
+    this.intents.push(idempotencyKey);
     return this.rejection === null ? of(this.requestedRental) : fail(this.rejection);
+  }
+
+  cancel(requestId: string): Observable<CancellationOutcome> {
+    this.cancelled.push(requestId);
+    return this.rejection === null ? of(this.cancellationOutcome) : fail(this.rejection);
   }
 
   abandon(requestId: string): Observable<void> {
@@ -196,6 +207,13 @@ export class InMemoryAccountGateway implements AccountGateway {
   public rejection: string | null = null;
   public readonly registered: RegisterAccountPayload[] = [];
   public readonly passwordChanges: ChangePasswordPayload[] = [];
+  public challenge: HumanChallenge | null = null;
+  public challengesServed = 0;
+
+  getHumanChallenge(): Observable<HumanChallenge> {
+    this.challengesServed += 1;
+    return this.challenge === null ? fail('Défi indisponible') : of(this.challenge);
+  }
 
   register(payload: RegisterAccountPayload): Observable<Account> {
     this.registered.push(payload);
@@ -280,6 +298,8 @@ export const aRentalRequestView = (
   confirmedAt: null,
   ...overrides,
   money: overrides.money ?? 'NONE',
+  startsAt: overrides.startsAt ?? '2026-10-09T22:00:00.000Z',
+  freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-10-08T22:00:00.000Z',
 });
 
 export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerListing => ({

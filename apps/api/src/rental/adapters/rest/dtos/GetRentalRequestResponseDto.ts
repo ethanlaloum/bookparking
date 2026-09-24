@@ -10,4 +10,6 @@ export interface GetRentalRequestResponseDto {
   money: string;
   requestedAt: string;
   confirmedAt: string | null;
+  startsAt: string;
+  freeCancellationUntil: string | null;
 }

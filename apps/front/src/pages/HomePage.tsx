@@ -4,6 +4,7 @@ import {
   KeyRound,
   MapPinned,
   Plus,
+  Smartphone,
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, type CSSProperties } from 'react';
@@ -40,7 +41,7 @@ const STEPS: readonly { key: string; icon: LucideIcon }[] = [
 const stagger = (index: number): CSSProperties => ({ '--i': index }) as CSSProperties;
 
 export const HomePage = () => {
-  const { t } = useTranslation(['listing', 'common', 'account']);
+  const { t } = useTranslation(['listing', 'common', 'account', 'mobileApp']);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -318,6 +319,41 @@ export const HomePage = () => {
             </div>
           </li>
         </ul>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* L'app iPhone : le seul chemin vers elle sur un téléphone, où         */}
+      {/* l'en-tête n'a pas la place de son bouton.                          */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="mx-auto max-w-[1320px] px-4 pt-24 sm:px-6 lg:pt-32">
+        <div className="flex flex-col gap-6 rounded-3xl border border-line bg-bg-raised p-7 sm:flex-row sm:items-center sm:justify-between sm:p-9">
+          <div className="flex items-center gap-5">
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-brand text-on-brand shadow-[var(--shadow-brand)]">
+              <Smartphone className="size-6" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="font-display text-2xl font-bold text-fg">{t('mobileApp:home.title')}</h2>
+              <p className="mt-1 leading-relaxed text-fg-muted">{t('mobileApp:home.body')}</p>
+            </div>
+          </div>
+          <Link
+            to="/application"
+            className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'group relative shrink-0 overflow-hidden')}
+          >
+            <span
+              aria-hidden="true"
+              className="animate-glint pointer-events-none absolute inset-y-0 left-0 w-2/5 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent"
+            />            <Smartphone
+              className="relative size-5 transition-transform duration-300 group-hover:-rotate-12"
+              aria-hidden="true"
+            />
+            <span className="relative">{t('common:nav.app')}</span>
+            <ArrowRight
+              className="relative size-5 transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
+            />
+          </Link>
+        </div>
       </section>
 
       {/* ------------------------------------------------------------------ */}

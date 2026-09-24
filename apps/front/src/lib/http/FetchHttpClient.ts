@@ -23,8 +23,12 @@ export class FetchHttpClient implements HttpClient {
     return this.request<T>('GET', path);
   }
 
-  post<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
-    return this.request<T>('POST', path, body);
+  post<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Observable<HttpResponse<T>> {
+    return this.request<T>('POST', path, body, headers);
   }
 
   patch<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
@@ -35,11 +39,16 @@ export class FetchHttpClient implements HttpClient {
     return this.request<T>('DELETE', path, body);
   }
 
-  private request<T>(method: Method, path: string, body?: unknown): Observable<HttpResponse<T>> {
+  private request<T>(
+    method: Method,
+    path: string,
+    body?: unknown,
+    extraHeaders: Record<string, string> = {},
+  ): Observable<HttpResponse<T>> {
     return new Observable<HttpResponse<T>>((subscriber) => {
       const controller = new AbortController();
 
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = { ...extraHeaders };
       if (body !== undefined) headers['Content-Type'] = 'application/json';
       const token = this.readToken();
       if (token !== null) headers.Authorization = `Bearer ${token}`;

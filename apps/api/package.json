@@ -10,7 +10,7 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,test}/**/*.ts\"",
     "test:unit:ci": "jest --config ./jest.unit.config.js",
-    "start": "node dist/main.js",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
     "migrate": "knex migrate:latest"
   },
   "dependencies": {

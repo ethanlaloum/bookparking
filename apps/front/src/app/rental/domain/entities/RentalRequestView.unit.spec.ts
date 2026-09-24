@@ -23,8 +23,10 @@ const aRequest = (overrides: Partial<RentalRequestView> = {}): RentalRequestView
   requestedAt: '2026-09-20T09:00:00.000Z',
   confirmedAt: null,
   ...overrides,
-  // Réaffirmé après l'étalement : `Partial` rend le champ `undefined`-able.
+  // Réaffirmés après l'étalement : `Partial` rend chaque champ `undefined`-able.
   money: overrides.money ?? 'NONE',
+  startsAt: overrides.startsAt ?? '2026-09-30T22:00:00.000Z',
+  freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-09-29T22:00:00.000Z',
 });
 
 describe('the owner revenue', () => {
@@ -115,3 +117,15 @@ describe('where the renter money stands @SPEC-004', () => {
     );
   });
 });
+
+describe('a late cancellation, read as such @SPEC-005', () => {
+  it('labels a rental cancelled without refund @EX-005-16', () => {
+    const { key, amount } = moneyLabelOf(
+      aRequest({ status: 'CANCELLED', money: 'CAPTURED', priceInCents: 4500 }),
+    );
+    expect(
+      i18n.getFixedT('fr', 'account')(`money.${key}`, { amount }).replace(/\s/g, ' '),
+    ).toBe('Annulée · 45,00 € non remboursés');
+  });
+});
+

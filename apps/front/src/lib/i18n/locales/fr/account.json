@@ -94,6 +94,23 @@
     "pendingWithoutPayment": "En attente du loueur",
     "confirmedWithoutPayment": "Confirmée",
     "expiredWithoutPayment": "Expirée",
-    "cancelledWithoutPayment": "Annulée"
+    "cancelledWithoutPayment": "Annulée",
+    "cancelledKept": "Annulée · {{amount}} non remboursés"
+  },
+  "cancel": {
+    "action": "Annuler",
+    "title": "Annuler cette réservation ?",
+    "confirm": "Annuler la réservation",
+    "keep": "Garder ma réservation",
+    "ownerConfirm": "Annuler la location",
+    "ownerKeep": "Garder la location",
+    "terms": {
+      "refund": "Vous serez remboursé de {{amount}}.",
+      "nonRefundable": "L’échéance d’annulation gratuite est passée : les {{amount}} prélevés ne seront pas remboursés.",
+      "release": "L’empreinte de {{amount}} sera levée : rien n’a été prélevé.",
+      "ownerFullReturn": "Le conducteur récupérera tout son argent.",
+      "nothingAtStake": "Aucun paiement n’est en jeu pour cette réservation."
+    },
+    "deadline": "Annulation gratuite jusqu’au {{date}}."
   }
 }

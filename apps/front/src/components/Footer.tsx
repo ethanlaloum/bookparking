@@ -57,6 +57,7 @@ export const Footer = () => {
                   { to: '/recherche', label: t('footer.search') },
                   { to: '/publier', label: t('nav.publish') },
                   { to: '/faq', label: t('footer.faq') },
+                  { to: '/application', label: t('footer.app') },
                 ]}
               />
               <FooterNav

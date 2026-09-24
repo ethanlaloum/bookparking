@@ -2,11 +2,16 @@
 
 ## Layout
 
-Monorepo pnpm, trois packages déclarés par `pnpm-workspace.yaml` (`packages: apps/*`) :
-`apps/api` (NestJS), `apps/front` (le site, administration comprise) et `apps/e2e`
-(Playwright). Chaque app porte son propre `tsconfig.json`, qui étend `tsconfig.base.json` à
-la racine (`skipLibCheck`, `forceConsistentCasingInFileNames`) — la seule configuration
-TypeScript partagée entre apps.
+Monorepo pnpm, quatre packages déclarés par `pnpm-workspace.yaml` (`packages: apps/*`) :
+`apps/api` (NestJS), `apps/front` (le site, administration comprise), `apps/mobile`
+(l'app iPhone, Expo SDK 57, testée dans Expo Go) et `apps/e2e` (Playwright). Chaque app porte
+son propre `tsconfig.json`, qui étend `tsconfig.base.json` à la racine (`skipLibCheck`,
+`forceConsistentCasingInFileNames`) — la seule configuration TypeScript partagée entre apps.
+
+**L'app mobile n'a pas de domaine à elle.** Elle importe l'hexagone du front tel quel (entités,
+epics, reducers, sélecteurs, passerelles HTTP) par l'alias `@front/*`, et ne réécrit que ses
+écrans et trois adaptateurs natifs. Une règle métier ne s'écrit donc qu'une fois, dans
+`apps/front/src/app` — voir `apps/mobile/CLAUDE.md`.
 
 **Il n'y a pas d'application d'administration séparée.** Une `apps/bo` a existé le temps
 d'une session : elle a été repliée dans `apps/front`, où les écrans de modération sont

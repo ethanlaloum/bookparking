@@ -1,15 +1,12 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowLeft,
   CalendarRange,
-  ImageIcon,
   KeyRound,
   MapPin,
   PencilLine,
   Trash2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
@@ -24,15 +21,15 @@ import {
   resetGetListingState,
 } from '../app/listing/domain/use-cases/get-listing/getListingEpic';
 import { unpublishListingRequested } from '../app/listing/domain/use-cases/unpublish-listing/unpublishListingEpic';
-import { updateListingPricingRequested } from '../app/listing/domain/use-cases/update-listing-pricing/updateListingPricingEpic';
+import { stayFromSearchParams } from '../app/listing/domain/entities/SearchCriteria';
 import { problemWithRequestedPeriod } from '../app/rental/domain/entities/RentalRequest';
 import { keepOrRenewIntent, type RentalIntent } from '../app/rental/domain/entities/RentalIntent';
 import {
   requestRentalRequested,
   resetRequestRentalState,
 } from '../app/rental/domain/use-cases/request-rental/requestRentalEpic';
-import { BayScene } from '../components/art/BayScene';
 import { DateRangeField } from '../components/DateRangeField';
+import { ListingGallery } from '../components/ListingGallery';
 import { NoParkingSign } from '../components/art/NoParkingSign';
 import { Notice } from '../components/Notice';
 import { PricingGrid } from '../components/PricingGrid';
@@ -40,13 +37,10 @@ import { VehicleBadges } from '../components/VehicleBadges';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Badge } from '../components/ui/badge';
-import { Field } from '../components/ui/field';
-import { Input } from '../components/ui/input';
 import { Skeleton } from '../components/ui/skeleton';
 import { Spinner } from '../components/ui/spinner';
 import { cn } from '../lib/cn';
-import { centsFromInput, formatCents, formatDay, inputFromCents, todayAsCalendarDay } from '../lib/format';
-import { pricingSchema, type PricingValues } from './pricingSchema';
+import { formatCents, formatDay, todayAsCalendarDay } from '../lib/format';
 import { selectIsAuthenticated } from '../selectors/auth/authSelectors';
 import {
   selectListingError,
@@ -54,9 +48,6 @@ import {
   selectSelectedListing,
   selectUnpublishError,
   selectUnpublishLoading,
-  selectUpdatePricingError,
-  selectUpdatePricingLoading,
-  selectUpdatePricingSuccess,
 } from '../selectors/listing/listingSelectors';
 import {
   selectRequestRentalError,
@@ -79,19 +70,15 @@ export const ListingDetailPage = () => {
   const error = useAppSelector(selectListingError);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
-  const [fromDay, setFromDay] = useState('');
-  const [toDay, setToDay] = useState('');
+  const [fromDay, setFromDay] = useState(() => stayFromSearchParams(searchParams)?.from ?? '');
+  const [toDay, setToDay] = useState(() => stayFromSearchParams(searchParams)?.to ?? '');
   const [intent, setIntent] = useState<RentalIntent | null>(null);
-  const [editingPricing, setEditingPricing] = useState(false);
 
   const bookingError = useAppSelector(selectRequestRentalError);
   const booking = useAppSelector(selectRequestRentalLoading);
   const booked = useAppSelector(selectRequestRentalSuccess);
   const unpublishing = useAppSelector(selectUnpublishLoading);
   const unpublishError = useAppSelector(selectUnpublishError);
-  const repricing = useAppSelector(selectUpdatePricingLoading);
-  const repriceError = useAppSelector(selectUpdatePricingError);
-  const repriced = useAppSelector(selectUpdatePricingSuccess);
 
   useEffect(() => {
     dispatch(getListingRequested({ id }));
@@ -100,15 +87,6 @@ export const ListingDetailPage = () => {
       dispatch(resetRequestRentalState());
     };
   }, [dispatch, id]);
-
-  const form = useForm<PricingValues>({
-    resolver: zodResolver(pricingSchema),
-    values: {
-      dayInCents: inputFromCents(listing?.pricing.dayInCents ?? null),
-      weekInCents: inputFromCents(listing?.pricing.weekInCents ?? null),
-      monthInCents: inputFromCents(listing?.pricing.monthInCents ?? null),
-    },
-  });
 
   if (loading)
     return (
@@ -143,19 +121,6 @@ export const ListingDetailPage = () => {
       : null;
   const canBook = isAuthenticated && periodProblem === null && inWindow && estimate !== null;
 
-  const submitPricing = (values: PricingValues): void => {
-    dispatch(
-      updateListingPricingRequested({
-        id: listing.id,
-        pricing: {
-          dayInCents: centsFromInput(values.dayInCents),
-          weekInCents: centsFromInput(values.weekInCents),
-          monthInCents: centsFromInput(values.monthInCents),
-        },
-      }),
-    );
-  };
-
   const nightly = cheapestNightlyRateInCents(listing.pricing);
   const nights = estimate === null ? 0 : dayCountOf(fromDay, toDay);
 
@@ -184,27 +149,7 @@ export const ListingDetailPage = () => {
 
       <div className="mt-8 grid gap-10 lg:grid-cols-12">
         <div className="min-w-0 lg:col-span-7 xl:col-span-8">
-          <div className="animate-rise grain relative aspect-[16/9] overflow-hidden rounded-3xl bg-[#161a24] ring-1 ring-line [--i:1]">
-            <BayScene box={listing.box} />
-          </div>
-
-          {listing.photos.length > 0 && (
-            <section className="mt-4">
-              <h2 className="sr-only">{t('listing:detail.photos')}</h2>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {listing.photos.map((photo) => (
-                  <li
-                    key={photo}
-                    className="bg-hatch flex aspect-[4/3] flex-col justify-between rounded-2xl border border-line bg-bg-sunken p-3"
-                  >
-                    <ImageIcon className="size-5 text-fg-subtle" aria-hidden="true" />
-                    <span className="truncate font-mono text-[11px] text-fg-muted">{photo}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs text-fg-subtle">{t('listing:detail.photosHint')}</p>
-            </section>
-          )}
+          <ListingGallery key={listing.id} photos={listing.photos} box={listing.box} />
 
           <section className="mt-12">
             <h2 className="flex items-center gap-2.5 font-display text-2xl font-bold text-fg">
@@ -251,32 +196,20 @@ export const ListingDetailPage = () => {
               </h2>
               <p className="mt-2 text-sm text-fg-subtle">{t('listing:detail.ownerHint')}</p>
 
-              {repriced && (
-                <Notice tone="success" className="mt-4">
-                  {t('listing:pricing.saved')}
-                </Notice>
-              )}
               {unpublishError !== null && (
                 <Notice tone="error" title={t('common:error.title')} className="mt-4">
                   {unpublishError}
                 </Notice>
               )}
-              {repriceError !== null && (
-                <Notice tone="error" title={t('common:error.title')} className="mt-4">
-                  {repriceError}
-                </Notice>
-              )}
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-expanded={editingPricing}
-                  onClick={() => setEditingPricing((open) => !open)}
+                <Link
+                  to={`/place/${listing.id}/modifier`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
                 >
                   <PencilLine className="size-4" aria-hidden="true" />
-                  {t('listing:detail.editPricing')}
-                </Button>
+                  {t('listing:detail.edit')}
+                </Link>
                 <Button
                   variant="danger"
                   size="sm"
@@ -287,38 +220,6 @@ export const ListingDetailPage = () => {
                   {t('listing:detail.unpublish')}
                 </Button>
               </div>
-
-              {editingPricing && (
-                <form
-                  onSubmit={(event) => void form.handleSubmit(submitPricing)(event)}
-                  className="animate-rise mt-5 grid gap-4 rounded-2xl border border-line bg-bg-raised p-5 sm:grid-cols-3"
-                >
-                  {(['dayInCents', 'weekInCents', 'monthInCents'] as const).map((name) => (
-                    <Field
-                      key={name}
-                      label={t(`listing:pricing.${name.replace('InCents', '')}`)}
-                      error={form.formState.errors[name]?.message}
-                    >
-                      {({ id, describedBy, invalid }) => (
-                        <Input
-                          id={id}
-                          aria-describedby={describedBy}
-                          aria-invalid={invalid}
-                          inputMode="decimal"
-                          placeholder="—"
-                          {...form.register(name)}
-                        />
-                      )}
-                    </Field>
-                  ))}
-                  <div className="sm:col-span-3">
-                    <Button type="submit" size="sm" disabled={repricing}>
-                      {repricing && <Spinner />}
-                      {t('listing:pricing.save')}
-                    </Button>
-                  </div>
-                </form>
-              )}
             </section>
           )}
         </div>

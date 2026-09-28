@@ -1,8 +1,8 @@
 import { createPublishListingSUT } from './PublishListing.sut';
-import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { AvailabilityPeriodExpiredError } from '../../errors/AvailabilityPeriodExpiredError';
 import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
-import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
+import { UnknownPhotoError } from '../../errors/UnknownPhotoError';
 import { VehicleType } from '../../entities/Listing';
 
 const MARC = 'Marc D.';
@@ -112,10 +112,10 @@ describe('PublishListing @SPEC-001', () => {
     sut.thenNoActiveListingFor(PLACE);
   });
 
-  it('refuses a listing when photo storage fails @EX-001-19', async () => {
+  it('refuses a listing whose photo was never uploaded @EX-001-19', async () => {
     const sut = createPublishListingSUT();
     sut.givenNoActiveListingFor(PLACE);
-    sut.givenPhotoStorageFailingOnEveryUpload();
+    sut.givenNoPhotoUploaded();
 
     const result = await sut.whenPublishing({
       owner: MARC,
@@ -123,7 +123,27 @@ describe('PublishListing @SPEC-001', () => {
       publishedAt: '2026-09-10',
     });
 
-    sut.thenPublicationIsRefusedWith(result, PhotoStorageFailedError);
+    sut.thenPublicationIsRefusedWith(result, UnknownPhotoError);
+    sut.thenRefusalMessageIs(
+      result,
+      "Une photo de l'annonce n'a pas été envoyée par son propriétaire",
+    );
+    sut.thenNoActiveListingFor(PLACE);
+  });
+
+  it('refuses a listing carrying a photo uploaded by someone else', async () => {
+    const sut = createPublishListingSUT();
+    sut.givenNoActiveListingFor(PLACE);
+    sut.givenPhotoUploadedBy(PIERRE, 'photo-of-pierre');
+
+    const result = await sut.whenPublishing({
+      owner: MARC,
+      ...COMPLETE_LISTING,
+      photos: ['photo-1', 'photo-of-pierre'],
+      publishedAt: '2026-09-10',
+    });
+
+    sut.thenPublicationIsRefusedWith(result, UnknownPhotoError);
     sut.thenNoActiveListingFor(PLACE);
   });
 

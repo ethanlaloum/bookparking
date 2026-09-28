@@ -1,9 +1,7 @@
-import { Either } from 'effect/index';
-
-import { PhotoStorageFailedError } from '../usecases/publish-listing/errors/PhotoStorageFailedError';
+import { ListingPhoto } from '../entities/ListingPhoto';
 
 export interface PhotoStorage {
-  storeAll(
-    photos: string[],
-  ): Promise<Either.Either<void, PhotoStorageFailedError>>;
+  store(photo: ListingPhoto): Promise<void>;
+  findById(photoId: string): Promise<ListingPhoto | null>;
+  findIdsOwnedBy(ownerId: string, photoIds: string[]): Promise<string[]>;
 }

@@ -7,15 +7,21 @@ import {
   formatDistance,
   type LocationPrecision,
 } from '../app/listing/domain/entities/Coordinates';
-import { cheapestNightlyRateInCents, type Listing } from '../app/listing/domain/entities/Listing';
+import {
+  cheapestNightlyRateInCents,
+  dayCountOf,
+  estimateRentalPriceInCents,
+  type Listing,
+} from '../app/listing/domain/entities/Listing';
 import {
   priceForTier,
   type RentalTier,
+  type SearchedStay,
   type VehicleType,
 } from '../app/listing/domain/entities/SearchCriteria';
 import { cn } from '../lib/cn';
 import { formatCents, formatDay } from '../lib/format';
-import { BayThumbnail } from './art/BayThumbnail';
+import { ListingThumbnail } from './ListingThumbnail';
 import { VehicleBadges } from './VehicleBadges';
 
 interface SearchResultCardProps {
@@ -23,6 +29,7 @@ interface SearchResultCardProps {
   distanceKm: number | null;
   precision: LocationPrecision | null;
   tier: RentalTier | null;
+  stay?: SearchedStay | null;
   vehicle: VehicleType | null;
   focused: boolean;
   onFocus: () => void;
@@ -35,6 +42,7 @@ export const SearchResultCard = ({
   distanceKm,
   precision,
   tier,
+  stay = null,
   vehicle,
   focused,
   onFocus,
@@ -44,6 +52,12 @@ export const SearchResultCard = ({
 
   const tierPrice = tier === null ? null : priceForTier(listing.pricing, tier);
   const nightly = cheapestNightlyRateInCents(listing.pricing);
+  const stayPrice =
+    stay === null ? null : estimateRentalPriceInCents(listing.pricing, stay.from, stay.to);
+  const listingLink =
+    stay === null
+      ? `/place/${listing.id}`
+      : `/place/${listing.id}?${new URLSearchParams({ arrivee: stay.from, depart: stay.to }).toString()}`;
 
   return (
     <li className="animate-rise" style={{ '--i': Math.min(revealOrder, 8) } as CSSProperties}>
@@ -62,7 +76,8 @@ export const SearchResultCard = ({
             : 'border-line hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[var(--shadow-lift)]',
         )}
       >
-        <BayThumbnail
+        <ListingThumbnail
+          photos={listing.photos}
           box={listing.box}
           className="aspect-[4/5] w-20 shrink-0 self-start sm:aspect-auto sm:min-h-32 sm:w-28 sm:self-stretch"
         />
@@ -112,7 +127,20 @@ export const SearchResultCard = ({
 
           <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-2 pt-4">
             <p className="tabular flex items-baseline gap-1.5">
-              {tier !== null ? (
+              {stay !== null ? (
+                stayPrice === null ? (
+                  <span className="text-sm text-fg-subtle">{t('listing:card.noStayPrice')}</span>
+                ) : (
+                  <>
+                    <span className="font-display text-2xl font-bold tracking-tight text-fg">
+                      {formatCents(stayPrice)}
+                    </span>
+                    <span className="text-xs text-fg-subtle">
+                      {t('listing:card.stayTotal', { count: dayCountOf(stay.from, stay.to) })}
+                    </span>
+                  </>
+                )
+              ) : tier !== null ? (
                 tierPrice === null ? (
                   <span className="text-sm text-fg-subtle">{t('listing:card.noPrice')}</span>
                 ) : (
@@ -139,7 +167,7 @@ export const SearchResultCard = ({
             </p>
 
             <Link
-              to={`/place/${listing.id}`}
+              to={listingLink}
               className="group/link -mr-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent-soft"
             >
               {t('listing:map.openListing')}

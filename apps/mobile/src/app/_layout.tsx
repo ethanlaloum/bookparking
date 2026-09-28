@@ -88,6 +88,7 @@ const Navigation = () => {
         <Stack.Screen name="place/[id]" />
         <Stack.Screen name="paiement/[requestId]" options={{ gestureEnabled: false }} />
         <Stack.Screen name="publier" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modifier/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="connexion" options={{ presentation: 'modal' }} />
         <Stack.Screen name="inscription" options={{ presentation: 'modal' }} />
         <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />

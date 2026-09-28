@@ -1,11 +1,11 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, PencilLine } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import type { OwnerListing } from '../app/listing/domain/ports/ListingGateway';
 import { cheapestNightlyRateInCents } from '../app/listing/domain/entities/Listing';
 import { formatCents, formatDay } from '../lib/format';
-import { BayThumbnail } from './art/BayThumbnail';
+import { ListingThumbnail } from './ListingThumbnail';
 import { Badge } from './ui/badge';
 import { buttonVariants } from './ui/buttonVariants';
 
@@ -17,7 +17,7 @@ export const OwnerListingRow = ({ listing }: { listing: OwnerListing }) => {
   return (
     <li className="flex flex-col gap-4 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-bg-sunken/40 sm:flex-row sm:items-center sm:gap-5">
       <div className="flex min-w-0 flex-1 items-center gap-4">
-        <BayThumbnail box={listing.box} className="h-16 w-13 shrink-0 rounded-lg" />
+        <ListingThumbnail photos={listing.photos} box={listing.box} className="h-16 w-13 shrink-0 rounded-lg" />
         <div className="min-w-0">
           <p className="font-medium text-fg">
             {listing.address} · <span className="font-mono text-[0.9em]">{listing.box}</span>
@@ -37,13 +37,22 @@ export const OwnerListingRow = ({ listing }: { listing: OwnerListing }) => {
         {isActive ? t('account:places.active') : t('account:places.unpublished')}
       </Badge>
 
-      <Link
-        to={`/place/${listing.id}`}
-        className={`${buttonVariants({ variant: 'outline', size: 'sm' })} shrink-0`}
-      >
-        {t('account:places.open')}
-        <ArrowRight className="size-4" aria-hidden="true" />
-      </Link>
+      <div className="flex shrink-0 gap-2">
+        {isActive && (
+          <Link
+            to={`/place/${listing.id}/modifier`}
+            aria-label={t('account:places.editLabel', { address: listing.address, box: listing.box })}
+            className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+          >
+            <PencilLine className="size-4" aria-hidden="true" />
+            {t('account:places.edit')}
+          </Link>
+        )}
+        <Link to={`/place/${listing.id}`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          {t('account:places.open')}
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Link>
+      </div>
     </li>
   );
 };

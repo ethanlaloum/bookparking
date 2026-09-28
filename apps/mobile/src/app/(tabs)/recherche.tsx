@@ -1,4 +1,4 @@
-import { CalendarRange, CarFront, CircleAlert, MapPin, Navigation, TriangleAlert } from 'lucide-react-native';
+import { CalendarCheck, CalendarRange, CarFront, CircleAlert, MapPin, Navigation, TriangleAlert } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, View } from 'react-native';
@@ -13,8 +13,16 @@ import {
   addressSelected,
 } from '@front/app/listing/domain/use-cases/search-address/searchAddressEpic';
 import {
+  freeListingsCleared,
+  freeListingsRequested,
+} from '@front/app/listing/domain/use-cases/search-free-listings/searchFreeListingsEpic';
+import { formatDay, todayAsCalendarDay } from '@front/lib/format';
+import {
   selectApproximateCount,
+  selectFreeListingsError,
+  selectFreeListingsLoading,
   selectListings,
+  selectListingsForStay,
   selectListingsError,
   selectListingsLoaded,
   selectListingsLoading,
@@ -24,13 +32,15 @@ import {
   selectNearbyCount,
   selectSearchLabel,
   selectSearchPoint,
+  selectStayTally,
   selectUnmappableCount,
   selectVehicleTally,
 } from '@front/selectors/listing/listingSelectors';
 
 import { AddressSheet } from '../../components/AddressSheet';
 import { ListingsMap } from '../../components/ListingsMap';
-import { AddressField, Insight, TierChips, VehicleChips } from '../../components/SearchFilters';
+import { CalendarSheet } from '../../components/CalendarSheet';
+import { AddressField, Insight, StayField, TierChips, VehicleChips } from '../../components/SearchFilters';
 import { SearchResultCard } from '../../components/SearchResultCard';
 import { EmptyState, Rise, Skeleton, useTabBarSpace } from '../../components/ui/Layout';
 import { Segmented } from '../../components/ui/Segmented';
@@ -67,15 +77,31 @@ export default function SearchScreen() {
   const locating = useAppSelector(selectLocating);
   const approximate = useAppSelector(selectApproximateCount);
   const unplaced = useAppSelector(selectUnmappableCount);
+  const listingsForStay = useAppSelector(selectListingsForStay);
+  const stayTally = useAppSelector(selectStayTally);
+  const freeLoading = useAppSelector(selectFreeListingsLoading);
+  const freeError = useAppSelector(selectFreeListingsError);
 
   const { criteria, replaceCriteria } = useSearchCriteria();
   const vehicleTally = useAppSelector((state) => selectVehicleTally(state, criteria.vehicle));
   const [mode, setMode] = useState<Mode>('list');
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [addressOpen, setAddressOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const chosenTier = criteria.tier;
-  const tierCount = chosenTier === null ? 0 : listings.filter((listing) => offersTier(listing.pricing, chosenTier)).length;
+  const tierCount =
+    chosenTier === null ? 0 : listingsForStay.filter((listing) => offersTier(listing.pricing, chosenTier)).length;
+  const stayFrom = criteria.stay?.from ?? null;
+  const stayTo = criteria.stay?.to ?? null;
+
+  useEffect(() => {
+    if (stayFrom === null || stayTo === null) {
+      dispatch(freeListingsCleared());
+      return;
+    }
+    dispatch(freeListingsRequested({ from: stayFrom, to: stayTo }));
+  }, [dispatch, stayFrom, stayTo]);
 
   useEffect(() => {
     if (!listingsLoaded && !listingsLoading && listingsError === null) dispatch(listListingsRequested());
@@ -124,14 +150,35 @@ export default function SearchScreen() {
           onOpen={() => setAddressOpen(true)}
           onClear={() => replaceCriteria({ ...criteria, address: null })}
         />
+        <StayField
+          stay={criteria.stay}
+          onOpen={() => setCalendarOpen(true)}
+          onClear={() => replaceCriteria({ ...criteria, stay: null })}
+        />
         <VehicleChips value={criteria.vehicle} onChange={(vehicle) => replaceCriteria({ ...criteria, vehicle })} />
         <TierChips value={criteria.tier} onChange={(tier) => replaceCriteria({ ...criteria, tier })} />
       </Rise>
 
       {listingsError !== null && <ApiUnreachable message={listingsError} />}
+      {freeError !== null && <ApiUnreachable message={freeError} />}
 
-      {(searchPoint !== null || criteria.vehicle !== null || criteria.tier !== null) && (
+      {(searchPoint !== null || criteria.vehicle !== null || criteria.tier !== null || criteria.stay !== null) && (
         <View style={{ gap: 8 }}>
+          {criteria.stay !== null && stayTally !== null && (
+            <Insight positive={stayTally.free > 0} icon={CalendarCheck}>
+              {stayTally.free > 0
+                ? t('listing:criteria.stayFiltered', {
+                    count: stayTally.free,
+                    from: formatDay(`${criteria.stay.from}T00:00:00.000Z`),
+                    to: formatDay(`${criteria.stay.to}T00:00:00.000Z`),
+                  })
+                : t('listing:criteria.noStay', {
+                    from: formatDay(`${criteria.stay.from}T00:00:00.000Z`),
+                    to: formatDay(`${criteria.stay.to}T00:00:00.000Z`),
+                  })}
+              {stayTally.hidden > 0 && ` ${t('listing:criteria.stayHidden', { count: stayTally.hidden })}`}
+            </Insight>
+          )}
           {searchPoint !== null && (
             <Insight positive={nearby > 0} icon={Navigation}>
               <Text size={13} weight="semibold" style={{ color: nearby > 0 ? colors.ok : colors.fgMuted }}>
@@ -203,15 +250,16 @@ export default function SearchScreen() {
                 distanceKm={item.distanceKm}
                 precision={item.located.precision}
                 tier={criteria.tier}
+                stay={criteria.stay}
                 vehicle={criteria.vehicle}
               />
             </Rise>
           )}
           ListEmptyComponent={
             <View style={{ paddingHorizontal: 16, gap: 12 }}>
-              {(listingsLoading || locating) && [0, 1, 2].map((slot) => <Skeleton key={slot} height={150} />)}
+              {(listingsLoading || locating || freeLoading) && [0, 1, 2].map((slot) => <Skeleton key={slot} height={150} />)}
               {listingsLoaded && listings.length === 0 && <EmptyState title={t('listing:map.empty')} />}
-              {listingsLoaded && listings.length > 0 && !locating && results.length === 0 && (
+              {listingsLoaded && listingsForStay.length > 0 && !locating && results.length === 0 && (
                 <EmptyState title={t('listing:map.emptyLocated')} />
               )}
             </View>
@@ -277,6 +325,7 @@ export default function SearchScreen() {
                   distanceKm={focused.distanceKm}
                   precision={focused.located.precision}
                   tier={criteria.tier}
+                  stay={criteria.stay}
                   vehicle={criteria.vehicle}
                   focused
                 />
@@ -294,6 +343,18 @@ export default function SearchScreen() {
           setAddressOpen(false);
           replaceCriteria({ ...criteria, address: { label: suggestion.label, coordinates: suggestion.coordinates } });
         }}
+      />
+      <CalendarSheet
+        visible={calendarOpen}
+        title={t('mobile:search.stay')}
+        labels={{ from: t('listing:criteria.arrival'), to: t('listing:criteria.departure') }}
+        value={{ from: criteria.stay?.from ?? '', to: criteria.stay?.to ?? '' }}
+        min={todayAsCalendarDay()}
+        onChange={(period) => {
+          if (period.from !== '' && period.to !== '' && period.from <= period.to)
+            replaceCriteria({ ...criteria, stay: { from: period.from, to: period.to } });
+        }}
+        onClose={() => setCalendarOpen(false)}
       />
     </View>
   );

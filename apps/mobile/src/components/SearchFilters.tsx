@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { CalendarRange, MapPin, Search, X, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, CalendarRange, MapPin, Search, X, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -8,8 +8,11 @@ import {
   RENTAL_TIERS,
   VEHICLE_TYPES,
   type RentalTier,
+  type SearchedStay,
   type VehicleType,
 } from '@front/app/listing/domain/entities/SearchCriteria';
+
+import { formatPeriodDay } from './CalendarSheet';
 
 import { fonts } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
@@ -103,6 +106,58 @@ export const AddressField = ({
           style={{ padding: 14 }}
         >
           <X size={17} color={onInk ? '#5f6d8b' : colors.fgSubtle} />
+        </Pressable>
+      )}
+    </View>
+  );
+};
+
+export const StayField = ({
+  stay,
+  onOpen,
+  onClear,
+}: {
+  stay: SearchedStay | null;
+  onOpen: () => void;
+  onClear: () => void;
+}) => {
+  const { t } = useTranslation(['listing', 'mobile']);
+  const { colors } = useTheme();
+  const summary = stay === null ? null : `${formatPeriodDay(stay.from)} → ${formatPeriodDay(stay.to)}`;
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 48,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: stay === null ? colors.lineStrong : colors.brand,
+        backgroundColor: stay === null ? colors.bgRaised : colors.accentSoft,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('mobile:search.stay')}
+        accessibilityValue={{ text: summary ?? t('mobile:search.anyStay') }}
+        onPress={onOpen}
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 8 }}
+      >
+        <CalendarDays size={17} color={colors.accent} />
+        <Text size={14} weight={stay === null ? 'regular' : 'semibold'} tone={stay === null ? 'subtle' : 'fg'} tabular>
+          {summary ?? t('mobile:search.anyStay')}
+        </Text>
+      </Pressable>
+      {stay !== null && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('mobile:search.clearStay')}
+          onPress={onClear}
+          hitSlop={8}
+          style={{ padding: 12 }}
+        >
+          <X size={16} color={colors.fgSubtle} />
         </Pressable>
       )}
     </View>

@@ -6,12 +6,12 @@
 
 - `domain/entities` — les entités (`Listing`), constructibles seulement par `publish()` ou `fromState()`, jamais par un constructeur public.
 - `domain/ports` — des interfaces seulement (`ListingRepository`, `PhotoStorage`). Aucune implémentation, pas même une doublure de test, n'y vit : le domaine ne dépend d'aucune classe concrète.
-- `domain/usecases/<cas-d-usage>/` — un dossier par cas d'usage (`publish-listing/`), avec son sous-dossier `errors/` pour les erreurs propres à ce seul cas d'usage (`AvailabilityPeriodExpiredError`, `ActiveListingNotFoundError`). Chaque cas d'usage implémente le contrat partagé `UseCase<Props, T>` de `src/shared/use-case/UseCase.ts`.
-- `domain/errors/` — les erreurs que l'entité elle-même peut lever, partagées par plusieurs cas d'usage (`IncompletePricingError`, levée à la fois par `Listing.publish()` et par `Listing.changePricing()`) ; une erreur qu'un seul cas d'usage renvoie reste sous son propre `domain/usecases/<cas-d-usage>/errors/`.
+- `domain/usecases/<cas-d-usage>/` — un dossier par cas d'usage (`publish-listing/`), avec son sous-dossier `errors/` pour les erreurs propres à ce seul cas d'usage (`ListingAlreadyActiveError`, `ListingNotFoundError`). Chaque cas d'usage implémente le contrat partagé `UseCase<Props, T>` de `src/shared/use-case/UseCase.ts`.
+- `domain/errors/` — les erreurs que l'entité elle-même peut lever, partagées par plusieurs cas d'usage (`IncompletePricingError`, levée à la fois par `Listing.publish()` et par `Listing.edit()` ; `AvailabilityPeriodExpiredError`, `UnknownPhotoError` et `ActiveListingNotFoundError`, que `PublishListing` et `EditListing` partagent ; `PhotoTooLargeError` et `UnsupportedPhotoFormatError`, levées par `ListingPhoto.upload()`) ; une erreur qu'un seul cas d'usage renvoie reste sous son propre `domain/usecases/<cas-d-usage>/errors/`.
 - `adapters/repositories/<agrégat>/` — les implémentations des ports, y compris les doublures en mémoire utilisées par les tests unitaires (`InMemoryListingRepository`), plus un `Schema<Nom>.ts` par table Knex (`SchemaListingRepository`) qui décrit les colonnes réelles.
 - `adapters/rest/controllers/<agrégat>/` et `adapters/rest/dtos/` — les contrôleurs Nest et leurs schémas `effect/Schema` de validation de requête.
 - `adapters/mappers/<agrégat>/` — les convertisseurs entité → DTO de réponse (`ListingMapper`), un fichier par agrégat : ils décident seuls ce qu'une réponse HTTP montre, et donc ce qu'elle omet délibérément (voir « Things that will bite you »).
-- `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur (`InMemoryPhotoStorage`).
+- `adapters/services/<service>/` — les adaptateurs de port qui ne sont ni un dépôt ni un contrôleur. `listing` n'en a plus : les photos vivent en base, derrière `adapters/repositories/listing-photo/` (`KnexPhotoStorage`, `InMemoryPhotoStorage`).
 - `domain/builders/<Entité>Builder.ts` — un bâtisseur d'entité partagé entre plusieurs `.sut.ts` d'un même agrégat (`ListingBuilder` est utilisé à la fois par `PublishListing.sut.ts` et par `KnexListingRepository.sut.ts`) : il construit l'entité via `fromState()`, jamais par un constructeur public, pour donner à toute fixture d'annonce active un seul point de vérité entre les barreaux `unit` et `int-repo`.
 
 `src/user-management` porte l'authentification, séparée de `listing` : `domain/ports/AccessTokenVerifier` est un port sans implémentation — vérifier un vrai jeton (session, JWT, fournisseur externe) est hors périmètre de SPEC-001 — et `adapters/rest/guards/AuthGuard` le consomme pour garder une route. `domain/entities/Account` est la première entité du contexte, construite uniquement par `register()` (nouveau compte) ou par `fromState()`, jamais par un constructeur public — même discipline que `Listing`. `domain/ports/AccountRepository` et `domain/ports/PasswordHasher` sont ses deux premiers ports propres ; `adapters/repositories/account/` porte leur première implémentation (`InMemoryAccountRepository`, `KnexAccountRepository`, son `SchemaAccountRepository`), et `adapters/services/password-hasher/ScryptPasswordHasher` implémente `PasswordHasher` — un adaptateur de service, sous `adapters/`, jamais sous `domain/ports/`. `domain/usecases/register-account/` porte le premier cas d'usage du contexte, `RegisterAccount`. `adapters/rest/controllers/account/` porte `AccountController`, premier contrôleur du contexte, et sa route `POST /account` ; `adapters/mappers/AccountMapper` la convertit vers `RegisterAccountResponseDto`, qui n'expose que l'identifiant et l'adresse.
@@ -75,7 +75,11 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   `dayCountingPeriodOfDays` (`CalendarDay.ts:88-93`) construit la paire neutre attendue par le calcul de prix ; `parisPeriodOfDays` (`CalendarDay.ts:76-79`) construit les vrais bornes utilisées par `overlaps()` — les deux renvoient le même type `RentalPeriod` et rien ne les distingue à l'appel.
   Utiliser `dayCountingPeriodOfDays` pour le prix, `parisPeriodOfDays` pour tout chevauchement — voir `RequestRental.ts` pour le bon appariement.
 
-- **Dans `RequestRental`, l'ordre des gardes est chargé de sens : dates lisibles, puis durée ≤ `366` jours, puis prix, puis disponibilité.**
+- **Dans `RequestRental`, l'ordre des gardes est chargé de sens : dates lisibles, puis durée ≤ `366` jours, puis prix, puis ouverture, puis disponibilité.**
+  L'ouverture (`coversDays` sur `PublishedListing.openDays`, jours UTC de `available_from`/`available_to`) refuse en
+  `422` « La place n'est pas ouverte sur toute la période demandée » ; elle vient après la construction de la demande,
+  seule à refuser des jours illisibles, et une période à la fois fermée et sans tarif répond donc « aucun tarif ».
+  `KnexPublishedListingReader` recopie ces deux colonnes de `listings`, comme le reste.
   `dayCountOfDays` (`CalendarDay.ts:56-61`) rend `NaN` sur une date invalide et `NaN > 366` vaut `false` : sans `isReadableDayRange` avant la borne de durée (`RentalRequest.ts:31-34`), puis la demande construite avant `findConfirmedByPlace` (`RequestRental.ts:57-80`), une date impossible franchirait la borne et lirait la place comme libre (`overlaps()` sur un `NaN` vaut toujours `false`).
   Ne jamais réordonner ces gardes.
 
@@ -223,7 +227,7 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   branche `undefined` échoue elle aussi et porte le message par défaut d'`effect`,
   `Expected undefined, actual "<valeur>"` — que `parseSchemaError` concatène tel quel. Annoter l'union
   n'y change rien : `ArrayFormatter` descend dans chaque membre et rend leurs messages. Constaté pendant
-  cette story sur `UpdateListingPricingSchema` : un prix envoyé en chaîne repartait en clair dans la
+  cette story sur `UpdateListingPricingSchema` (devenu `EditListingSchema`) : un prix envoyé en chaîne repartait en clair dans la
   réponse, contre la contrainte « Secret » du §8 de SPEC-002 — la même régression que `3af4eda` et
   `04fb79b`, par un chemin que les deux annotations de `RegisterAccountSchema` ne couvrent pas.
   `exact: true` rend le champ facultatif **sans** composer d'union : un palier absent est absent, un
@@ -232,13 +236,31 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   `optional(...)` — et un test `int-http` qui envoie le champ mal typé et vérifie que la réponse ne
   contient pas la valeur.
 
-- **`DELETE /listing/:id` et `PATCH /listing/:id/pricing` sont clés sur l'identifiant, mais leurs cas d'usage sont clés sur la place — `GetListing` fait la jonction dans le contrôleur.**
-  `UnpublishListing` et `UpdateListingPricing` prennent `address` + `box` et calculent `placeKeyOf` ;
-  les deux routes prennent l'identifiant que `GET /listing` rend aux clients. Le contrôleur appelle donc
-  `GetListing` d'abord, puis le cas d'usage : une lecture de plus par requête, assumée pour ne pas
-  réécrire deux cas d'usage déjà prouvés au barreau `unit`.
-  C'est le seul endroit du dépôt où un contrôleur enchaîne deux cas d'usage. Si un troisième chemin en a
-  besoin, préférer alors donner l'identifiant aux cas d'usage plutôt que répandre ce montage.
+- **`DELETE /listing/:id` est clé sur l'identifiant, mais `UnpublishListing` l'est sur la place — `GetListing` fait la jonction dans le contrôleur.**
+  `UnpublishListing` prend `address` + `box` et calcule `placeKeyOf` ; la route prend l'identifiant
+  que `GET /listing` rend aux clients. Le contrôleur appelle donc `GetListing` d'abord : une lecture de
+  plus par requête, assumée pour ne pas réécrire un cas d'usage déjà prouvé.
+  `EditListing`, lui, prend directement `listingId` (`findActiveById`) : c'est la forme à suivre pour
+  tout nouveau cas d'usage appelé par une route à identifiant, plutôt que répandre cette jonction.
+
+- **`PATCH /listing/:id` remplace tout ce qui se modifie, sauf l'adresse et le box.**
+  Le corps (`EditListingSchema`) est l'annonce entière — consignes, photos, véhicules, grille, période —
+  et non un patch partiel : un palier omis est effacé. L'adresse et le box restent hors d'atteinte parce
+  qu'ils forment `place_key`, la clé sur laquelle `rental_requests_place_period_excl` départage deux
+  demandes et que chaque demande recopie : les changer laisserait les réservations passées sur une
+  autre clé que l'annonce, et la contrainte d'exclusion ne verrait plus le chevauchement. Changer de
+  place, c'est dépublier puis publier. `Listing.edit()` rejoue les gardes de la publication (grille
+  non vide, véhicules connus, période pas entièrement passée — une période déjà commencée reste
+  modifiable) et ne relit **aucune** demande : réduire les dates ou retirer un véhicule ne touche pas
+  une réservation déjà faite, exactement comme dépublier. Les nouvelles consignes d'accès, elles,
+  sont lues aussitôt par le conducteur d'une réservation confirmée (jointure de `presentRentalRequest`).
+  Seules les photos absentes de l'annonce sont vérifiées (envoyées par ce compte) : une référence que
+  l'annonce porte déjà, même d'avant l'envoi de photos, reste acceptée.
+
+- **Un `Schema.Date` fait fuiter la valeur soumise dès qu'elle n'est pas une chaîne, même annoté.**
+  Son côté « chaîne » n'hérite pas de l'annotation : `123` rend « Expected string, actual 123 ».
+  `EditListingSchema` compose donc un `Schema.String` annoté avec un `Schema.Date` annoté, puis annote
+  le tout ; `PublishListingSchema` garde l'ancienne forme et fuit encore sur ce cas.
 
 - **`DELETE /listing/:id` répond `204` pour un identifiant inconnu, mal formé, ou déjà dépublié — ce n'est pas un trou.**
   Le domaine fait réussir silencieusement une seconde dépublication (RG-07/EX-33, `UnpublishListing.ts:19-20`) ;
@@ -351,11 +373,10 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   les deux identifiants de compte au vestiaire : les routes sont déjà clés sur le compte appelant, donc les
   rendre n'apprendrait rien à son destinataire légitime et désignerait un tiers à quiconque lirait la réponse.
 
-- **`GetOwnerListingResponseDto` n'expose toujours pas `accessDescription`, même à son propriétaire.**
-  Le DTO du tableau de bord ajoute `status` à ce que la lecture publique montre, et rien d'autre : AUTO-29
-  a retiré ce champ des réponses et a laissé ouverte la question de qui doit le voir. Conséquence à
-  connaître : **un propriétaire ne peut relire nulle part ses propres consignes d'accès.** C'est un manque
-  réel, pas un oubli — le combler est une story, pas un champ de plus ici.
+- **`GetOwnerListingResponseDto` expose `accessDescription`, et c'est la seule réponse qui le fasse avec `PATCH /listing/:id`.**
+  Le propriétaire doit relire ses consignes pour les modifier ; `GET /listing/mine` est clé sur le
+  compte appelant, donc personne d'autre ne les y lit. Les lectures publiques (`GET /listing`,
+  `GET /listing/:id`) continuent de les omettre (AUTO-29, EX-44).
 
 - **La jointure des deux finders ne filtre pas sur le statut de l'annonce.**
   Une demande faite sur une place depuis dépubliée reste une demande : la masquer priverait le propriétaire
@@ -685,6 +706,63 @@ et `back_office_admins` suivent par `ON DELETE CASCADE`. Contexte `user-manageme
 - **La vérification précède l'effacement dans la même transaction, sans verrou** : une empreinte posée entre les
   deux laisse une demande `PENDING` sur une annonce dépubliée, que l'expiration à 48 heures rend.
 - **Pas d'`Idempotency-Key`** : rejouée, la suppression trouve un jeton sans compte et répond `401`.
+
+## Les photos d'annonce
+
+Deux temps : `POST /listing/photo` (jeton, multipart, champ `photo`) enregistre une photo et rend son
+identifiant ; `POST /listing` et `PATCH /listing/:id` ne reçoivent que ces identifiants. `GET /listing/photo/:id`
+est public, comme la fiche. Entité `ListingPhoto`, cas d'usage `UploadListingPhoto` et `GetListingPhoto`, table
+`listing_photos`.
+
+- **Les octets vivent dans Postgres (`listing_photos.bytes`, `bytea`), pas dans un stockage objet.** Rien à
+  configurer sur Railway, et les photos suivent les sauvegardes de la base. Le site et l'app les réduisent à
+  2048 px en JPEG avant l'envoi (quelques centaines de Ko). Passer à S3 ou R2, c'est un autre adaptateur de
+  `PhotoStorage`, rien d'autre.
+- **Le format se lit dans les premiers octets** (`ListingPhoto.upload`), jamais dans le `Content-Type` ni le nom
+  du fichier : JPEG, PNG, WebP, sinon `415`. La photo est resservie sous ce format, avec `nosniff` et
+  `Content-Security-Policy: default-src 'none'` : Caddy sert `/api` sur le domaine du site, et une page HTML
+  déguisée en photo y deviendrait un script.
+- **Une photo n'entre dans une annonce que si son propre compte l'a envoyée** (`findIdsOwnedBy`, sinon
+  `UnknownPhotoError`, `400`). Sans ce filtre, n'importe qui recopierait les photos d'une autre annonce.
+- **Multer coupe à 10 Mo avant le cas d'usage, en anglais.** `FileInterceptor` (de `@nestjs/platform-express`,
+  sans `@types/multer` : `UploadedPhoto` est typé à la main) garde le fichier en mémoire et lève
+  `PayloadTooLargeException('File too large')` au-delà ; `PhotoTooLargeFilter` la réécrit en français. Ne pas
+  retirer la limite : elle protège aussi la mémoire du processus.
+- **`Cache-Control: immutable` est posé par `res.setHeader`, après la lecture réussie — jamais par `@Header()`.**
+  Nest pose les en-têtes de `@Header()` avant d'appeler le handler : un `404` ou un `500` serait mis en cache un an.
+- **`KnexPhotoStorage` ne cherche que des UUID.** Les annonces d'avant portent des références en texte
+  (`photo-1.jpg`) ; passées telles quelles à la colonne `uuid`, Postgres lèverait `invalid input syntax for type
+  uuid`. Elles restent valables sur les annonces qui les portaient, et le front les montre sans image.
+- **Les photos orphelines ne sont balayées par rien.** Une photo envoyée puis jamais publiée (formulaire
+  abandonné, publication refusée puis relancée, qui renvoie tout), ou retirée d'une annonce, reste en base.
+  Seule la suppression du compte les efface (`KnexAccountFootprint.erase`). Aucun quota par compte non plus :
+  à traiter avant d'ouvrir largement l'inscription.
+
+## La recherche par dates
+
+`GET /listing?fromDay=AAAA-MM-JJ&toDay=AAAA-MM-JJ` (public) ne rend que les annonces libres sur tout le séjour :
+`ListFreeListings` garde celles que `Listing.isOpenOver` déclare ouvertes du premier au dernier jour, et retire celles
+dont le port `PlaceOccupancy` dit la place retenue. Sans les deux paramètres, la route est inchangée ; avec un seul,
+`400`.
+
+- **« Retenue » veut dire : la contrainte d'exclusion refuserait une demande sur ces jours.** `KnexPlaceOccupancy`
+  lit `rental_requests` par des noms recopiés, comme `KnexAccountFootprint` : `status NOT IN ('EXPIRED', 'CANCELLED',
+  'ABANDONED', 'PAYMENT_FAILED')` est la clause `WHERE` de `rental_requests_place_period_excl`, et le chevauchement
+  est le même `tstzrange(..., '[]') &&`, les jours cherchés convertis en SQL aux bornes de `parisPeriodOfDays`
+  (minuit de Paris, veille du lendemain moins une milliseconde). Un statut qui libère des dates change aux deux
+  endroits, sinon la recherche promet une place que la demande refusera. `KnexPlaceOccupancy.int.spec.ts` garde les
+  statuts, les jours qui se touchent et le passage à l'heure d'hiver.
+- **Par `place_key`, jamais par `listing_id`** : une place dépubliée puis republiée garde ses réservations sous un autre
+  identifiant d'annonce, et c'est la place que la contrainte départage.
+- **`OptionalAuthGuard` sur `GET /listing`** : un jeton valide fait ignorer au compte **sa propre** demande
+  `AWAITING_PAYMENT`, que `RequestRental` remplacerait (EX-50) — sans quoi le conducteur qui a fermé la page de
+  Stripe ne retrouverait pas la place qu'il était en train de réserver. Un jeton absent, expiré ou forgé ne refuse
+  jamais rien : la route reste publique. `createControllerTestApp` remplace cette garde aussi.
+- **Une demande échue mais pas encore balayée retient encore la place**, jusqu'au prochain passage de
+  `RentalSweepScheduler` (5 min) : `RequestRental` expire à la demande, la recherche ne fait que lire.
+- **La fenêtre d'ouverture compare des jours UTC** (`available_from`/`available_to` sont écrits à minuit UTC par le
+  formulaire), comme `isListingAvailableOn` du front et comme `POST /rental-request`, qui la vérifie aussi (voir
+  « l'ordre des gardes » plus haut).
 
 ## Frozen versions — do not bump without reading the reason
 

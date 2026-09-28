@@ -623,7 +623,7 @@
                     "box": "B12",
                     "accessDescription": "Digicode 4321, deuxième sous-sol, à droite de l'ascenseur.",
                     "photos": [
-                      "https://cdn.example.com/photos/b12-1.jpg"
+                      "0f3c5a7e-2b1d-4c8e-9a6f-3d2e1c0b9a88"
                     ],
                     "pricing": {
                       "dayInCents": 1500,
@@ -645,7 +645,7 @@
             "description": "Annonce publiée. Aucun corps de réponse."
           },
           "400": {
-            "description": "Corps de requête invalide, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu.",
+            "description": "Corps de requête invalide (dont moins d'une ou plus de dix photos), photo jamais envoyée par ce compte, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu.",
             "content": {
               "application/json": {
                 "schema": {
@@ -655,7 +655,7 @@
                   "photosManquantes": {
                     "value": {
                       "statusCode": 400,
-                      "message": "photos: Expected an array of at least 1 item(s), actual []"
+                      "message": "photos: Une annonce porte de 1 à 10 photos"
                     }
                   },
                   "periodePassee": {
@@ -674,6 +674,12 @@
                     "value": {
                       "statusCode": 400,
                       "message": "Ce type de véhicule n'existe pas"
+                    }
+                  },
+                  "photoInconnue": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Une photo de l'annonce n'a pas été envoyée par son propriétaire"
                     }
                   }
                 }
@@ -703,24 +709,6 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
-          },
-          "502": {
-            "description": "Le stockage des photos a échoué.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "examples": {
-                  "photosNonStockees": {
-                    "value": {
-                      "statusCode": 502,
-                      "message": "Impossible d'enregistrer les photos"
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       },
@@ -730,7 +718,7 @@
         ],
         "operationId": "listListings",
         "summary": "Lister les annonces actives",
-        "description": "Rend toutes les annonces actives. Route publique, sans pagination ni filtre à ce jour.",
+        "description": "Rend toutes les annonces actives. Route publique, sans pagination ni filtre à ce jour.\n\nAvec `fromDay` et `toDay` (jours `AAAA-MM-JJ`, heure de Paris, bornes comprises), ne rend que les annonces libres sur tout le séjour : ouvertes du premier au dernier jour, et qu'aucune demande en attente de paiement, en attente du loueur ou confirmée ne retient sur l'un de ces jours — la même règle que celle qui refuse une demande en 409. Un jeton facultatif fait ignorer au compte sa propre demande en attente de paiement, qu'une nouvelle demande remplacerait.",
         "security": [],
         "responses": {
           "200": {
@@ -747,6 +735,30 @@
                   "vide": {
                     "summary": "Aucune annonce active",
                     "value": []
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Une seule des deux dates, ou un séjour illisible (jour inexistant, départ avant l'arrivée).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "uneSeuleDate": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Une recherche par dates demande une arrivée et un départ"
+                    }
+                  },
+                  "sejourIllisible": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Les dates recherchées sont invalides"
+                    }
                   }
                 }
               }
@@ -770,7 +782,31 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "fromDay",
+            "in": "query",
+            "required": false,
+            "description": "Premier jour du séjour. À donner avec `toDay`.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "example": "2026-10-10"
+          },
+          {
+            "name": "toDay",
+            "in": "query",
+            "required": false,
+            "description": "Dernier jour du séjour, compris. À donner avec `fromDay`.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "example": "2026-10-12"
+          }
+        ]
       }
     },
     "/listing/mine": {
@@ -797,6 +833,174 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/listing/photo": {
+      "post": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "uploadListingPhoto",
+        "summary": "Envoyer une photo d'annonce",
+        "description": "Enregistre une photo au nom du compte porté par le jeton, et rend son identifiant, à recopier ensuite dans `photos` à la publication ou à la modification d'une annonce. Le format est lu dans les premiers octets du fichier (JPEG, PNG ou WebP), jamais dans le type déclaré. 10 Mo au plus.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Le fichier, dans le champ `photo`."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Photo enregistrée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedListingPhoto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Aucun fichier dans le champ `photo`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "sansFichier": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Aucune photo reçue dans le champ « photo »"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "413": {
+            "description": "Fichier de plus de 10 Mo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "tropLourde": {
+                    "value": {
+                      "statusCode": 413,
+                      "message": "Une photo ne doit pas dépasser 10 Mo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Ni un JPEG, ni un PNG, ni un WebP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "formatRefuse": {
+                    "value": {
+                      "statusCode": 415,
+                      "message": "Une photo doit être au format JPEG, PNG ou WebP"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/listing/photo/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "getListingPhoto",
+        "summary": "Lire une photo d'annonce",
+        "description": "Publique, comme la fiche. Rend les octets sous leur format, avec `Cache-Control: public, max-age=31536000, immutable` : une photo ne change jamais sous un identifiant.",
+        "responses": {
+          "200": {
+            "description": "Les octets de la photo.",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Photo inconnue, ou identifiant qui n'est pas un UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "introuvable": {
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Cette photo est introuvable"
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -888,40 +1092,41 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         }
-      }
-    },
-    "/listing/{id}/pricing": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/ListingId"
-        }
-      ],
+      },
       "patch": {
         "tags": [
           "listing"
         ],
-        "operationId": "updateListingPricing",
-        "summary": "Changer la grille tarifaire d'une annonce",
-        "description": "Remplace la grille tarifaire de l'annonce active. Un palier absent du corps est effacé : la grille envoyée remplace la précédente en entier.",
+        "operationId": "editListing",
+        "summary": "Modifier une annonce",
+        "description": "Remplace tout ce que le propriétaire peut changer sur son annonce active : consignes d'accès, photos, véhicules acceptés, grille tarifaire et période de disponibilité. Chaque champ est requis : le corps décrit l'annonce entière, et un palier tarifaire absent est effacé.\n\nL'adresse et le box ne se modifient pas : ils sont la place elle-même, et en changer revient à publier une autre annonce. Les demandes et réservations déjà faites restent valables, même hors des nouvelles dates ou pour un véhicule qui n'est plus accepté.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateListingPricingRequest"
+                "$ref": "#/components/schemas/EditListingRequest"
               },
               "examples": {
                 "nominal": {
                   "value": {
-                    "dayInCents": 1800,
-                    "weekInCents": 9000,
-                    "monthInCents": 28000
-                  }
-                },
-                "jourSeul": {
-                  "summary": "Ne garder que le palier journalier",
-                  "value": {
-                    "dayInCents": 1800
+                    "accessDescription": "Badge au gardien, le box est au second sous-sol.",
+                    "photos": [
+                      "photo-2.jpg",
+                      "photo-3.jpg"
+                    ],
+                    "acceptedVehicles": [
+                      "voiture",
+                      "electrique"
+                    ],
+                    "pricing": {
+                      "weekInCents": 7000,
+                      "monthInCents": 20000
+                    },
+                    "availability": {
+                      "from": "2026-11-01T00:00:00.000Z",
+                      "to": "2027-01-31T00:00:00.000Z"
+                    }
                   }
                 }
               }
@@ -930,33 +1135,45 @@
         },
         "responses": {
           "200": {
-            "description": "L'annonce, avec sa nouvelle grille tarifaire.",
+            "description": "L'annonce modifiée, telle que son propriétaire la voit.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Listing"
+                  "$ref": "#/components/schemas/OwnerListing"
                 }
               }
             }
           },
           "400": {
-            "description": "Corps de requête invalide (un prix n'est pas un nombre entier de centimes), ou grille tarifaire incomplète.",
+            "description": "Corps de requête invalide (dont moins d'une ou plus de dix photos), nouvelle photo jamais envoyée par ce compte, grille tarifaire incomplète, véhicule inconnu, ou période entièrement passée. Une valeur mal typée n'est jamais recopiée dans le message.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
                 "examples": {
-                  "prixNonEntier": {
+                  "sansPhoto": {
                     "value": {
                       "statusCode": 400,
-                      "message": "dayInCents: Un prix doit être un nombre entier de centimes"
+                      "message": "photos: Une annonce porte de 1 à 10 photos"
                     }
                   },
                   "grilleIncomplete": {
                     "value": {
                       "statusCode": 400,
                       "message": "La grille tarifaire est incomplète"
+                    }
+                  },
+                  "periodePassee": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "La période de disponibilité est déjà passée"
+                    }
+                  },
+                  "photoInconnue": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Une photo de l'annonce n'a pas été envoyée par son propriétaire"
                     }
                   }
                 }
@@ -1079,7 +1296,7 @@
             }
           },
           "422": {
-            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ».",
+            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée », « La place n'est pas ouverte sur toute la période demandée » (un jour hors de la période de disponibilité de l'annonce), « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ».",
             "content": {
               "application/json": {
                 "schema": {
@@ -1102,6 +1319,12 @@
                     "value": {
                       "statusCode": 422,
                       "message": "Aucun tarif ne couvre la période demandée"
+                    }
+                  },
+                  "placeFermee": {
+                    "value": {
+                      "statusCode": 422,
+                      "message": "La place n'est pas ouverte sur toute la période demandée"
                     }
                   }
                 }
@@ -2511,7 +2734,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Références des photos stockées."
+            "description": "Identifiants des photos, dans l'ordre d'affichage ; chacune se lit à `GET /listing/photo/{id}`. Une référence qui n'est pas un UUID date d'avant l'envoi de photos et ne désigne aucune image."
           },
           "pricing": {
             "$ref": "#/components/schemas/Pricing"
@@ -2580,7 +2803,9 @@
             "items": {
               "type": "string",
               "minLength": 1
-            }
+            },
+            "maxItems": 10,
+            "description": "Identifiants rendus par `POST /listing/photo`, dans l'ordre d'affichage. Chacun doit désigner une photo envoyée par le compte qui publie ; une annonce publiée avant l'envoi de photos peut garder d'anciennes références en texte."
           },
           "pricing": {
             "type": "object",
@@ -2632,19 +2857,81 @@
           }
         }
       },
-      "UpdateListingPricingRequest": {
+      "EditListingRequest": {
         "type": "object",
-        "description": "Nouvelle grille tarifaire. Tous les paliers sont facultatifs, mais la grille résultante doit rester complète au sens du domaine ; un palier omis est effacé. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles.",
+        "description": "L'annonce entière telle que son propriétaire veut qu'elle soit désormais, sans son adresse ni son box.",
+        "required": [
+          "accessDescription",
+          "photos",
+          "acceptedVehicles",
+          "pricing",
+          "availability"
+        ],
         "additionalProperties": false,
         "properties": {
-          "dayInCents": {
-            "type": "integer"
+          "accessDescription": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Consignes d'accès à la place, remises au locataire une fois la location confirmée. Une réservation déjà confirmée lit aussitôt la nouvelle version."
           },
-          "weekInCents": {
-            "type": "integer"
+          "photos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "maxItems": 10,
+            "description": "Identifiants rendus par `POST /listing/photo`, dans l'ordre d'affichage. Chacun doit désigner une photo envoyée par le compte qui publie ; une annonce publiée avant l'envoi de photos peut garder d'anciennes références en texte."
           },
-          "monthInCents": {
-            "type": "integer"
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge."
+          },
+          "pricing": {
+            "type": "object",
+            "description": "Au moins un palier. Un palier absent doit être **omis** : `null` est refusé en 400.",
+            "additionalProperties": false,
+            "properties": {
+              "dayInCents": {
+                "type": "integer"
+              },
+              "weekInCents": {
+                "type": "integer"
+              },
+              "monthInCents": {
+                "type": "integer"
+              }
+            }
+          },
+          "availability": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false,
+            "description": "Refusée seulement si elle est entièrement passée : une période déjà commencée se modifie.",
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
           }
         }
       },
@@ -2682,12 +2969,13 @@
       },
       "OwnerListing": {
         "type": "object",
-        "description": "Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut. `accessDescription` reste hors de toute réponse, y compris celle-ci.",
+        "description": "Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut et ses consignes d'accès — que seul le propriétaire relit, pour pouvoir les modifier.",
         "required": [
           "id",
           "address",
           "box",
           "status",
+          "accessDescription",
           "photos",
           "pricing",
           "availability",
@@ -2712,11 +3000,16 @@
             ],
             "description": "Une annonce dépubliée reste visible ici, et nulle part ailleurs."
           },
+          "accessDescription": {
+            "type": "string",
+            "description": "Consignes d'accès à la place. Absentes de toute lecture publique."
+          },
           "photos": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Identifiants des photos, dans l'ordre d'affichage ; chacune se lit à `GET /listing/photo/{id}`. Une référence qui n'est pas un UUID date d'avant l'envoi de photos et ne désigne aucune image."
           },
           "pricing": {
             "$ref": "#/components/schemas/Pricing"
@@ -3566,6 +3859,20 @@
           "newPassword": {
             "type": "string",
             "minLength": 8
+          }
+        }
+      },
+      "UploadedListingPhoto": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "À recopier dans `photos` de `POST /listing` ou `PATCH /listing/{id}`."
           }
         }
       }

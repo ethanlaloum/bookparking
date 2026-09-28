@@ -29,12 +29,14 @@ import type {
   LocatedAddress,
 } from '../../app/listing/domain/entities/Coordinates';
 import type { Listing } from '../../app/listing/domain/entities/Listing';
+import type { LocalPhoto } from '../../app/listing/domain/entities/ListingPhoto';
+import type { SearchedStay } from '../../app/listing/domain/entities/SearchCriteria';
 import type { GeocodingGateway } from '../../app/listing/domain/ports/GeocodingGateway';
 import type {
+  EditListingPayload,
   ListingGateway,
   OwnerListing,
   PublishListingPayload,
-  UpdatePricingPayload,
 } from '../../app/listing/domain/ports/ListingGateway';
 import type {
   Notification,
@@ -109,14 +111,26 @@ export class InMemoryListingGateway implements ListingGateway {
   public rejection: string | null = null;
   public readonly published: PublishListingPayload[] = [];
   public readonly unpublished: string[] = [];
-  public readonly repriced: { id: string; pricing: UpdatePricingPayload }[] = [];
+  public readonly edited: { id: string; listing: EditListingPayload }[] = [];
   public listCallCount = 0;
   public ownerListings: OwnerListing[] = [];
   public listMineCallCount = 0;
+  public readonly uploadedPhotos: LocalPhoto[] = [];
+  public uploadRejection: string | null = null;
+  public freeListings: Listing[] = [];
+  public freeRejection: string | null = null;
+  public freeResponseHeld = false;
+  public readonly staysAsked: SearchedStay[] = [];
 
   listActive(): Observable<Listing[]> {
     this.listCallCount += 1;
     return this.rejection === null ? of(this.listings) : fail(this.rejection);
+  }
+
+  listFree(stay: SearchedStay): Observable<Listing[]> {
+    this.staysAsked.push(stay);
+    if (this.freeResponseHeld) return NEVER;
+    return this.freeRejection === null ? of(this.freeListings) : fail(this.freeRejection);
   }
 
   listMine(): Observable<OwnerListing[]> {
@@ -140,17 +154,24 @@ export class InMemoryListingGateway implements ListingGateway {
     return this.rejection === null ? of(undefined) : fail(this.rejection);
   }
 
-  updatePricing(id: string, pricing: UpdatePricingPayload): Observable<Listing> {
-    this.repriced.push({ id, pricing });
+  uploadPhoto(photo: LocalPhoto): Observable<string> {
+    this.uploadedPhotos.push(photo);
+    if (this.uploadRejection !== null) return fail(this.uploadRejection);
+    return of(`uploaded-${String(this.uploadedPhotos.length)}`);
+  }
+
+  edit(id: string, listing: EditListingPayload): Observable<OwnerListing> {
+    this.edited.push({ id, listing });
     if (this.rejection !== null) return fail(this.rejection);
-    const found = this.listings.find((listing) => listing.id === id);
+    const found = this.ownerListings.find((owned) => owned.id === id);
     if (found === undefined) return fail("Cette place n'a aucune annonce active");
     return of({
       ...found,
+      ...listing,
       pricing: {
-        dayInCents: pricing.dayInCents ?? null,
-        weekInCents: pricing.weekInCents ?? null,
-        monthInCents: pricing.monthInCents ?? null,
+        dayInCents: listing.pricing.dayInCents ?? null,
+        weekInCents: listing.pricing.weekInCents ?? null,
+        monthInCents: listing.pricing.monthInCents ?? null,
       },
     });
   }
@@ -470,6 +491,7 @@ export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerList
   address: '12 rue Barla, 06300 Nice',
   box: 'B12',
   status: 'ACTIVE',
+  accessDescription: 'Portail bleu, le box est au premier sous-sol.',
   photos: ['photo-1.jpg'],
   pricing: { dayInCents: 1500, weekInCents: 8000, monthInCents: 25000 },
   availability: { from: '2026-10-01T00:00:00.000Z', to: '2026-12-31T00:00:00.000Z' },

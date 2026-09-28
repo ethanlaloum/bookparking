@@ -1,4 +1,5 @@
 import {
+  CalendarCheck,
   CalendarRange,
   CarFront,
   CircleAlert,
@@ -16,6 +17,10 @@ import { offersTier } from '../app/listing/domain/entities/SearchCriteria';
 import { listListingsRequested } from '../app/listing/domain/use-cases/list-listings/listListingsEpic';
 import { locateListingsRequested } from '../app/listing/domain/use-cases/locate-listings/locateListingsEpic';
 import {
+  freeListingsCleared,
+  freeListingsRequested,
+} from '../app/listing/domain/use-cases/search-free-listings/searchFreeListingsEpic';
+import {
   addressSearchCleared,
   addressSelected,
 } from '../app/listing/domain/use-cases/search-address/searchAddressEpic';
@@ -28,11 +33,15 @@ import { SearchResultCard } from '../components/SearchResultCard';
 import { Skeleton } from '../components/ui/skeleton';
 import { useSearchCriteria } from '../hooks/useSearchCriteria';
 import { cn } from '../lib/cn';
+import { formatDay } from '../lib/format';
 import { selectConsent, selectIsPurposeAllowed } from '../selectors/consent/consentSelectors';
 import {
   selectApproximateCount,
+  selectFreeListingsError,
+  selectFreeListingsLoading,
   selectListings,
   selectListingsError,
+  selectListingsForStay,
   selectListingsLoaded,
   selectListingsLoading,
   selectLocating,
@@ -41,6 +50,7 @@ import {
   selectNearbyCount,
   selectSearchLabel,
   selectSearchPoint,
+  selectStayTally,
   selectUnmappableCount,
   selectVehicleTally,
 } from '../selectors/listing/listingSelectors';
@@ -59,6 +69,10 @@ export const SearchPage = () => {
   const listingsLoading = useAppSelector(selectListingsLoading);
   const listingsError = useAppSelector(selectListingsError);
 
+  const listingsForStay = useAppSelector(selectListingsForStay);
+  const stayTally = useAppSelector(selectStayTally);
+  const freeLoading = useAppSelector(selectFreeListingsLoading);
+  const freeError = useAppSelector(selectFreeListingsError);
   const results = useAppSelector(selectMappedListingsFromSearch);
   const focus = useAppSelector(selectMapFocus);
   const searchPoint = useAppSelector(selectSearchPoint);
@@ -77,13 +91,15 @@ export const SearchPage = () => {
   const consent = useAppSelector(selectConsent);
   const mapAllowed = useAppSelector((state) => selectIsPurposeAllowed(state, 'map'));
 
-  const barKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}`;
+  const stayFrom = criteria.stay?.from ?? null;
+  const stayTo = criteria.stay?.to ?? null;
+  const barKey = `${criteria.address?.label ?? ''}|${criteria.vehicle ?? ''}|${criteria.tier ?? ''}|${stayFrom ?? ''}|${stayTo ?? ''}`;
 
   const chosenTier = criteria.tier;
   const tierCount =
     chosenTier === null
       ? 0
-      : listings.filter((listing) => offersTier(listing.pricing, chosenTier)).length;
+      : listingsForStay.filter((listing) => offersTier(listing.pricing, chosenTier)).length;
 
   useEffect(() => {
     if (!listingsLoaded && !listingsLoading) dispatch(listListingsRequested());
@@ -92,6 +108,14 @@ export const SearchPage = () => {
   useEffect(() => {
     if (listingsLoaded && listings.length > 0) dispatch(locateListingsRequested());
   }, [dispatch, listings.length, listingsLoaded]);
+
+  useEffect(() => {
+    if (stayFrom === null || stayTo === null) {
+      dispatch(freeListingsCleared());
+      return;
+    }
+    dispatch(freeListingsRequested({ from: stayFrom, to: stayTo }));
+  }, [dispatch, stayFrom, stayTo]);
 
   // L'URL commande le point cherché : arriver depuis l'accueil, recharger la
   // page ou remonter dans l'historique produisent tous le même état.
@@ -130,9 +154,9 @@ export const SearchPage = () => {
         onSubmit={replaceCriteria}
       />
 
-      {listingsError !== null && (
+      {(listingsError ?? freeError) !== null && (
         <Notice tone="error" title={t('common:error.title')} className="mt-4">
-          {listingsError}
+          {listingsError ?? freeError}
         </Notice>
       )}
 
@@ -148,6 +172,26 @@ export const SearchPage = () => {
             {nearby > 0
               ? t('listing:mapSearch.nearby', { count: nearby })
               : t('listing:mapSearch.noneNearby')}
+          </Insight>
+        )}
+        {criteria.stay !== null && stayTally !== null && (
+          <Insight positive={stayTally.free > 0} icon={CalendarCheck}>
+            {stayTally.free > 0
+              ? t('listing:criteria.stayFiltered', {
+                  count: stayTally.free,
+                  from: formatDay(`${criteria.stay.from}T00:00:00.000Z`),
+                  to: formatDay(`${criteria.stay.to}T00:00:00.000Z`),
+                })
+              : t('listing:criteria.noStay', {
+                  from: formatDay(`${criteria.stay.from}T00:00:00.000Z`),
+                  to: formatDay(`${criteria.stay.to}T00:00:00.000Z`),
+                })}
+            {stayTally.hidden > 0 && (
+              <>
+                {' '}
+                {t('listing:criteria.stayHidden', { count: stayTally.hidden })}
+              </>
+            )}
           </Insight>
         )}
         {criteria.vehicle !== null && (
@@ -198,7 +242,7 @@ export const SearchPage = () => {
             )}
           </div>
 
-          {(listingsLoading || locating) && results.length === 0 && (
+          {(listingsLoading || locating || freeLoading) && results.length === 0 && (
             <div className="mt-4 flex flex-col gap-3">
               {[0, 1, 2].map((slot) => (
                 <Skeleton key={slot} className="h-40" />
@@ -222,6 +266,7 @@ export const SearchPage = () => {
                   distanceKm={distanceKm}
                   precision={located.precision}
                   tier={criteria.tier}
+                  stay={criteria.stay}
                   vehicle={criteria.vehicle}
                   focused={focusedId === listing.id}
                   onFocus={() => setFocusedId(listing.id)}

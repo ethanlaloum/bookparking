@@ -54,8 +54,26 @@ Authorization: Bearer {{token}}
   "avatar": "RIVIERA"
 }
 
+### 4 bis · Envoyer une photo de la place · attendu 201 + son identifiant
+# Multipart, champ « photo ». JPEG, PNG ou WebP, 10 Mo au plus : le format se lit
+# dans les octets, pas dans le Content-Type.
+# @name photo
+POST {{baseUrl}}/listing/photo
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=photo
+
+--photo
+Content-Disposition: form-data; name="photo"; filename="place.jpg"
+Content-Type: image/jpeg
+
+< ./place.jpg
+--photo--
+
+###
+@photoId = {{photo.response.body.$.id}}
+
 ### 5 · Publier une annonce · attendu 201, sans corps
-# Disponible de J+7 à J+60.
+# Disponible de J+7 à J+60. `photos` porte les identifiants rendus par 4 bis.
 # @name publication
 POST {{baseUrl}}/listing
 Content-Type: application/json
@@ -65,7 +83,7 @@ Authorization: Bearer {{token}}
   "address": "12 rue Barla, 06300 Nice",
   "box": "B{{$randomInt 100 1000}}",
   "accessDescription": "portail bleu à gauche du 12, le box est au fond du premier sous-sol",
-  "photos": ["photo-1.jpg"],
+  "photos": ["{{photoId}}"],
   "acceptedVehicles": ["voiture", "electrique"],
   "pricing": { "dayInCents": 1200, "weekInCents": 6000, "monthInCents": 18000 },
   "availability": {
@@ -89,15 +107,22 @@ GET {{baseUrl}}/listing
 ### 8 · Relire l'annonce, sans compte · attendu 200 · SPEC-002 EX-11
 GET {{baseUrl}}/listing/{{listingId}}
 
-### 9 · Changer ses tarifs · attendu 200 + l'annonce à jour
-# Un palier omis est retiré de la grille : le mois revient à null.
-PATCH {{baseUrl}}/listing/{{listingId}}/pricing
+### 8 bis · Lire la photo, sans compte · attendu 200 image/jpeg
+GET {{baseUrl}}/listing/photo/{{photoId}}
+
+### 9 · Modifier son annonce · attendu 200 + l'annonce à jour, consignes comprises
+# Le corps décrit toute l'annonce, sauf l'adresse et le box. Un palier omis est
+# retiré de la grille : le mois revient à null.
+PATCH {{baseUrl}}/listing/{{listingId}}
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "dayInCents": 1500,
-  "weekInCents": 8000
+  "accessDescription": "badge au gardien, le box est au fond du premier sous-sol",
+  "photos": ["{{photoId}}"],
+  "acceptedVehicles": ["voiture", "electrique"],
+  "pricing": { "dayInCents": 1500, "weekInCents": 8000 },
+  "availability": { "from": "{{$localDatetime 'YYYY-MM-DD' 7 d}}", "to": "{{$localDatetime 'YYYY-MM-DD' 60 d}}" }
 }
 
 ### 10 · Demander la place · attendu 201 + l'identifiant et la page de paiement

@@ -101,5 +101,8 @@ export class KnexAccountFootprint implements AccountFootprint {
         .where({ account_id: accountId })
         .delete(),
     );
+    await run(
+      this.connection('listing_photos').where({ owner_id: accountId }).delete(),
+    );
   }
 }

@@ -127,6 +127,18 @@ export const createKnexAccountFootprintSUT = () => {
       });
     },
 
+    async givenListingPhoto(ownerId: string) {
+      const id = randomUUID();
+      await connection('listing_photos').insert({
+        id,
+        owner_id: ownerId,
+        format: 'image/jpeg',
+        bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+        uploaded_at: new Date('2026-09-20T09:00:00.000Z'),
+      });
+      return id;
+    },
+
     async whenCheckingCommitmentsAt(now: Date) {
       return {
         marc: await footprint.hasOngoingCommitments(MARC.id, now),
@@ -162,6 +174,7 @@ export const createKnexAccountFootprintSUT = () => {
       pushTokens: string[];
       emailRecipients: string[];
       payoutAccounts: string[];
+      photoOwners: string[];
     }) {
       const column = async (table: string, name: string) =>
         (
@@ -175,6 +188,7 @@ export const createKnexAccountFootprintSUT = () => {
         pushTokens: await column('push_devices', 'token'),
         emailRecipients: await column('outgoing_emails', 'recipient'),
         payoutAccounts: await column('payout_accounts', 'account_id'),
+        photoOwners: await column('listing_photos', 'owner_id'),
       }).toEqual(expected);
     },
   };

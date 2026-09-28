@@ -7,7 +7,7 @@ import {
   VehicleType,
 } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
-import { ActiveListingNotFoundError } from '../../../domain/usecases/update-listing-pricing/errors/ActiveListingNotFoundError';
+import { ActiveListingNotFoundError } from '../../../domain/errors/ActiveListingNotFoundError';
 import { ListingAlreadyActiveError } from '../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { SchemaListingRepository } from './SchemaListingRepository';
 

@@ -12,7 +12,7 @@ export class PublishPage {
     address: string;
     box: string;
     accessDescription: string;
-    photos: string;
+    photos: string[];
     vehicles: string[];
     dayInEuros: string;
     from: string;
@@ -21,7 +21,10 @@ export class PublishPage {
     await this.page.getByLabel('Adresse').fill(input.address);
     await this.page.getByLabel('Numéro de box').fill(input.box);
     await this.page.getByLabel('Consignes d’accès').fill(input.accessDescription);
-    await this.page.getByLabel('Photos').fill(input.photos);
+    await this.page.getByLabel('Ajouter des photos').setInputFiles(input.photos);
+    await expect(
+      this.page.getByRole('img', { name: `Photo ${String(input.photos.length)} de la place` }),
+    ).toBeVisible();
     // `exact` obligatoire : « Voiture » est un préfixe de « Voiture
     // électrique », et une correspondance par sous-chaîne désigne les deux.
     for (const vehicle of input.vehicles)

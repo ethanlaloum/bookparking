@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 
 export interface SeededUser {
   email: string;
@@ -77,6 +79,20 @@ export class ApiClient {
   async signIn(email: string, password: string): Promise<{ token: string; validUntil: string }> {
     const body = await this.expectOk('POST', '/session', { email, password });
     return body as { token: string; validUntil: string };
+  }
+
+  async uploadPhoto(token: string, path: string): Promise<string> {
+    const form = new FormData();
+    form.append('photo', new Blob([await readFile(path)], { type: 'image/jpeg' }), basename(path));
+    const response = await fetch(`${this.apiUrl}/listing/photo`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const text = await response.text();
+    if (!response.ok)
+      throw new Error(`POST /listing/photo a repondu ${String(response.status)} : ${text}`);
+    return (JSON.parse(text) as { id: string }).id;
   }
 
   async publishListing(token: string, input: PublishListingInput): Promise<SeededListing> {

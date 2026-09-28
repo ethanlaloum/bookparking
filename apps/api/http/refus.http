@@ -372,3 +372,17 @@ Content-Type: application/json
 {
   "password": "Barla2026!"
 }
+
+### 37 · Envoyer une photo sans jeton · attendu 401
+POST {{baseUrl}}/listing/photo
+Content-Type: multipart/form-data; boundary=photo
+
+--photo
+Content-Disposition: form-data; name="photo"; filename="place.jpg"
+Content-Type: image/jpeg
+
+< ./place.jpg
+--photo--
+
+### 38 · Lire une photo par un lien mal formé · attendu 404
+GET {{baseUrl}}/listing/photo/photo-1.jpg

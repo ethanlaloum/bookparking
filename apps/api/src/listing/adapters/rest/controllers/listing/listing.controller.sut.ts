@@ -4,16 +4,26 @@ import { Either } from 'effect/index';
 import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { ListingBuilder } from '../../../../domain/builders/ListingBuilder';
-import { ListingStatus } from '../../../../domain/entities/Listing';
+import {
+  Listing,
+  ListingEdition,
+  ListingStatus,
+} from '../../../../domain/entities/Listing';
 import { ListActiveListings } from '../../../../domain/usecases/list-active-listings/ListActiveListings';
 import { ListOwnerListings } from '../../../../domain/usecases/list-owner-listings/ListOwnerListings';
+import { ListFreeListings } from '../../../../domain/usecases/list-free-listings/ListFreeListings';
+import { InvalidStayError } from '../../../../domain/usecases/list-free-listings/errors/InvalidStayError';
+import { StayDays } from '../../../../domain/entities/StayDays';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { ListingNotFoundError } from '../../../../domain/usecases/get-listing/errors/ListingNotFoundError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
+import { AvailabilityPeriodExpiredError } from '../../../../domain/errors/AvailabilityPeriodExpiredError';
+import { ActiveListingNotFoundError } from '../../../../domain/errors/ActiveListingNotFoundError';
 import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
 import { ListingNotOwnedError } from '../../../../domain/errors/ListingNotOwnedError';
+import { UnknownPhotoError } from '../../../../domain/errors/UnknownPhotoError';
 import { UnpublishListing } from '../../../../domain/usecases/unpublish-listing/UnpublishListing';
-import { UpdateListingPricing } from '../../../../domain/usecases/update-listing-pricing/UpdateListingPricing';
+import { EditListing } from '../../../../domain/usecases/edit-listing/EditListing';
 import { ListingController } from './listing.controller';
 
 export const MARC_ACCOUNT_ID = 'account-marc';
@@ -33,18 +43,24 @@ export const createListingControllerSUT = () => {
     { ownerId: string; address: string; box: string },
     Either.Either<undefined, ListingNotOwnedError>
   >();
-  const updateListingPricing = new UseCaseDouble<
-    {
-      ownerId: string;
-      address: string;
-      box: string;
-      pricing: {
-        dayInCents: number | null;
-        weekInCents: number | null;
-        monthInCents: number | null;
-      };
-    },
-    Either.Either<unknown, IncompletePricingError | ListingNotOwnedError>
+  const editListing = new UseCaseDouble<
+    ListingEdition & { ownerId: string; listingId: string; editedAt: Date },
+    Either.Either<
+      Listing,
+      | ActiveListingNotFoundError
+      | ListingNotOwnedError
+      | AvailabilityPeriodExpiredError
+      | IncompletePricingError
+      | UnknownPhotoError
+    >
+  >();
+  const listOwnerListings = new UseCaseDouble<
+    { ownerId: string },
+    Either.Either<Listing[], never>
+  >();
+  const listFreeListings = new UseCaseDouble<
+    { stay: StayDays; viewerId: string | null },
+    Either.Either<Listing[], InvalidStayError>
   >();
   const authState: TestAuthState = { user: { id: MARC_ACCOUNT_ID } };
 
@@ -54,9 +70,10 @@ export const createListingControllerSUT = () => {
       { provide: PublishListing, useValue: publishListing },
       { provide: GetListing, useValue: getListing },
       { provide: ListActiveListings, useValue: listActiveListings },
-      { provide: ListOwnerListings, useValue: new UseCaseDouble() },
+      { provide: ListOwnerListings, useValue: listOwnerListings },
       { provide: UnpublishListing, useValue: unpublishListing },
-      { provide: UpdateListingPricing, useValue: updateListingPricing },
+      { provide: EditListing, useValue: editListing },
+      { provide: ListFreeListings, useValue: listFreeListings },
     ],
   };
 
@@ -65,8 +82,28 @@ export const createListingControllerSUT = () => {
     publishListing,
     getListing,
     unpublishListing,
-    updateListingPricing,
+    editListing,
+    listOwnerListings,
+    listFreeListings,
+    listActiveListings,
     authState,
+
+    givenFreeListings(fixtures: ListingFixture[]) {
+      const listings = fixtures.map((fixture) =>
+        new ListingBuilder()
+          .withId(fixture.id)
+          .withOwnerId(MARC_ACCOUNT_ID)
+          .withAddress(fixture.address)
+          .withBox(fixture.box)
+          .build(),
+      );
+      listFreeListings.willResolve(Either.right(listings));
+      return { listings };
+    },
+
+    givenStayIsRefused() {
+      listFreeListings.willResolve(Either.left(new InvalidStayError()));
+    },
 
     givenUnpublicationSucceeds() {
       unpublishListing.willResolve(Either.right(undefined));
@@ -74,17 +111,25 @@ export const createListingControllerSUT = () => {
 
     givenListingBelongsToSomeoneElse() {
       unpublishListing.willResolve(Either.left(new ListingNotOwnedError()));
-      updateListingPricing.willResolve(Either.left(new ListingNotOwnedError()));
+      editListing.willResolve(Either.left(new ListingNotOwnedError()));
     },
 
-    givenPricingUpdateSucceeds(listing: unknown) {
-      updateListingPricing.willResolve(Either.right(listing));
+    givenEditSucceeds(listing: Listing) {
+      editListing.willResolve(Either.right(listing));
     },
 
-    givenPricingIsIncomplete() {
-      updateListingPricing.willResolve(
-        Either.left(new IncompletePricingError()),
-      );
+    givenEditIsRefusedWith(
+      error:
+        | ActiveListingNotFoundError
+        | AvailabilityPeriodExpiredError
+        | IncompletePricingError
+        | UnknownPhotoError,
+    ) {
+      editListing.willResolve(Either.left(error));
+    },
+
+    givenOwnerListings(listings: Listing[]) {
+      listOwnerListings.willResolve(Either.right(listings));
     },
 
     thenListingWasUnpublishedFor(place: { address: string; box: string }) {
@@ -98,17 +143,18 @@ export const createListingControllerSUT = () => {
       expect(unpublishListing.calls).toHaveLength(0);
     },
 
-    thenPricingWasUpdatedTo(pricing: {
-      dayInCents: number | null;
-      weekInCents: number | null;
-      monthInCents: number | null;
-    }) {
-      expect(updateListingPricing.calls).toHaveLength(1);
-      expect(updateListingPricing.lastCall?.pricing).toEqual(pricing);
+    thenEditWasRequestedWith(
+      edition: ListingEdition & { ownerId: string; listingId: string },
+    ) {
+      expect(editListing.calls).toHaveLength(1);
+      const [call] = editListing.calls;
+      const { editedAt, ...requested } = call;
+      expect(requested).toEqual(edition);
+      expect(editedAt).toBeInstanceOf(Date);
     },
 
-    thenNoPricingWasUpdated() {
-      expect(updateListingPricing.calls).toHaveLength(0);
+    thenNothingWasEdited() {
+      expect(editListing.calls).toHaveLength(0);
     },
 
     givenActiveListing(fixture: ListingFixture) {

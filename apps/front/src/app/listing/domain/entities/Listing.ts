@@ -2,6 +2,7 @@ import type { components } from '../../../../api/schema';
 
 export type Pricing = components['schemas']['Pricing'];
 export type Listing = components['schemas']['Listing'];
+type OwnerListing = components['schemas']['OwnerListing'];
 export type CalendarDay = string;
 
 export const MILLISECONDS_PER_DAY = 86_400_000;
@@ -14,6 +15,16 @@ export const dayCountOf = (from: CalendarDay, to: CalendarDay): number =>
   dayIndexOf(to) - dayIndexOf(from) + 1;
 
 export const toCalendarDay = (instant: Date): CalendarDay => instant.toISOString().slice(0, 10);
+
+export const publicListingOf = ({
+  id,
+  address,
+  box,
+  photos,
+  pricing,
+  availability,
+  acceptedVehicles,
+}: OwnerListing): Listing => ({ id, address, box, photos, pricing, availability, acceptedVehicles });
 
 export const hasAnyPrice = (pricing: Pricing): boolean =>
   pricing.dayInCents !== null || pricing.weekInCents !== null || pricing.monthInCents !== null;

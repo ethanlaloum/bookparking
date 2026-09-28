@@ -17,7 +17,7 @@ change côté api casse la compilation du front plutôt que sa production.
 - **L'hexagone de ce front a deux clients : le site et `apps/mobile`.**
   L'app iPhone importe `src/app/**`, `src/store/{coreReducer,AppState,AppEpic,CommonState,
   dependencies.interface}.ts`, `src/store/epics/`, `src/selectors/`, `src/lib/http/`,
-  `src/lib/format.ts`, `src/lib/avatarArt.ts` et les locales `fr`/`en-US` par l'alias `@front/*`. Renommer une action,
+  `src/lib/format.ts`, `src/lib/listingFormValues.ts`, `src/lib/avatarArt.ts` et les locales `fr`/`en-US` par l'alias `@front/*`. Renommer une action,
   changer la forme d'un état ou ajouter un port à `Dependencies` casse le mobile : après toute
   modification de ces fichiers, lancer aussi `pnpm --filter bookparking-mobile typecheck`.
   Deux contraintes en découlent : ces fichiers n'importent ni le DOM, ni `window`, ni
@@ -43,7 +43,7 @@ change côté api casse la compilation du front plutôt que sa production.
   `apps/api/src/rental/domain/services/computeRentalPrice.ts`.
 
 - **Un palier tarifaire absent s'envoie absent, jamais `null`.**
-  `PublishListingSchema` et `UpdateListingPricingSchema` acceptent une clé *omise*, et
+  `PublishListingSchema` et `EditListingSchema` acceptent une clé *omise*, et
   refusent `null` en 400 (`Expected number, actual null`). Or `GET /listing` **rend** `null`
   pour un palier vide : relire une annonce puis la republier telle quelle échoue. C'est
   pourquoi `centsFromInput()` rend `undefined` et non `null` — `JSON.stringify` omet alors la
@@ -55,9 +55,38 @@ change côté api casse la compilation du front plutôt que sa production.
   ne garde plus la charge soumise comme seule trace : il envoie le navigateur vers Stripe.
 
 - **Le DTO `Listing` ne porte pas d'`ownerId`.** « Mes annonces » est donc infiltrable côté
-  client. Les actions propriétaire (dépublier, modifier les tarifs) sont offertes à tout
-  compte connecté et c'est l'api qui tranche en 403. Le texte `listing:detail.ownerHint` le
+  client. Les actions propriétaire de la fiche (dépublier, « Modifier l’annonce ») sont offertes à
+  tout compte connecté et c'est l'api qui tranche en 403. Le texte `listing:detail.ownerHint` le
   dit à l'utilisateur plutôt que de faire semblant.
+
+- **`/place/:id/modifier` lit l'annonce dans `GET /listing/mine`, jamais dans `GET /listing/:id`.**
+  Seule la lecture du propriétaire porte `accessDescription`, sans quoi le formulaire ne pourrait
+  pas montrer les consignes à modifier. `selectEditableOwnerListing` ne rend qu'une annonce `ACTIVE`
+  du compte connecté : un autre compte, ou une annonce dépubliée, tombe sur « Cette annonce ne peut
+  pas être modifiée. » sans qu'aucune requête d'écriture parte. L'adresse et le box s'y affichent
+  sans champ (l'api ne les modifie pas). Publication et modification partagent `ListingForm`,
+  `publishListingSchema` et `lib/listingFormValues.ts` ; l'app iPhone reprend ce dernier.
+  `editListingSucceeded` remplace l'annonce dans `ownerListings`, `listings` et `selected` — dans
+  les deux derniers par `publicListingOf`, qui retire statut et consignes.
+
+- **Le formulaire tient des brouillons de photos, et c'est l'epic qui les envoie.** `ListingFormValues.photos`
+  est un `PhotoDraft[]` : `stored` (un identifiant de l'api) ou `local` (`{ uri, name, type }`).
+  `publishListingEpic` et `editListingEpic` envoient d'abord les `local` par `POST /listing/photo`
+  (`uploadListingPhotos` : en parallèle, ordre gardé), puis publient les identifiants. Un envoi refusé n'écrit
+  rien ; réessayer renvoie toutes les photos locales, et les premières restent orphelines côté api.
+- **Une photo locale est une URI, jamais un `File`** : une action reste sérialisable, et l'app partage le même
+  type. Le site crée une `blob:` (`lib/preparePhoto.ts` : ré-encodée en JPEG, 2048 px au plus, EXIF retiré),
+  l'app une `file://`. `BookparkingRxListingGateway` reçoit un `PhotoFormPart` qui fait de l'URI une partie
+  multipart : `blobPhotoFormPart` relit la `blob:` ici, l'app passe `{ uri, name, type }` tel quel — seule forme
+  que le `FormData` de React Native sait envoyer. `HttpClient.postForm` ne pose aucun `Content-Type` : c'est le
+  navigateur qui écrit la frontière multipart.
+- **`lib/apiBaseUrl.ts` est la seule adresse de l'api côté site** (`VITE_API_BASE_URL`, `/api` par défaut) :
+  `main.tsx` et les `<img>` des photos la lisent. Elle lit `import.meta` : jamais depuis un fichier que l'app
+  importe, qui passe `resolveApiBaseUrl()` à `listingPhotoUrl`.
+
+- **Un `<legend>` se pose sur la bordure de son `<fieldset>`**, et aucun `float` ne l'en délivre de
+  façon fiable : dans `ListingForm`, le fieldset reste sans cadre et c'est un bloc intérieur qui porte
+  la carte.
 
 - **La cloche se relit toutes les minutes, et l'ouvrir lit tout.** `NotificationBell` cadence
   `listNotificationsRequested` (et au retour sur l'onglet) ; l'ouvrir envoie `POST /notification/read`.
@@ -174,13 +203,26 @@ change côté api casse la compilation du front plutôt que sa production.
   contenu *avant* son `title` : dès que la pastille a porté du texte, le nom est devenu « P 15 € »
   au lieu de « <adresse> — <box> », et les deux tests de carte ont échoué sur `getByRole('button')`.
 
-- **`searchAddressEpic` est le seul `switchMap` de l'application, et c'est sa place.**
+- **`searchAddressEpic` et `searchFreeListingsEpic` sont les deux `switchMap` de l'application, et c'est leur place.**
+  Pour le second, une nouvelle période rend la réponse précédente sans valeur, et `freeListingsCleared` coupe la
+  requête en vol ; le reducer ignore en plus toute réponse dont la période n'est plus celle cherchée.
   Sur une frappe, la dernière requête gagne et la précédente ne vaut plus rien : l'annuler est
   exactement ce qu'on veut. `exhaustMap` — le défaut ailleurs — laisserait s'afficher les suggestions
   d'un préfixe déjà effacé. `debounceTime` vient **avant** `distinctUntilChanged` : on ne compare que
   les frappes qui ont survécu au silence, sinon un aller-retour sur la même chaîne relancerait une
   requête identique.
 
+- **Les dates sont le seul critère qui masque, et l'écran dit combien.** Une place prise ou fermée ces jours-là ne
+  se réserve pas : la montrer, c'était faire découvrir le refus sur la fiche. `?arrivee=&depart=` (jours ISO,
+  `stayFromSearchParams` ignore une paire illisible ou inversée) déclenche `GET /listing?fromDay&toDay` ; les
+  identifiants rendus filtrent `selectListingsForStay`, qui alimente tout ce que la recherche montre — liste,
+  carte, décomptes des véhicules, des durées et des places non situées. Pendant l'attente elle ne montre **rien**,
+  jamais toutes les places. La pastille dit combien sont libres et combien sont cachées. La carte d'une annonce donne
+  alors le prix du séjour (`estimateRentalPriceInCents`) et mène à la fiche avec les mêmes dates, déjà remplies.
+- **La barre de recherche tient sur deux rangées entre `lg` et `xl`**, sur une seule au-delà : à cinq segments, les
+  dates se tronquaient à 1024 px. Avec une police par défaut à 20 px (réglage de Chrome), `lg` commence à 1280 px :
+  c'est cette mise en page que voit un écran de portable. `DateRangeField` a pour cela une variante `segments`, aux
+  classes de `searchFieldStyles`.
 - **La recherche met en avant, elle ne masque jamais.** `selectMappedListingsFromSearch` classe par
   distance et marque celles à moins d'un kilomètre ; toutes restent sur la carte. Filtrer ferait croire
   qu'il n'y a pas de place là où il y en a une à 1,2 km.
@@ -343,10 +385,10 @@ les étiquettes « ticket d'horodateur » (`label-ticket`). Les jetons vivent to
 - **Un `<legend>` se pose sur la bordure de son `<fieldset>`**, et ni `float` ni `display` ne l'en
   délivrent de façon fiable — constaté à l'écran sur la page de publication. Le `<fieldset>` reste
   sans cadre et c'est un bloc intérieur qui porte la carte ; la légende nomme toujours le groupe.
-- **Les « photos » d'une annonce sont des références, pas des images.** Aucune URL n'est
-  affichable : les vignettes (`art/BayThumbnail`, `art/BayScene`) dessinent la place vue du dessus
-  avec le box peint au sol — la seule donnée visuelle certaine — et la fiche liste les références
-  telles quelles, en le disant.
+- **Une annonce montre sa première photo envoyée ; sans photo, son dessin.** `ListingThumbnail` et
+  `ListingGallery` lisent `coverPhotoUrlOf` / `listingPhotoUrl`, qui rendent `null` pour une référence qui n'est
+  pas un UUID (annonces d'avant l'envoi de photos) : ces annonces gardent `art/BayThumbnail` et `art/BayScene`,
+  et la fiche liste leurs références en le disant.
 - **`useId` sert d'identifiant SVG, nettoyé.** Les filtres et dégradés d'une illustration rendue deux
   fois sur une page doivent avoir des `id` distincts ; les caractères spéciaux de `useId` sont
   retirés avant d'entrer dans un `url(#…)`.

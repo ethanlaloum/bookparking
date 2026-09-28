@@ -1,9 +1,15 @@
 import { getTestDbConnection } from '../../../../infra/testcontainers-setup';
 import { ListingBuilder } from '../../../domain/builders/ListingBuilder';
-import { Listing, ListingStatus } from '../../../domain/entities/Listing';
+import { ListingPhotoBuilder } from '../../../domain/builders/ListingPhotoBuilder';
+import {
+  Listing,
+  ListingStatus,
+  VehicleType,
+} from '../../../domain/entities/Listing';
+import { EditListing } from '../../../domain/usecases/edit-listing/EditListing';
 import { PublishListing } from '../../../domain/usecases/publish-listing/PublishListing';
 import { UnpublishListing } from '../../../domain/usecases/unpublish-listing/UnpublishListing';
-import { InMemoryPhotoStorage } from '../../services/photo-storage/InMemoryPhotoStorage';
+import { InMemoryPhotoStorage } from '../listing-photo/InMemoryPhotoStorage';
 import { KnexListingRepository } from './KnexListingRepository';
 import { SchemaListingRepository } from './SchemaListingRepository';
 
@@ -31,6 +37,7 @@ export const createKnexListingRepositorySUT = () => {
   const photoStorage = new InMemoryPhotoStorage();
   const publishListing = new PublishListing(listingRepository, photoStorage);
   const unpublishListing = new UnpublishListing(listingRepository);
+  const editListing = new EditListing(listingRepository, photoStorage);
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
@@ -50,14 +57,20 @@ export const createKnexListingRepositorySUT = () => {
     photoStorage,
     publishListing,
     unpublishListing,
+    editListing,
     testConstants,
   };
 
   return {
     context,
 
-    givenPhotoStorageFailingOnEveryUpload() {
-      context.photoStorage.enableFailureOnEveryUpload();
+    givenPhotoUploadedBy(ownerName: string, photoId: string) {
+      context.photoStorage.photoList.push(
+        new ListingPhotoBuilder()
+          .withId(photoId)
+          .withOwnerId(toAccountId(ownerName))
+          .build(),
+      );
     },
 
     async whenPublishing(input: PublishingInput) {
@@ -144,6 +157,86 @@ export const createKnexListingRepositorySUT = () => {
       } catch (error: unknown) {
         return error;
       }
+    },
+
+    async givenListingRow(input: { id: string; owner: string } & Place) {
+      await context.listingRepository.create(
+        new ListingBuilder()
+          .withId(input.id)
+          .withOwnerId(toAccountId(input.owner))
+          .withAddress(input.address)
+          .withBox(input.box)
+          .build(),
+      );
+    },
+
+    async whenEditing(input: {
+      owner: string;
+      listingId: string;
+      accessDescription: string;
+      photos: string[];
+      acceptedVehicles: VehicleType[];
+      pricing: {
+        day: number | null;
+        week: number | null;
+        month: number | null;
+      };
+      availability: { from: string; to: string };
+      editedAt: string;
+    }) {
+      return context.editListing.execute({
+        ownerId: toAccountId(input.owner),
+        listingId: input.listingId,
+        accessDescription: input.accessDescription,
+        photos: input.photos,
+        acceptedVehicles: input.acceptedVehicles,
+        pricing: {
+          dayInCents: input.pricing.day,
+          weekInCents: input.pricing.week,
+          monthInCents: input.pricing.month,
+        },
+        availability: {
+          from: toUtcDate(input.availability.from),
+          to: toUtcDate(input.availability.to),
+        },
+        editedAt: toUtcDate(input.editedAt),
+      });
+    },
+
+    async thenStoredEditableColumnsAre(
+      listingId: string,
+      expected: Pick<
+        SchemaListingRepository,
+        | 'address'
+        | 'box'
+        | 'status'
+        | 'access_description'
+        | 'photos'
+        | 'accepted_vehicles'
+        | 'day_price_in_cents'
+        | 'week_price_in_cents'
+        | 'month_price_in_cents'
+        | 'available_from'
+        | 'available_to'
+      >,
+    ) {
+      const rows = await context
+        .testDbConnection<SchemaListingRepository>('listings')
+        .where({ id: listingId })
+        .select(
+          'address',
+          'box',
+          'status',
+          'access_description',
+          'photos',
+          'accepted_vehicles',
+          'day_price_in_cents',
+          'week_price_in_cents',
+          'month_price_in_cents',
+          'available_from',
+          'available_to',
+        );
+      expect(rows).toEqual([expected]);
     },
 
     async whenUnpublishing(input: { owner: string } & Place) {

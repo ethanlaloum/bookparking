@@ -1,11 +1,12 @@
 import { createAction } from '@reduxjs/toolkit';
-import { catchError, exhaustMap, filter, mergeMap, of } from 'rxjs';
+import { catchError, exhaustMap, filter, mergeMap, of, switchMap } from 'rxjs';
 
 import type { AppEpic } from '../../../../../store/AppEpic';
-import type { PublishListingPayload } from '../../ports/ListingGateway';
+import type { PublishListingDraft } from '../../entities/ListingPhoto';
 import { listListingsRequested } from '../list-listings/listListingsEpic';
+import { uploadListingPhotos } from '../upload-listing-photos/uploadListingPhotos';
 
-export const publishListingRequested = createAction<PublishListingPayload>(
+export const publishListingRequested = createAction<PublishListingDraft>(
   'listing/publishListingRequested',
 );
 export const publishListingSucceeded = createAction('listing/publishListingSucceeded');
@@ -23,7 +24,8 @@ export const publishListingEpic: AppEpic = (action$, _state$, { listingGateway }
   action$.pipe(
     filter(publishListingRequested.match),
     exhaustMap((action) =>
-      listingGateway.publish(action.payload).pipe(
+      uploadListingPhotos(action.payload.photos, listingGateway).pipe(
+        switchMap((photos) => listingGateway.publish({ ...action.payload, photos })),
         mergeMap(() => [publishListingSucceeded(), listListingsRequested()]),
         catchError((error: Error) => of(publishListingFailed({ errorCode: error.message }))),
       ),

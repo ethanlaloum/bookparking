@@ -48,6 +48,8 @@
     "active": "Published",
     "unpublished": "Unpublished",
     "open": "View listing",
+    "edit": "Edit",
+    "editLabel": "Edit the listing {{address}} · {{box}}",
     "count_one": "{{count}} space",
     "count_other": "{{count}} spaces"
   },

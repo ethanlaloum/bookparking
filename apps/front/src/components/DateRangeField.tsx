@@ -16,6 +16,7 @@ import { dateFromDay, dayFromDate, formatDayInput, parseDayInput } from '../lib/
 import { cn } from '../lib/cn';
 import { Button } from './ui/button';
 import { Calendar } from './ui/calendar';
+import { DIVIDER, LABEL, SEGMENT } from './searchFieldStyles';
 
 type End = 'from' | 'to';
 
@@ -35,7 +36,8 @@ interface DateRangeFieldProps {
   inputRefs?: Partial<Record<End, Ref<HTMLInputElement>>>;
   onBlur?: Partial<Record<End, () => void>>;
   /** `joined` : un seul cadre, comme un billet ; `split` : deux champs côte à côte. */
-  variant: 'joined' | 'split';
+  variant: 'joined' | 'split' | 'segments';
+  className?: string;
   /** Nombre de mois affichés sur un écran large — un seul, toujours, sur mobile. */
   months?: 1 | 2;
   /**
@@ -74,6 +76,7 @@ export const DateRangeField = ({
   variant,
   months = 1,
   placement = 'below',
+  className,
 }: DateRangeFieldProps) => {
   const { t, i18n } = useTranslation('common');
   const uid = useId();
@@ -211,6 +214,7 @@ export const DateRangeField = ({
   const chosenTo = value.to === '' ? undefined : dateFromDay(value.to);
   const floor = open === null ? undefined : firstSelectable(open);
   const joined = variant === 'joined';
+  const segments = variant === 'segments';
   const shownMonths = wide || beside ? months : 1;
 
   const cell = (end: End) => {
@@ -238,7 +242,7 @@ export const DateRangeField = ({
         onKeyDown={(event) => onInputKeyDown(end, event)}
         className={cn(
           'tabular w-full min-w-0 flex-1 bg-transparent font-medium text-fg placeholder:font-normal placeholder:text-fg-subtle focus-visible:outline-none',
-          joined ? 'min-h-8' : 'min-h-11',
+          joined ? 'min-h-8' : segments ? 'min-h-11 lg:min-h-8' : 'min-h-11',
         )}
       />
     );
@@ -252,6 +256,7 @@ export const DateRangeField = ({
         onClick={() => (active ? close(end) : openOn(end, true))}
         className={cn(
           'grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg transition-colors',
+          segments && 'lg:size-8',
           active ? 'bg-brand text-on-brand' : 'text-fg-subtle hover:bg-bg-sunken hover:text-fg',
         )}
       >
@@ -276,6 +281,31 @@ export const DateRangeField = ({
             {input}
             {toggle}
           </div>
+        </div>
+      );
+
+    if (segments)
+      return (
+        <div key={end} className={cn(SEGMENT, DIVIDER, active && 'lg:bg-bg-sunken')}>
+          <label id={ids[end].label} htmlFor={ids[end].input} className={LABEL}>
+            {labels[end]}
+          </label>
+          <div
+            className={cn(
+              'flex items-center gap-1 rounded-xl border bg-bg-raised pr-1.5 pl-3.5 transition-[border-color,box-shadow] duration-150 focus-within:border-accent focus-within:ring-[3px] focus-within:ring-accent/25',
+              'lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:focus-within:ring-0',
+              error === undefined ? 'border-line-strong hover:border-fg-subtle' : 'border-danger',
+            )}
+          >
+            {input}
+            {toggle}
+          </div>
+          {error !== undefined && (
+            <p id={ids[end].error} className="flex items-center gap-1.5 text-xs font-medium text-danger">
+              <CircleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
+          )}
         </div>
       );
 
@@ -305,8 +335,10 @@ export const DateRangeField = ({
   };
 
   return (
-    <div ref={rootRef} className="relative" onKeyDown={onRootKeyDown} onBlur={onRootBlur}>
-      {joined ? (
+    <div ref={rootRef} className={cn('relative', className)} onKeyDown={onRootKeyDown} onBlur={onRootBlur}>
+      {segments ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:h-full lg:gap-0">{ENDS.map(cell)}</div>
+      ) : joined ? (
         <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-line-strong transition-[border-color,box-shadow] focus-within:border-accent focus-within:ring-[3px] focus-within:ring-accent/25">
           {ENDS.map(cell)}
         </div>

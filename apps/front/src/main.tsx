@@ -5,10 +5,9 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { App } from './App';
 import './index.css';
+import { API_BASE_URL } from './lib/apiBaseUrl';
 import './lib/i18n';
 import { createAppStore } from './store/redux';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 const container = document.getElementById('root');
 if (container === null) throw new Error('Le point de montage #root est introuvable');

@@ -103,8 +103,10 @@ est dans `docs/api/openapi.json`.
 | `GET /listing` | public | Lister les annonces actives |
 | `GET /listing/:id` | public | Lire une annonce |
 | `GET /listing/mine` | jeton | Lister ses propres annonces |
-| `POST /listing` | jeton | Publier une annonce |
-| `PATCH /listing/:id/pricing` | jeton | Changer la grille tarifaire d'une annonce |
+| `POST /listing/photo` | jeton | Envoyer une photo (multipart, champ `photo`) ; rend son identifiant |
+| `GET /listing/photo/:id` | public | Lire une photo |
+| `POST /listing` | jeton | Publier une annonce (`photos` : identifiants rendus par `POST /listing/photo`) |
+| `PATCH /listing/:id` | jeton | Modifier son annonce : consignes, photos, véhicules, tarifs, dates |
 | `DELETE /listing/:id` | jeton | Dépublier une annonce |
 
 ### Demandes de location et paiement
@@ -156,8 +158,8 @@ est dans `docs/api/openapi.json`.
 
 - **Aucune recherche côté api.** `GET /listing` rend toutes les annonces actives, sans filtre ni
   pagination : la proximité, le véhicule et la durée sont jugés par le site.
-- **Seuls les tarifs se modifient.** Dates, consignes d'accès et véhicules acceptés n'ont pas de
-  route : il faut dépublier puis republier.
+- **L'adresse et le box ne se modifient pas.** Ils sont la place elle-même : en changer, c'est
+  dépublier puis publier une autre annonce. Tout le reste passe par `PATCH /listing/:id`.
 - **Ni suppression de compte, ni réclamation.**
 
 ## Un détail qui surprend

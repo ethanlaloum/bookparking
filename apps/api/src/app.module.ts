@@ -38,14 +38,19 @@ import { MarkNotificationRead } from './notification/domain/usecases/mark-notifi
 import { MarkNotificationsRead } from './notification/domain/usecases/mark-notifications-read/MarkNotificationsRead';
 import { ResendEmailSender } from './notification/adapters/services/resend/ResendEmailSender';
 import { SendQueuedEmails } from './notification/domain/usecases/send-queued-emails/SendQueuedEmails';
-import { InMemoryPhotoStorage } from './listing/adapters/services/photo-storage/InMemoryPhotoStorage';
+import { KnexPhotoStorage } from './listing/adapters/repositories/listing-photo/KnexPhotoStorage';
+import { ListingPhotoController } from './listing/adapters/rest/controllers/listing-photo/listing-photo.controller';
 import { ListingController } from './listing/adapters/rest/controllers/listing/listing.controller';
 import { GetListing } from './listing/domain/usecases/get-listing/GetListing';
 import { ListActiveListings } from './listing/domain/usecases/list-active-listings/ListActiveListings';
 import { ListOwnerListings } from './listing/domain/usecases/list-owner-listings/ListOwnerListings';
+import { ListFreeListings } from './listing/domain/usecases/list-free-listings/ListFreeListings';
+import { KnexPlaceOccupancy } from './listing/adapters/repositories/place-occupancy/KnexPlaceOccupancy';
 import { PublishListing } from './listing/domain/usecases/publish-listing/PublishListing';
 import { UnpublishListing } from './listing/domain/usecases/unpublish-listing/UnpublishListing';
-import { UpdateListingPricing } from './listing/domain/usecases/update-listing-pricing/UpdateListingPricing';
+import { EditListing } from './listing/domain/usecases/edit-listing/EditListing';
+import { GetListingPhoto } from './listing/domain/usecases/get-listing-photo/GetListingPhoto';
+import { UploadListingPhoto } from './listing/domain/usecases/upload-listing-photo/UploadListingPhoto';
 import { KnexPublishedListingReader } from './rental/adapters/repositories/published-listing/KnexPublishedListingReader';
 import { KnexRentalRequestRepository } from './rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
 import { RentalSweepScheduler } from './rental/adapters/cron/RentalSweepScheduler';
@@ -114,6 +119,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
     AccountController,
     PasswordResetController,
     SessionController,
+    ListingPhotoController,
     ListingController,
     RentalRequestController,
     PaymentWebhookController,
@@ -254,14 +260,35 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
       useFactory: (connection: DatabaseConnection) =>
         new PublishListing(
           new KnexListingRepository(typedAs(connection)),
-          new InMemoryPhotoStorage(),
+          new KnexPhotoStorage(typedAs(connection)),
         ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: UploadListingPhoto,
+      useFactory: (connection: DatabaseConnection) =>
+        new UploadListingPhoto(new KnexPhotoStorage(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: GetListingPhoto,
+      useFactory: (connection: DatabaseConnection) =>
+        new GetListingPhoto(new KnexPhotoStorage(typedAs(connection))),
       inject: [DATABASE_CONNECTION],
     },
     {
       provide: ListActiveListings,
       useFactory: (connection: DatabaseConnection) =>
         new ListActiveListings(new KnexListingRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ListFreeListings,
+      useFactory: (connection: DatabaseConnection) =>
+        new ListFreeListings(
+          new KnexListingRepository(typedAs(connection)),
+          new KnexPlaceOccupancy(typedAs(connection)),
+        ),
       inject: [DATABASE_CONNECTION],
     },
     {
@@ -283,10 +310,11 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
       inject: [DATABASE_CONNECTION],
     },
     {
-      provide: UpdateListingPricing,
+      provide: EditListing,
       useFactory: (connection: DatabaseConnection) =>
-        new UpdateListingPricing(
+        new EditListing(
           new KnexListingRepository(typedAs(connection)),
+          new KnexPhotoStorage(typedAs(connection)),
         ),
       inject: [DATABASE_CONNECTION],
     },

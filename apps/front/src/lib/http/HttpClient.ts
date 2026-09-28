@@ -30,6 +30,7 @@ export interface HttpClient {
     body?: unknown,
     headers?: Record<string, string>,
   ): Observable<HttpResponse<T>>;
+  postForm<T>(path: string, form: FormData): Observable<HttpResponse<T>>;
   patch<T>(path: string, body?: unknown): Observable<HttpResponse<T>>;
   delete<T>(path: string, body?: unknown): Observable<HttpResponse<T>>;
 }

@@ -14,7 +14,10 @@
   "search": {
     "field": "Where are you looking?",
     "summaryEmpty": "Every space in France",
-    "clearAll": "Clear all"
+    "clearAll": "Clear all",
+    "stay": "Dates",
+    "anyStay": "Any dates",
+    "clearStay": "Clear the dates"
   },
   "book": {
     "stay": "Your stay",
@@ -50,5 +53,11 @@
   },
   "bookings": {
     "subtitle": "Your requests, their payment and their dates."
+  },
+  "photos": {
+    "library": "Photo library",
+    "camera": "Take a photo",
+    "cameraRefused": "Bookparking cannot use the camera: allow it in Settings.",
+    "failed": "A photo could not be prepared. Try again."
   }
 }

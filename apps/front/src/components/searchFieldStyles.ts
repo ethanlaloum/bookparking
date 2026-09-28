@@ -1,9 +1,9 @@
 /**
- * Les trois colonnes de `SearchBar` — l'adresse, le véhicule, la durée — ont
- * la même forme : un libellé, puis un contrôle. Empilées sur mobile, ce sont
- * trois champs encadrés ; à partir de `lg`, ce sont trois segments d'une même
+ * Les colonnes de `SearchBar` — l'adresse, l'arrivée, le départ, le véhicule,
+ * la durée — ont la même forme : un libellé, puis un contrôle. Empilées sur
+ * mobile, ce sont des champs encadrés ; à partir de `lg`, des segments d'une même
  * barre, sans bordure propre, que le survol et le focus éclairent en entier.
- * Les classes vivent ici pour que `AddressSearch` et `SearchBar` ne puissent
+ * Les classes vivent ici pour que `AddressSearch`, `DateRangeField` et `SearchBar` ne puissent
  * pas diverger d'un pixel.
  */
 export const SEGMENT =

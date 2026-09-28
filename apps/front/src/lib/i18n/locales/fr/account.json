@@ -48,6 +48,8 @@
     "active": "Publiée",
     "unpublished": "Dépubliée",
     "open": "Voir l'annonce",
+    "edit": "Modifier",
+    "editLabel": "Modifier l'annonce {{address}} · {{box}}",
     "count_one": "{{count}} place",
     "count_other": "{{count}} places"
   },

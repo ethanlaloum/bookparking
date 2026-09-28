@@ -35,6 +35,10 @@ export class InMemoryHttpClient implements HttpClient {
     return this.answer<T>('POST', path, body, headers);
   }
 
+  postForm<T>(path: string, form: FormData): Observable<HttpResponse<T>> {
+    return this.answer<T>('POST', path, form);
+  }
+
   patch<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
     return this.answer<T>('PATCH', path, body);
   }

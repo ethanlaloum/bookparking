@@ -133,6 +133,8 @@ describe('KnexAccountFootprint', () => {
     await sut.givenEmailTo(LEA.email, 'SENT');
     await sut.givenPayoutAccount(MARC.id);
     await sut.givenPayoutAccount(PAUL.id);
+    await sut.givenListingPhoto(MARC.id);
+    await sut.givenListingPhoto(PAUL.id);
 
     await sut.whenErasing(MARC);
 
@@ -150,6 +152,7 @@ describe('KnexAccountFootprint', () => {
       pushTokens: ['ExponentPushToken[lea]'],
       emailRecipients: [LEA.email],
       payoutAccounts: [PAUL.id],
+      photoOwners: [PAUL.id],
     });
   });
 });

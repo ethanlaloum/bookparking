@@ -14,7 +14,10 @@
   "search": {
     "field": "Où cherchez-vous ?",
     "summaryEmpty": "Toutes les places de France",
-    "clearAll": "Tout effacer"
+    "clearAll": "Tout effacer",
+    "stay": "Dates",
+    "anyStay": "Toutes dates",
+    "clearStay": "Effacer les dates"
   },
   "book": {
     "stay": "Votre séjour",
@@ -50,5 +53,11 @@
   },
   "bookings": {
     "subtitle": "Vos demandes, leur paiement et leurs dates."
+  },
+  "photos": {
+    "library": "Photothèque",
+    "camera": "Prendre une photo",
+    "cameraRefused": "L’appareil photo est refusé à Bookparking : autorisez-le dans Réglages.",
+    "failed": "Une photo n’a pas pu être préparée. Réessayez."
   }
 }

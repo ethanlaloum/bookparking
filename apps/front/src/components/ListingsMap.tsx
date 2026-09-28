@@ -10,7 +10,7 @@ import { cheapestNightlyRateInCents } from '../app/listing/domain/entities/Listi
 import { cn } from '../lib/cn';
 import { formatCents } from '../lib/format';
 import type { MappedListingWithDistance } from '../selectors/listing/listingSelectors';
-import { BayThumbnail } from './art/BayThumbnail';
+import { ListingThumbnail } from './ListingThumbnail';
 import { buttonVariants } from './ui/buttonVariants';
 
 // Le marqueur est une pastille de prix, dessinée en HTML plutôt que
@@ -139,7 +139,7 @@ export const ListingsMap = ({
           >
             <Popup>
               <span className="flex gap-3">
-                <BayThumbnail box={listing.box} className="h-16 w-13 shrink-0 rounded-lg" />
+                <ListingThumbnail photos={listing.photos} box={listing.box} className="h-16 w-13 shrink-0 rounded-lg" />
                 <span className="min-w-0">
                   <span className="block font-display text-[0.95rem] leading-snug font-semibold text-[#0b0d12]">
                     {listing.address}

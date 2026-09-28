@@ -10,7 +10,7 @@ son propre `tsconfig.json`, qui étend `tsconfig.base.json` à la racine (`skipL
 
 **L'app mobile n'a pas de domaine à elle.** Elle importe l'hexagone du front tel quel (entités,
 epics, reducers, sélecteurs, passerelles HTTP) par l'alias `@front/*`, et ne réécrit que ses
-écrans et trois adaptateurs natifs. Une règle métier ne s'écrit donc qu'une fois, dans
+écrans et quatre adaptateurs natifs. Une règle métier ne s'écrit donc qu'une fois, dans
 `apps/front/src/app` — voir `apps/mobile/CLAUDE.md`.
 
 **Il n'y a pas d'application d'administration séparée.** Une `apps/bo` a existé le temps

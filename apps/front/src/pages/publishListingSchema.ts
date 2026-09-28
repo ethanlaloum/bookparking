@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { MAX_PHOTOS_PER_LISTING, type PhotoDraft } from '../app/listing/domain/entities/ListingPhoto';
 import { VEHICLE_TYPES } from '../app/listing/domain/entities/SearchCriteria';
 import { i18n } from '../lib/i18n';
 
@@ -15,7 +16,10 @@ export const publishListingSchema = z
     address: z.string().trim().min(1, { message: i18n.t('listing:validation.address') }),
     box: z.string().trim().min(1, { message: i18n.t('listing:validation.box') }),
     accessDescription: z.string().trim().min(1, { message: i18n.t('listing:validation.access') }),
-    photos: z.string().trim().min(1, { message: i18n.t('listing:validation.photos') }),
+    photos: z
+      .array(z.custom<PhotoDraft>())
+      .min(1, { message: i18n.t('listing:validation.photos') })
+      .max(MAX_PHOTOS_PER_LISTING, { message: i18n.t('listing:validation.photosLimit') }),
     acceptedVehicles: z
       .array(z.enum(VEHICLE_TYPES))
       .min(1, { message: i18n.t('listing:criteria.acceptedRequired') }),

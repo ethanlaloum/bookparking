@@ -86,6 +86,15 @@ export class SearchPage {
     await expect(this.durationSelect()).toHaveText(label);
   }
 
+  async chooseStay(fromDay: string, toDay: string): Promise<void> {
+    await this.page.getByLabel('Arrivée').fill(fromDay);
+    await this.page.getByLabel('Départ').fill(toDay);
+  }
+
+  async expectStaySummary(text: string | RegExp): Promise<void> {
+    await expect(this.page.getByRole('status').filter({ hasText: /libres? du|Aucune place libre/ })).toContainText(text);
+  }
+
   async submit(): Promise<void> {
     await this.page.getByRole('button', { name: 'Rechercher', exact: true }).click();
   }

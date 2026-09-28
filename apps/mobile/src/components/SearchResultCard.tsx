@@ -6,8 +6,18 @@ import { Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { formatDistance, type LocationPrecision } from '@front/app/listing/domain/entities/Coordinates';
-import { cheapestNightlyRateInCents, type Listing } from '@front/app/listing/domain/entities/Listing';
-import { priceForTier, type RentalTier, type VehicleType } from '@front/app/listing/domain/entities/SearchCriteria';
+import {
+  cheapestNightlyRateInCents,
+  dayCountOf,
+  estimateRentalPriceInCents,
+  type Listing,
+} from '@front/app/listing/domain/entities/Listing';
+import {
+  priceForTier,
+  type RentalTier,
+  type SearchedStay,
+  type VehicleType,
+} from '@front/app/listing/domain/entities/SearchCriteria';
 import { formatCents, formatDay } from '@front/lib/format';
 
 import { fonts } from '../theme/tokens';
@@ -21,6 +31,7 @@ interface SearchResultCardProps {
   distanceKm: number | null;
   precision: LocationPrecision | null;
   tier: RentalTier | null;
+  stay?: SearchedStay | null;
   vehicle: VehicleType | null;
   focused?: boolean;
 }
@@ -30,13 +41,22 @@ interface SearchResultCardProps {
  * véhicules, prix au palier cherché. Toute la carte ouvre la fiche — sur un
  * téléphone, le doigt vise la carte, pas le lien « Voir l'annonce ».
  */
-export const SearchResultCard = ({ listing, distanceKm, precision, tier, vehicle, focused = false }: SearchResultCardProps) => {
+export const SearchResultCard = ({
+  listing,
+  distanceKm,
+  precision,
+  tier,
+  stay = null,
+  vehicle,
+  focused = false,
+}: SearchResultCardProps) => {
   const { t } = useTranslation(['listing', 'common']);
   const { colors, shadows } = useTheme();
   const [pressed, setPressed] = useState(false);
 
   const tierPrice = tier === null ? null : priceForTier(listing.pricing, tier);
   const nightly = cheapestNightlyRateInCents(listing.pricing);
+  const stayPrice = stay === null ? null : estimateRentalPriceInCents(listing.pricing, stay.from, stay.to);
 
   return (
     <Pressable
@@ -45,7 +65,12 @@ export const SearchResultCard = ({ listing, distanceKm, precision, tier, vehicle
       accessibilityHint={t('listing:map.openListing')}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      onPress={() => router.push({ pathname: '/place/[id]', params: { id: listing.id } })}
+      onPress={() =>
+        router.push({
+          pathname: '/place/[id]',
+          params: stay === null ? { id: listing.id } : { id: listing.id, arrivee: stay.from, depart: stay.to },
+        })
+      }
     >
       <Animated.View
         style={{
@@ -117,7 +142,22 @@ export const SearchResultCard = ({ listing, distanceKm, precision, tier, vehicle
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12, gap: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5, flexShrink: 1 }}>
-              {tier !== null ? (
+              {stay !== null ? (
+                stayPrice === null ? (
+                  <Text size={14} tone="subtle">
+                    {t('listing:card.noStayPrice')}
+                  </Text>
+                ) : (
+                  <>
+                    <Display size={22} tabular>
+                      {formatCents(stayPrice)}
+                    </Display>
+                    <Text size={12} tone="subtle">
+                      {t('listing:card.stayTotal', { count: dayCountOf(stay.from, stay.to) })}
+                    </Text>
+                  </>
+                )
+              ) : tier !== null ? (
                 tierPrice === null ? (
                   <Text size={14} tone="subtle">
                     {t('listing:card.noPrice')}

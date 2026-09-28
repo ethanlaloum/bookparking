@@ -49,19 +49,33 @@ Pour le push, il faut l'app compilée par EAS, qui porte la clé Apple du projet
   `cancellationTermsOf`, `moneyLabelOf`, `keepOrRenewIntent`… sont ceux du front, prouvés par
   la suite vitest du front. Une règle métier se change là-bas, jamais ici.
 - **La racine de composition est `src/store/createMobileStore.ts`**, pendant de
-  `apps/front/src/store/redux.ts`. Trois adaptateurs natifs remplacent ceux du navigateur :
+  `apps/front/src/store/redux.ts`. Quatre adaptateurs natifs remplacent ceux du navigateur :
   - `SecureStoreSessionStore` — le jeton dans le trousseau iOS (API synchrone
     d'`expo-secure-store`, parce que le port `SessionStore` est synchrone) ;
   - `InAppBrowserPaymentPageNavigator` — Stripe Checkout dans un SFSafariViewController ;
-  - `NoThirdPartyConsentStore` — voir plus bas.
+  - `NoThirdPartyConsentStore` — voir plus bas ;
+  - `nativePhotoFormPart` — une photo part dans le `FormData` sous la forme `{ uri, name, type }`, la seule
+    que React Native sache envoyer (le site, lui, relit une `blob:`).
 - **Écrans** : `src/app/` (expo-router). Quatre onglets (`(tabs)/` : accueil, recherche,
-  réservations, compte), la fiche `place/[id]`, l'écran `paiement/[requestId]`, et trois
-  feuilles modales (`connexion`, `inscription`, `publier`), plus `notifications`, ouverte par la cloche
+  réservations, compte), la fiche `place/[id]`, l'écran `paiement/[requestId]`, et quatre
+  feuilles modales (`connexion`, `inscription`, `publier`, `modifier/[id]`), plus `notifications`, ouverte par la cloche
   de Réservations et Compte. La barre d'onglets relit la cloche toutes les minutes et au retour au
   premier plan ; une notification de loueur ouvre Compte sur « Demandes reçues » (`?onglet=`). Les quatre onglets
   d'administration du site n'existent pas ici : l'app le dit au compte administrateur.
 
 ## Things that will bite you
+
+- **Publier et modifier une annonce partagent `components/ListingForm`**, et la conversion
+  formulaire ↔ charge vient du front (`@front/lib/listingFormValues`). `modifier/[id]` lit l'annonce
+  dans `GET /listing/mine` (seule lecture qui porte les consignes d'accès) ; la fiche y mène par
+  « Modifier l’annonce ». Après l'ajout d'un écran, `tsc` refuse sa route tant qu'Expo n'a pas
+  régénéré `.expo/types/router.d.ts` (ignoré par git) : lancer `expo start` quelques secondes suffit.
+
+- **Les photos d'une annonce passent par `expo-image-picker` puis `expo-image-manipulator`** (tous deux dans
+  Expo Go) : réduites à 2048 px et ré-encodées en JPEG avant l'envoi (`components/PhotoPicker`). Une photo
+  d'iPhone récent dépasserait sinon les 10 Mo de l'api, et le ré-encodage retire l'EXIF, position comprise. La
+  photothèque ne demande aucune permission, l'appareil photo si ; les textes sont dans `app.json` (plugin
+  `expo-image-picker`), que seule une build EAS lit. L'envoi lui-même est celui du site (`@front`, epics).
 
 - **La suppression du compte se fait dans l'app, dans Compte › Réglages** (carte dépliée, mot de passe
   redemandé), pas par un lien vers le site : l'App Store l'exige de toute app qui permet de créer un compte
@@ -96,8 +110,10 @@ Pour le push, il faut l'app compilée par EAS, qui porte la clé Apple du projet
   `/donnees-personnelles` dans le navigateur intégré, à l'adresse de `resolveFrontBaseUrl()`.
   En dev, Vite n'écoute que sur le Mac : `pnpm front dev --host` pour les ouvrir du téléphone.
 - **Les paramètres de route de la recherche portent les clés de l'URL du site** (`adresse`,
-  `lat`, `lon`, `vehicule`, `duree`) et passent par `criteriaFromSearchParams` /
-  `criteriaToSearchParams` : un lien du site et une route de l'app disent la même chose.
+  `lat`, `lon`, `vehicule`, `duree`, `arrivee`, `depart`) et passent par `criteriaFromSearchParams` /
+  `criteriaToSearchParams` : un lien du site et une route de l'app disent la même chose. Les dates se choisissent
+  dans la `CalendarSheet` de la fiche (champ `StayField`) ; la carte d'une annonce ouvre `place/[id]` avec les mêmes
+  `arrivee`/`depart`, et la fiche s'ouvre sur ces jours. Le filtrage est celui du site (`selectListingsForStay`).
 - **L'identifiant d'intention vient d'`expo-crypto`.** Hermes n'a pas `crypto.randomUUID()` ;
   `keepOrRenewIntent` reçoit `Crypto.randomUUID`. Revenir sur la fiche (focus) commence une
   nouvelle intention, comme un rechargement sur le site.

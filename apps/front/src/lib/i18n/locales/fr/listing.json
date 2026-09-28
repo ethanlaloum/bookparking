@@ -8,7 +8,10 @@
     "noPrice": "Tarif sur demande",
     "availableUntil": "Disponible jusqu’au {{date}}",
     "photoCount_one": "{{count}} photo",
-    "photoCount_other": "{{count}} photos"
+    "photoCount_other": "{{count}} photos",
+    "stayTotal_one": "pour {{count}} jour",
+    "stayTotal_other": "pour {{count}} jours",
+    "noStayPrice": "Aucun tarif pour ces dates"
   },
   "detail": {
     "access": "Accès",
@@ -18,18 +21,18 @@
     "ownerActions": "Gérer cette annonce",
     "ownerHint": "Ces actions n’aboutissent que si l’annonce vous appartient.",
     "unpublish": "Dépublier",
-    "editPricing": "Modifier les tarifs",
+    "edit": "Modifier l’annonce",
     "unpublished": "L’annonce a été dépubliée.",
-    "photosHint": "Références fournies par le propriétaire."
+    "photosHint": "Références d’avant l’envoi de vraies photos : elles n’ont pas d’image.",
+    "photoAlt": "Photo {{position}} sur {{total}} de la place",
+    "showPhoto": "Voir la photo {{position}}",
+    "references": "Références de photos"
   },
   "pricing": {
     "day": "Jour",
     "week": "Semaine",
     "month": "Mois",
     "none": "—",
-    "save": "Enregistrer les tarifs",
-    "saved": "Grille tarifaire mise à jour.",
-    "atLeastOne": "Renseignez au moins un tarif.",
     "integer": "Un prix doit être un nombre entier de centimes."
   },
   "publish": {
@@ -47,6 +50,18 @@
     "previewHint": "Ce que verront les conducteurs, mis à jour pendant que vous écrivez.",
     "previewAddress": "Adresse de la place"
   },
+  "edit": {
+    "title": "Modifier l’annonce",
+    "subtitle": "Consignes d’accès, photos, véhicules, tarifs et dates : tout se change ici, sans dépublier.",
+    "placeLocked": "L’adresse et le box désignent la place : pour en changer, publiez une nouvelle annonce.",
+    "bookingsKept": "Les demandes et réservations déjà faites restent valables, même hors des nouvelles dates.",
+    "submit": "Enregistrer les modifications",
+    "saved": "Annonce mise à jour.",
+    "savedBody": "Les conducteurs voient déjà la nouvelle version.",
+    "seeIt": "Voir l’annonce",
+    "notEditable": "Cette annonce ne peut pas être modifiée.",
+    "notEditableBody": "Seule une annonce publiée se modifie, et seulement par son propriétaire."
+  },
   "field": {
     "address": "Adresse",
     "addressHint": "Numéro, rue, code postal et ville.",
@@ -54,7 +69,7 @@
     "accessDescription": "Consignes d’accès",
     "accessHint": "Digicode, étage, repères. Transmis au locataire après confirmation.",
     "photos": "Photos",
-    "photosHint": "Une référence par ligne. Au moins une.",
+    "photosHint": "JPEG, PNG ou WebP, dix au plus. La première sert de couverture.",
     "from": "Disponible à partir du",
     "to": "Jusqu’au"
   },
@@ -67,7 +82,8 @@
     "from": "Choisissez une date de début.",
     "to": "Choisissez une date de fin.",
     "reversed": "La fin doit suivre le début.",
-    "past": "La période est déjà passée."
+    "past": "La période est déjà passée.",
+    "photosLimit": "Dix photos au plus."
   },
   "map": {
     "title": "Rechercher une place",
@@ -135,7 +151,15 @@
     "vehicleFiltered_other": "{{count}} places acceptent ce véhicule.",
     "noVehicle": "Aucune place n'accepte ce véhicule. Toutes restent affichées.",
     "undeclaredKept_one": "{{count}} place n'a rien déclaré et reste affichée.",
-    "undeclaredKept_other": "{{count}} places n'ont rien déclaré et restent affichées."
+    "undeclaredKept_other": "{{count}} places n'ont rien déclaré et restent affichées.",
+    "arrival": "Arrivée",
+    "departure": "Départ",
+    "stayIncomplete": "Choisissez l’arrivée et le départ.",
+    "stayFiltered_one": "{{count}} place libre du {{from}} au {{to}}.",
+    "stayFiltered_other": "{{count}} places libres du {{from}} au {{to}}.",
+    "noStay": "Aucune place libre du {{from}} au {{to}}.",
+    "stayHidden_one": "{{count}} autre, réservée ou fermée à ces dates, n’est pas affichée.",
+    "stayHidden_other": "{{count}} autres, réservées ou fermées à ces dates, ne sont pas affichées."
   },
   "home": {
     "live": "En ce moment en France",
@@ -194,6 +218,17 @@
         "title": "Le propriétaire confirme",
         "body": "Une demande n'engage rien tant qu'elle n'est pas acceptée. Sans réponse, elle expire d'elle-même."
       }
+    }
+  },
+  "photos": {
+    "add": "Ajouter des photos",
+    "preparing": "Préparation…",
+    "remove": "Retirer la photo {{position}}",
+    "cover": "Couverture",
+    "alt": "Photo {{position}} de la place",
+    "refused": {
+      "format": "Une photo n’a pas été ajoutée : seuls les formats JPEG, PNG et WebP sont acceptés.",
+      "size": "Une photo n’a pas été ajoutée : elle dépasse 10 Mo."
     }
   }
 }

@@ -19,6 +19,7 @@ import type { Dependencies } from '@front/store/dependencies.interface';
 import { rootEpic } from '@front/store/epics';
 
 import { paymentBrowser } from '../adapters/InAppBrowserPaymentPageNavigator';
+import { nativePhotoFormPart } from '../adapters/nativePhotoFormPart';
 import { NoThirdPartyConsentStore } from '../adapters/NoThirdPartyConsentStore';
 import { SecureStoreSessionStore } from '../adapters/SecureStoreSessionStore';
 
@@ -42,7 +43,7 @@ export const buildMobileDependencies = (baseUrl: string): Dependencies => {
     clock: new SystemClock(),
     consentStore: new NoThirdPartyConsentStore(),
     geocodingGateway: new BanGeocodingGateway(),
-    listingGateway: new BookparkingRxListingGateway(httpClient),
+    listingGateway: new BookparkingRxListingGateway(httpClient, nativePhotoFormPart),
     notificationGateway: new BookparkingRxNotificationGateway(httpClient),
     paymentPageNavigator: paymentBrowser,
     payoutGateway: new BookparkingRxPayoutGateway(httpClient),

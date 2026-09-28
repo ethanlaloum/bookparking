@@ -22,6 +22,9 @@ const RegisterPage = lazy(async () => ({
 const PublishPage = lazy(async () => ({
   default: (await import('../pages/PublishPage')).PublishPage,
 }));
+const EditListingPage = lazy(async () => ({
+  default: (await import('../pages/EditListingPage')).EditListingPage,
+}));
 const AccountPage = lazy(async () => ({
   default: (await import('../pages/AccountPage')).AccountPage,
 }));
@@ -77,6 +80,7 @@ export const Routes = () => (
       <Route path="/conditions-d-utilisation" element={<TermsPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/publier" element={<PublishPage />} />
+        <Route path="/place/:id/modifier" element={<EditListingPage />} />
         <Route path="/compte" element={<AccountPage />} />
         <Route path="/demande/:requestId/confirmation" element={<ConfirmRequestPage />} />
         <Route path="/demande/:requestId/paiement" element={<PaymentReturnPage />} />

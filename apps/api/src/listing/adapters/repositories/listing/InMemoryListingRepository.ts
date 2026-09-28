@@ -1,6 +1,6 @@
 import { Listing, ListingStatus } from '../../../domain/entities/Listing';
 import { ListingRepository } from '../../../domain/ports/ListingRepository';
-import { ActiveListingNotFoundError } from '../../../domain/usecases/update-listing-pricing/errors/ActiveListingNotFoundError';
+import { ActiveListingNotFoundError } from '../../../domain/errors/ActiveListingNotFoundError';
 
 export class InMemoryListingRepository implements ListingRepository {
   public listingList: Listing[] = [];

@@ -144,6 +144,8 @@ export interface paths {
         /**
          * Lister les annonces actives
          * @description Rend toutes les annonces actives. Route publique, sans pagination ni filtre à ce jour.
+         *
+         *     Avec `fromDay` et `toDay` (jours `AAAA-MM-JJ`, heure de Paris, bornes comprises), ne rend que les annonces libres sur tout le séjour : ouvertes du premier au dernier jour, et qu'aucune demande en attente de paiement, en attente du loueur ou confirmée ne retient sur l'un de ces jours — la même règle que celle qui refuse une demande en 409. Un jeton facultatif fait ignorer au compte sa propre demande en attente de paiement, qu'une nouvelle demande remplacerait.
          */
         get: operations["listListings"];
         put?: never;
@@ -172,6 +174,48 @@ export interface paths {
          * @description Rend les annonces du compte appelant, **quel que soit leur statut** — c'est la seule route qui montre une annonce dépubliée. Déclarée avant `/listing/{id}` côté serveur, sans quoi « mine » serait décodé comme un identifiant.
          */
         get: operations["listOwnerListings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/listing/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envoyer une photo d'annonce
+         * @description Enregistre une photo au nom du compte porté par le jeton, et rend son identifiant, à recopier ensuite dans `photos` à la publication ou à la modification d'une annonce. Le format est lu dans les premiers octets du fichier (JPEG, PNG ou WebP), jamais dans le type déclaré. 10 Mo au plus.
+         */
+        post: operations["uploadListingPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/listing/photo/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Lire une photo d'annonce
+         * @description Publique, comme la fiche. Rend les octets sous leur format, avec `Cache-Control: public, max-age=31536000, immutable` : une photo ne change jamais sous un identifiant.
+         */
+        get: operations["getListingPhoto"];
         put?: never;
         post?: never;
         delete?: never;
@@ -211,33 +255,13 @@ export interface paths {
         delete: operations["unpublishListing"];
         options?: never;
         head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/listing/{id}/pricing": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description Identifiant de l'annonce (UUID), tel que rendu par `GET /listing`.
-                 * @example 3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c
-                 */
-                id: components["parameters"]["ListingId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
         /**
-         * Changer la grille tarifaire d'une annonce
-         * @description Remplace la grille tarifaire de l'annonce active. Un palier absent du corps est effacé : la grille envoyée remplace la précédente en entier.
+         * Modifier une annonce
+         * @description Remplace tout ce que le propriétaire peut changer sur son annonce active : consignes d'accès, photos, véhicules acceptés, grille tarifaire et période de disponibilité. Chaque champ est requis : le corps décrit l'annonce entière, et un palier tarifaire absent est effacé.
+         *
+         *     L'adresse et le box ne se modifient pas : ils sont la place elle-même, et en changer revient à publier une autre annonce. Les demandes et réservations déjà faites restent valables, même hors des nouvelles dates ou pour un véhicule qui n'est plus accepté.
          */
-        patch: operations["updateListingPricing"];
+        patch: operations["editListing"];
         trace?: never;
     };
     "/rental-request": {
@@ -823,7 +847,7 @@ export interface components {
             address: string;
             /** @example B12 */
             box: string;
-            /** @description Références des photos stockées. */
+            /** @description Identifiants des photos, dans l'ordre d'affichage ; chacune se lit à `GET /listing/photo/{id}`. Une référence qui n'est pas un UUID date d'avant l'envoi de photos et ne désigne aucune image. */
             photos: string[];
             pricing: components["schemas"]["Pricing"];
             availability: {
@@ -840,6 +864,7 @@ export interface components {
             box: string;
             /** @description Consignes d'accès à la place, remises au locataire une fois la location confirmée. */
             accessDescription: string;
+            /** @description Identifiants rendus par `POST /listing/photo`, dans l'ordre d'affichage. Chacun doit désigner une photo envoyée par le compte qui publie ; une annonce publiée avant l'envoi de photos peut garder d'anciennes références en texte. */
             photos: string[];
             /** @description Au moins un palier. Chaque palier présent est un entier de centimes ; un palier absent n'existe pas. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles. */
             pricing: {
@@ -856,11 +881,27 @@ export interface components {
             /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. Facultatif : un client qui ne le déclare pas obtient « non déclaré » plutôt qu'un refus. */
             acceptedVehicles?: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
         };
-        /** @description Nouvelle grille tarifaire. Tous les paliers sont facultatifs, mais la grille résultante doit rester complète au sens du domaine ; un palier omis est effacé. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles. */
-        UpdateListingPricingRequest: {
-            dayInCents?: number;
-            weekInCents?: number;
-            monthInCents?: number;
+        /** @description L'annonce entière telle que son propriétaire veut qu'elle soit désormais, sans son adresse ni son box. */
+        EditListingRequest: {
+            /** @description Consignes d'accès à la place, remises au locataire une fois la location confirmée. Une réservation déjà confirmée lit aussitôt la nouvelle version. */
+            accessDescription: string;
+            /** @description Identifiants rendus par `POST /listing/photo`, dans l'ordre d'affichage. Chacun doit désigner une photo envoyée par le compte qui publie ; une annonce publiée avant l'envoi de photos peut garder d'anciennes références en texte. */
+            photos: string[];
+            /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. */
+            acceptedVehicles: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
+            /** @description Au moins un palier. Un palier absent doit être **omis** : `null` est refusé en 400. */
+            pricing: {
+                dayInCents?: number;
+                weekInCents?: number;
+                monthInCents?: number;
+            };
+            /** @description Refusée seulement si elle est entièrement passée : une période déjà commencée se modifie. */
+            availability: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+            };
         };
         RequestRentalRequest: {
             /** @example 12 rue des Lilas, 75011 Paris */
@@ -880,7 +921,7 @@ export interface components {
              */
             toDay: string;
         };
-        /** @description Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut. `accessDescription` reste hors de toute réponse, y compris celle-ci. */
+        /** @description Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut et ses consignes d'accès — que seul le propriétaire relit, pour pouvoir les modifier. */
         OwnerListing: {
             /** Format: uuid */
             id: string;
@@ -891,6 +932,9 @@ export interface components {
              * @enum {string}
              */
             status: "ACTIVE" | "UNPUBLISHED";
+            /** @description Consignes d'accès à la place. Absentes de toute lecture publique. */
+            accessDescription: string;
+            /** @description Identifiants des photos, dans l'ordre d'affichage ; chacune se lit à `GET /listing/photo/{id}`. Une référence qui n'est pas un UUID date d'avant l'envoi de photos et ne désigne aucune image. */
             photos: string[];
             pricing: components["schemas"]["Pricing"];
             availability: {
@@ -1187,6 +1231,13 @@ export interface components {
         ResetPasswordRequest: {
             token: string;
             newPassword: string;
+        };
+        UploadedListingPhoto: {
+            /**
+             * Format: uuid
+             * @description À recopier dans `photos` de `POST /listing` ou `PATCH /listing/{id}`.
+             */
+            id: string;
         };
     };
     responses: {
@@ -1526,7 +1577,18 @@ export interface operations {
     };
     listListings: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Premier jour du séjour. À donner avec `toDay`.
+                 * @example 2026-10-10
+                 */
+                fromDay?: string;
+                /**
+                 * @description Dernier jour du séjour, compris. À donner avec `fromDay`.
+                 * @example 2026-10-12
+                 */
+                toDay?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1540,6 +1602,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Listing"][];
+                };
+            };
+            /** @description Une seule des deux dates, ou un séjour illisible (jour inexistant, départ avant l'arrivée). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description La liste des annonces est indisponible. */
@@ -1573,7 +1644,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Corps de requête invalide, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu. */
+            /** @description Corps de requête invalide (dont moins d'une ou plus de dix photos), photo jamais envoyée par ce compte, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1593,15 +1664,6 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
-            /** @description Le stockage des photos a échoué. */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
         };
     };
     listOwnerListings: {
@@ -1623,6 +1685,99 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    uploadListingPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Le fichier, dans le champ `photo`.
+                     */
+                    photo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Photo enregistrée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedListingPhoto"];
+                };
+            };
+            /** @description Aucun fichier dans le champ `photo`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Fichier de plus de 10 Mo. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Ni un JPEG, ni un PNG, ni un WebP. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getListingPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les octets de la photo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            /** @description Photo inconnue, ou identifiant qui n'est pas un UUID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -1697,7 +1852,7 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    updateListingPricing: {
+    editListing: {
         parameters: {
             query?: never;
             header?: never;
@@ -1712,20 +1867,20 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateListingPricingRequest"];
+                "application/json": components["schemas"]["EditListingRequest"];
             };
         };
         responses: {
-            /** @description L'annonce, avec sa nouvelle grille tarifaire. */
+            /** @description L'annonce modifiée, telle que son propriétaire la voit. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Listing"];
+                    "application/json": components["schemas"]["OwnerListing"];
                 };
             };
-            /** @description Corps de requête invalide (un prix n'est pas un nombre entier de centimes), ou grille tarifaire incomplète. */
+            /** @description Corps de requête invalide (dont moins d'une ou plus de dix photos), nouvelle photo jamais envoyée par ce compte, grille tarifaire incomplète, véhicule inconnu, ou période entièrement passée. Une valeur mal typée n'est jamais recopiée dans le message. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1822,7 +1977,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ». */
+            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée », « La place n'est pas ouverte sur toute la période demandée » (un jour hors de la période de disponibilité de l'annonce), « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ». */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -59,6 +59,8 @@ const toRentalPricing = (pricing: PricingForTest) => ({
   monthInCents: pricing.month,
 });
 
+const ALWAYS_OPEN: CalendarDayRange = { from: '2000-01-01', to: '2099-12-31' };
+
 export const createRequestRentalSUT = () => {
   const publishedListingReader = new InMemoryPublishedListingReader();
   const rentalRepository = new InMemoryRentalRepository();
@@ -103,11 +105,17 @@ export const createRequestRentalSUT = () => {
   return {
     context,
 
-    givenListing(params: RentalPlace & { pricing: PricingForTest }) {
+    givenListing(
+      params: RentalPlace & {
+        pricing: PricingForTest;
+        openDays?: CalendarDayRange;
+      },
+    ) {
       const publishedListing = {
         address: params.address,
         box: params.box,
         pricing: toRentalPricing(params.pricing),
+        openDays: params.openDays ?? ALWAYS_OPEN,
         published: true,
       };
       context.publishedListingReader.listingList.push(publishedListing);
@@ -124,6 +132,7 @@ export const createRequestRentalSUT = () => {
         address: params.address,
         box: params.box,
         pricing: toRentalPricing(params.pricing),
+        openDays: ALWAYS_OPEN,
         published: false,
       };
       context.publishedListingReader.listingList.push(unpublishedListing);
@@ -410,6 +419,26 @@ export const createRequestRentalSUT = () => {
       if (Either.isLeft(result)) {
         expect(result.left).toBeInstanceOf(ErrorClass);
       }
+    },
+
+    thenRefusalMessageIs(
+      result: Either.Either<RequestedRental, unknown>,
+      message: string,
+    ) {
+      expect(Either.isLeft(result)).toEqual(true);
+      if (Either.isLeft(result))
+        expect((result.left as Error).message).toEqual(message);
+    },
+
+    thenRecordedRequestsAre(
+      expected: { renterId: string; days: CalendarDayRange }[],
+    ) {
+      expect(
+        context.rentalRepository.rentalRequestList.map((request) => ({
+          renterId: request.toState().renterId,
+          days: request.toState().days,
+        })),
+      ).toEqual(expected);
     },
 
     thenNoRequestRecordedFor(days: CalendarDayRange) {

@@ -4,7 +4,7 @@ import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
 import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
-import { CalendarDay } from '../../entities/CalendarDay';
+import { CalendarDay, coversDays } from '../../entities/CalendarDay';
 import {
   paymentPageExpiryOf,
   unpaidAbandonDeadlineAt,
@@ -23,6 +23,7 @@ import {
   RentalRepository,
 } from '../../ports/RentalRepository';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
+import { ListingClosedOnRequestedDaysError } from './errors/ListingClosedOnRequestedDaysError';
 import { DuplicateIdempotencyKeyError } from './errors/DuplicateIdempotencyKeyError';
 import { IdempotencyKeyReusedError } from './errors/IdempotencyKeyReusedError';
 import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
@@ -54,6 +55,7 @@ export class RequestRental implements UseCase<
       | DatesAlreadyRentedError
       | IdempotencyKeyReusedError
       | InvalidRequestedPeriodError
+      | ListingClosedOnRequestedDaysError
       | ListingNotPublishedError
       | NoPriceForRequestedPeriodError
       | PaymentUnavailableError
@@ -82,6 +84,7 @@ export class RequestRental implements UseCase<
       | DatesAlreadyRentedError
       | IdempotencyKeyReusedError
       | InvalidRequestedPeriodError
+      | ListingClosedOnRequestedDaysError
       | ListingNotPublishedError
       | NoPriceForRequestedPeriodError
       | PaymentUnavailableError
@@ -124,6 +127,13 @@ export class RequestRental implements UseCase<
         platformFeePercent: this.platformFeePercent,
       });
       if (Either.isLeft(rentalRequest)) return Either.left(rentalRequest.left);
+      if (
+        !coversDays(
+          publishedListing.openDays,
+          rentalRequest.right.toState().days,
+        )
+      )
+        return Either.left(new ListingClosedOnRequestedDaysError());
 
       // Les demandes périmées sont retirées du chemin avant toute lecture de
       // disponibilité : c'est le seul déclencheur de l'expiration, et donc ce

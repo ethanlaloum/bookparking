@@ -1,5 +1,6 @@
 import { ModuleMetadata } from '@nestjs/common';
 import { Either } from 'effect/index';
+import { ListingClosedOnRequestedDaysError } from '../../../../domain/usecases/request-rental/errors/ListingClosedOnRequestedDaysError';
 
 import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
@@ -123,6 +124,12 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     thenConfirmationWasAttemptedBy(accountId: string) {
       expect(confirmRentalRequest.calls).toHaveLength(1);
       expect(confirmRentalRequest.lastCall?.ownerId).toEqual(accountId);
+    },
+
+    givenRentalRequestRefusedBecauseClosed() {
+      requestRental.willResolve(
+        Either.left(new ListingClosedOnRequestedDaysError()),
+      );
     },
 
     givenRentalRequestSucceeds() {

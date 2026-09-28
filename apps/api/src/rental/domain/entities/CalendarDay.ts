@@ -60,6 +60,11 @@ export const dayCountOfDays = (days: CalendarDayRange): number =>
       MILLISECONDS_PER_DAY,
   ) + 1;
 
+export const coversDays = (
+  open: CalendarDayRange,
+  days: CalendarDayRange,
+): boolean => open.from <= days.from && days.to <= open.to;
+
 export const isReadableDayRange = (days: CalendarDayRange): boolean => {
   const dayCount = dayCountOfDays(days);
   return Number.isInteger(dayCount) && dayCount > 0;

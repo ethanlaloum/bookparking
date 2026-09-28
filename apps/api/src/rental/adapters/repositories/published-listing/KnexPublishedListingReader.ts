@@ -11,6 +11,9 @@ import {
   SchemaPublishedListingReader,
 } from './SchemaPublishedListingReader';
 
+const utcDayOf = (instant: Date | string): string =>
+  new Date(instant).toISOString().slice(0, 10);
+
 const toPriceInCents = (value: number | string | null): number | null => {
   if (value === null) return null;
   return typeof value === 'string' ? parseInt(value, 10) : value;
@@ -43,6 +46,10 @@ export class KnexPublishedListingReader implements PublishedListingReader {
         dayInCents: toPriceInCents(row.day_price_in_cents),
         weekInCents: toPriceInCents(row.week_price_in_cents),
         monthInCents: toPriceInCents(row.month_price_in_cents),
+      },
+      openDays: {
+        from: utcDayOf(row.available_from),
+        to: utcDayOf(row.available_to),
       },
     };
   }

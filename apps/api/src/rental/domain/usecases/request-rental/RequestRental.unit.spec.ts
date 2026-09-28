@@ -4,6 +4,7 @@ import { PaymentUnavailableError } from '../../errors/PaymentUnavailableError';
 import { IdempotencyKeyReusedError } from './errors/IdempotencyKeyReusedError';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
 import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
+import { ListingClosedOnRequestedDaysError } from './errors/ListingClosedOnRequestedDaysError';
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { createRequestRentalSUT } from './RequestRental.sut';
 
@@ -500,5 +501,83 @@ describe('RequestRental — platform fee', () => {
 
     // 3 jours × 13,33 € = 39,99 € ; 15 % = 5,9985 €, soit 6,00 €.
     sut.thenPlatformFeeInCentsIs(600);
+  });
+});
+
+describe('RequestRental — the days the place is open', () => {
+  const OCTOBER = { from: '2026-10-01', to: '2026-10-31' };
+  const CLOSED = "La place n'est pas ouverte sur toute la période demandée";
+
+  const givenOpenInOctober = () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      ...PLACE,
+      pricing: { day: 1500, week: null, month: null },
+      openDays: OCTOBER,
+    });
+    return sut;
+  };
+
+  it('accepts a stay from the first open day to the last one', async () => {
+    const sut = givenOpenInOctober();
+
+    const result = await sut.whenRequestedBy(LEA, {
+      from: '2026-10-01',
+      to: '2026-10-31',
+      requestedAt: '2026-09-20',
+    });
+
+    sut.thenRequestedPeriodIs(result, {
+      from: '2026-09-30T22:00:00.000Z',
+      to: '2026-10-31T22:59:59.999Z',
+    });
+    sut.thenRecordedRequestsAre([
+      {
+        renterId: 'account-lea',
+        days: { from: '2026-10-01', to: '2026-10-31' },
+      },
+    ]);
+  });
+
+  it('refuses a stay that begins the day before the place opens, and opens no payment page', async () => {
+    const sut = givenOpenInOctober();
+
+    const result = await sut.whenRequestedBy(LEA, {
+      from: '2026-09-30',
+      to: '2026-10-02',
+      requestedAt: '2026-09-20',
+    });
+
+    sut.thenRequestIsRefusedWith(result, ListingClosedOnRequestedDaysError);
+    sut.thenRefusalMessageIs(result, CLOSED);
+    sut.thenRecordedRequestsAre([]);
+    sut.thenNoPaymentPageOpened();
+  });
+
+  it('refuses a stay that ends the day after the place closes', async () => {
+    const sut = givenOpenInOctober();
+
+    const result = await sut.whenRequestedBy(LEA, {
+      from: '2026-10-30',
+      to: '2026-11-01',
+      requestedAt: '2026-09-20',
+    });
+
+    sut.thenRequestIsRefusedWith(result, ListingClosedOnRequestedDaysError);
+    sut.thenRefusalMessageIs(result, CLOSED);
+    sut.thenRecordedRequestsAre([]);
+  });
+
+  it('still refuses a departure before the arrival as an unreadable period, not as a closed place', async () => {
+    const sut = givenOpenInOctober();
+
+    const result = await sut.whenRequestedBy(LEA, {
+      from: '2026-11-12',
+      to: '2026-11-10',
+      requestedAt: '2026-09-20',
+    });
+
+    sut.thenRequestIsRefusedWith(result, InvalidRequestedPeriodError);
+    sut.thenRecordedRequestsAre([]);
   });
 });

@@ -58,6 +58,23 @@ describe('RentalRequestController @SPEC-002', () => {
       sut.thenRentalRequestWasMadeFor(LEA_ACCOUNT_ID);
       sut.thenBodyRenterIdWasIgnored(MARC_ACCOUNT_ID);
     });
+
+    it('answers 422 with the reason when the place is not open on the requested days', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+      sut.givenRentalRequestRefusedBecauseClosed();
+
+      const response = await http()
+        .post('/rental-request')
+        .set('Authorization', 'Bearer token-of-lea')
+        .set('Idempotency-Key', AN_INTENT)
+        .send(RENTAL_REQUEST_BODY);
+
+      expect(response.status).toEqual(422);
+      expect(response.body.message).toEqual(
+        "La place n'est pas ouverte sur toute la période demandée",
+      );
+    });
   });
   describe('POST /rental-request/:id/confirmation', () => {
     it('refuses a confirmation from a visitor with no account', async () => {

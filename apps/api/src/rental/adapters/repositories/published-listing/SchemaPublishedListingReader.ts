@@ -15,5 +15,7 @@ export interface SchemaPublishedListingReader {
   day_price_in_cents: number | string | null;
   week_price_in_cents: number | string | null;
   month_price_in_cents: number | string | null;
+  available_from: Date | string;
+  available_to: Date | string;
   status: string;
 }

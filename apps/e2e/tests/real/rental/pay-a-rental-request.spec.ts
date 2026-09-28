@@ -20,6 +20,7 @@
 import { expect, test } from '../../../src/fixtures/test';
 import { DashboardPage } from '../../../src/pages/DashboardPage';
 import { ListingDetailPage } from '../../../src/pages/ListingDetailPage';
+import { PaymentReturnPage } from '../../../src/pages/PaymentReturnPage';
 import { StripeCheckoutPage } from '../../../src/pages/StripeCheckoutPage';
 import { checkoutEmail, dayInDays } from '../../../src/seed/Seeder';
 
@@ -85,12 +86,13 @@ test.describe('Rental payment', () => {
     await detail.continueToPayment();
     await new StripeCheckoutPage(page).payWithTestCard(checkoutEmail());
 
-    await expect(page.getByText(/^Empreinte de 45,00\s€ · en attente du loueur$/)).toBeVisible({
-      timeout: 60_000,
-    });
+    const paymentReturn = new PaymentReturnPage(page);
+    await paymentReturn.expectRequestSent();
+    await paymentReturn.openMyRequests();
+    const dashboard = new DashboardPage(page);
+    await dashboard.expectRequestLabel(listing.address, /Empreinte de 45,00\s€ · en attente du loueur/);
 
     await app.openAs(owner);
-    const dashboard = new DashboardPage(page);
     await dashboard.open();
     await dashboard.openTab('Demandes reçues');
     await expect(page.getByText(listing.address).first()).toBeVisible();

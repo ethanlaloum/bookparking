@@ -2,7 +2,8 @@
 // payée et confirmée, lise avant de confirmer qu'il sera remboursé, et voie
 // ensuite le remboursement. Tout est réel en mode test : l'empreinte posée par
 // la carte 4242, son prélèvement à la confirmation du loueur, et le
-// remboursement que Stripe accepte au moment de l'annulation.
+// remboursement que Stripe accepte au moment de l'annulation. La réservation
+// étant confirmée, le conducteur voit d'abord sa fête, et la ferme.
 //
 // Sans équivalent ici, et pourquoi :
 // - l'annulation tardive, l'échéance figée et l'annulation par le loueur :
@@ -10,6 +11,7 @@
 //   changé en cours de parcours ; prouvés au rung `unit` sur `CancelRental`.
 // - une location commencée : même raison.
 import { test } from '../../../src/fixtures/test';
+import { BookingCelebration } from '../../../src/pages/BookingCelebration';
 import { DashboardPage } from '../../../src/pages/DashboardPage';
 import { dayInDays } from '../../../src/seed/Seeder';
 
@@ -32,6 +34,7 @@ test.describe('Booking cancellation', () => {
     await app.openAs(renter);
     const dashboard = new DashboardPage(page);
     await dashboard.open();
+    await new BookingCelebration(page).expectShownThenClose();
     await dashboard.openTab('Mes réservations');
     await dashboard.startCancellingFor(listing.address);
     await dashboard.expectCancellationTerms(/Vous serez remboursé de 30,00\s€\./);

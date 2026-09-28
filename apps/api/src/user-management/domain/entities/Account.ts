@@ -14,6 +14,9 @@ export const AVATARS = [
 ] as const;
 export type Avatar = (typeof AVATARS)[number];
 
+export const isAvatar = (value: string): value is Avatar =>
+  (AVATARS as readonly string[]).includes(value);
+
 interface Props {
   id: string;
   email: string;

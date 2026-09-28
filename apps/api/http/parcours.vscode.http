@@ -1,19 +1,31 @@
 ### Parcours complet — VS Code REST Client
 # Extension : humao.rest-client
-# Le jeton est capturé automatiquement via le nom de la requête de connexion.
 # Lance les requêtes dans l'ordre, en cliquant « Send Request » au-dessus de chacune.
+#
+# Avant la première, résous le défi anti-robot et colle la ligne rendue à la place de
+# `@humanProof` ci-dessous. Une preuve ne sert qu'une fois, pendant 20 minutes :
+#
+#   node apps/api/http/human-proof.mjs
+#
+# Chaque passage inscrit un nouveau compte : l'adresse et le box sont tirés au hasard, et les
+# requêtes suivantes les relisent. L'adresse est une adresse de test de Resend
+# (delivered+…@resend.dev) : l'e-mail de bienvenue est simulé, rien ne rebondit.
 
 @baseUrl = http://localhost:3000
-@email = marc.d@example.com
 @password = Barla2026!
+@humanProof = colle-ici-la-ligne-rendue-par-human-proof.mjs
 
 ### 1 · S'inscrire · attendu 201
+# @name inscription
 POST {{baseUrl}}/account
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
-  "password": "{{password}}"
+  "email": "delivered+marc-{{$randomInt 100000 999999}}@resend.dev",
+  "password": "{{password}}",
+  "humanProof": {{humanProof}},
+  "acceptsTerms": true,
+  "avatar": "SIGNAL"
 }
 
 ### 2 · Se connecter · attendu 200 + un jeton signé
@@ -22,55 +34,169 @@ POST {{baseUrl}}/session
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
+  "email": "{{inscription.request.body.$.email}}",
   "password": "{{password}}"
 }
 
 ###
-@token = {{connexion.response.body.token}}
+@token = {{connexion.response.body.$.token}}
 
-### 3 · Publier une annonce · attendu 201
+### 3 · Lire son compte · attendu 200
+GET {{baseUrl}}/account
+Authorization: Bearer {{token}}
+
+### 4 · Changer d'avatar · attendu 204
+PATCH {{baseUrl}}/account/avatar
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "avatar": "RIVIERA"
+}
+
+### 5 · Publier une annonce · attendu 201, sans corps
+# Disponible de J+7 à J+60.
+# @name publication
 POST {{baseUrl}}/listing
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "address": "12 rue Barla, 06300 Nice",
-  "box": "12",
+  "box": "B{{$randomInt 100 1000}}",
   "accessDescription": "portail bleu à gauche du 12, le box est au fond du premier sous-sol",
   "photos": ["photo-1.jpg"],
+  "acceptedVehicles": ["voiture", "electrique"],
   "pricing": { "dayInCents": 1200, "weekInCents": 6000, "monthInCents": 18000 },
-  "availability": { "from": "2026-10-01", "to": "2026-10-31" }
+  "availability": {
+    "from": "{{$localDatetime 'YYYY-MM-DD' 7 d}}",
+    "to": "{{$localDatetime 'YYYY-MM-DD' 60 d}}"
+  }
 }
 
-### 4 · Demander la place · attendu 201
-POST {{baseUrl}}/rental-request
+### 6 · Lister ses annonces · attendu 200 · l'identifiant est ici
+# @name mesAnnonces
+GET {{baseUrl}}/listing/mine
+Authorization: Bearer {{token}}
+
+###
+@listingId = {{mesAnnonces.response.body.$[0].id}}
+
+### 7 · Lister toutes les places disponibles, sans compte · attendu 200
+# La description d'accès n'y est jamais.
+GET {{baseUrl}}/listing
+
+### 8 · Relire l'annonce, sans compte · attendu 200 · SPEC-002 EX-11
+GET {{baseUrl}}/listing/{{listingId}}
+
+### 9 · Changer ses tarifs · attendu 200 + l'annonce à jour
+# Un palier omis est retiré de la grille : le mois revient à null.
+PATCH {{baseUrl}}/listing/{{listingId}}/pricing
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "address": "12 rue Barla, 06300 Nice",
-  "box": "12",
-  "fromDay": "2026-10-05",
-  "toDay": "2026-10-07"
+  "dayInCents": 1500,
+  "weekInCents": 8000
 }
 
-### 5 · Lister toutes les places disponibles, sans compte · attendu 200
-# C'est la route de la page d'accueil du site : toutes les annonces actives.
-# Une annonce dépubliée en disparaît. La description d'accès n'y est jamais.
-GET {{baseUrl}}/listing
+### 10 · Demander la place · attendu 201 + l'identifiant et la page de paiement
+# L'en-tête Idempotency-Key est obligatoire : un UUID par intention de louer.
+# @name demande
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{$guid}}
 
-### 6 · Relire l'annonce, sans compte · attendu 200 · EX-11
-# ⚠ Il faut l'identifiant de l'annonce, et `POST /listing` ne le rend pas (il répond 201 sans corps).
-# Aucune route ne liste les annonces : va le chercher en base, puis colle-le ci-dessous.
-#
-#   docker exec bp psql -U bp -d bookparking -tAc "select id from listings limit 1"
-#
-@listingId = colle-ici-l-identifiant
+{
+  "address": "{{publication.request.body.$.address}}",
+  "box": "{{publication.request.body.$.box}}",
+  "fromDay": "{{$localDatetime 'YYYY-MM-DD' 10 d}}",
+  "toDay": "{{$localDatetime 'YYYY-MM-DD' 12 d}}"
+}
 
+###
+@demandeId = {{demande.response.body.$.id}}
+
+### 11 · Rejouer la même demande · attendu 201, même identifiant, en-tête Idempotent-Replayed: true
+# Un double clic ne fait pas deux demandes.
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{demande.request.headers.Idempotency-Key}}
+
+{
+  "address": "{{publication.request.body.$.address}}",
+  "box": "{{publication.request.body.$.box}}",
+  "fromDay": "{{demande.request.body.$.fromDay}}",
+  "toDay": "{{demande.request.body.$.toDay}}"
+}
+
+### 12 · Lister ses demandes · attendu 200 · statut AWAITING_PAYMENT
+GET {{baseUrl}}/rental-request
+Authorization: Bearer {{token}}
+
+### 13 · Abandonner la demande avant de payer · attendu 204
+# Les dates sont rendues aussitôt.
+POST {{baseUrl}}/rental-request/{{demandeId}}/abandonment
+Authorization: Bearer {{token}}
+
+### 14 · Redemander les mêmes dates · attendu 201
+# @name nouvelleDemande
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{$guid}}
+
+{
+  "address": "{{publication.request.body.$.address}}",
+  "box": "{{publication.request.body.$.box}}",
+  "fromDay": "{{demande.request.body.$.fromDay}}",
+  "toDay": "{{demande.request.body.$.toDay}}"
+}
+
+###
+@nouvelleDemandeId = {{nouvelleDemande.response.body.$.id}}
+
+### 15 · Payer : ouvrir la page de paiement dans le navigateur
+# `checkoutUrl` de la réponse précédente, carte de test 4242 4242 4242 4242, n'importe quelle
+# date future et n'importe quel code. C'est l'événement de Stripe, relayé par `stripe listen`
+# (voir le README), qui fait passer la demande PENDING — pas le retour du navigateur.
+# Sans paiement, les étapes 16 à 18 répondent autrement : liste vide, 404, puis 409.
+
+### 16 · Lister les demandes reçues sur ses places · attendu 200 · statut PENDING
+# Le compte loue ici sa propre place : il est à la fois conducteur et loueur.
+GET {{baseUrl}}/rental-request/received
+Authorization: Bearer {{token}}
+
+### 17 · Confirmer la demande, en loueur · attendu 204 · la carte est prélevée
+POST {{baseUrl}}/rental-request/{{nouvelleDemandeId}}/confirmation
+Authorization: Bearer {{token}}
+
+### 18 · Annuler la réservation · attendu 200 + l'effet sur l'argent
+POST {{baseUrl}}/rental-request/{{nouvelleDemandeId}}/cancellation
+Authorization: Bearer {{token}}
+
+### 19 · Lire ses notifications · attendu 200
+GET {{baseUrl}}/notification
+Authorization: Bearer {{token}}
+
+### 20 · Tout marquer comme lu · attendu 204
+POST {{baseUrl}}/notification/read
+Authorization: Bearer {{token}}
+
+### 21 · Lire ses versements · attendu 200
+GET {{baseUrl}}/payout
+Authorization: Bearer {{token}}
+
+### 22 · Dépublier l'annonce · attendu 204
+DELETE {{baseUrl}}/listing/{{listingId}}
+Authorization: Bearer {{token}}
+
+### 23 · L'annonce dépubliée n'est plus lisible · attendu 404
 GET {{baseUrl}}/listing/{{listingId}}
 
-### 7 · Changer son mot de passe · attendu 204
+### 24 · Changer son mot de passe · attendu 204
 POST {{baseUrl}}/account/password
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -80,11 +206,11 @@ Authorization: Bearer {{token}}
   "newPassword": "Barla2027#"
 }
 
-### 8 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
+### 25 · L'ancien mot de passe ne marche plus · attendu 401 · SPEC-002 EX-29
 POST {{baseUrl}}/session
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
+  "email": "{{inscription.request.body.$.email}}",
   "password": "{{password}}"
 }

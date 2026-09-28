@@ -1,14 +1,53 @@
 ### Parcours complet — IntelliJ HTTP Client
 # Sélectionne l'environnement « local » en haut à droite, puis lance les requêtes dans l'ordre.
-# Le jeton est capturé automatiquement : rien à copier à la main.
+# Rien à copier à la main : le script de l'étape 1 résout le défi anti-robot, et le jeton,
+# l'annonce et les demandes sont capturés au passage.
+# Chaque passage inscrit un nouveau compte, à une adresse de test de Resend
+# (delivered+…@resend.dev) : l'e-mail de bienvenue est simulé, rien ne rebondit.
+
+### 0 · Obtenir un défi anti-robot · attendu 200
+GET {{baseUrl}}/account/human-challenge
+
+> {%
+    client.test("un défi est rendu", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+    });
+    client.global.set("challenge", response.body.challenge);
+    client.global.set("challengeSalt", response.body.salt);
+    client.global.set("challengeSignature", response.body.signature);
+    client.global.set("challengeMaxNumber", String(response.body.maxNumber));
+%}
 
 ### 1 · S'inscrire · attendu 201
+# Le script cherche le nombre dont le SHA-256 redonne le défi : quelques secondes au plus.
+# Une preuve ne sert qu'une fois : relancer l'étape 0 avant de rejouer celle-ci.
+< {%
+    const challenge = client.global.get("challenge");
+    const salt = client.global.get("challengeSalt");
+    const maxNumber = Number(client.global.get("challengeMaxNumber"));
+    let number = 0;
+    while (number <= maxNumber
+        && crypto.sha256().updateWithText(salt + number).digest().toHex() !== challenge) number++;
+    const email = "delivered+marc-" + Date.now() + "@resend.dev";
+    request.variables.set("proofNumber", String(number));
+    request.variables.set("accountEmail", email);
+    client.global.set("accountEmail", email);
+%}
 POST {{baseUrl}}/account
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
-  "password": "{{password}}"
+  "email": "{{accountEmail}}",
+  "password": "{{password}}",
+  "humanProof": {
+    "algorithm": "SHA-256",
+    "challenge": "{{challenge}}",
+    "salt": "{{challengeSalt}}",
+    "number": {{proofNumber}},
+    "signature": "{{challengeSignature}}"
+  },
+  "acceptsTerms": true,
+  "avatar": "SIGNAL"
 }
 
 > {%
@@ -24,7 +63,7 @@ POST {{baseUrl}}/session
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
+  "email": "{{accountEmail}}",
   "password": "{{password}}"
 }
 
@@ -36,18 +75,61 @@ Content-Type: application/json
     client.global.set("token", response.body.token);
 %}
 
-### 3 · Publier une annonce · attendu 201
+### 3 · Lire son compte · attendu 200
+GET {{baseUrl}}/account
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("le compte est celui du jeton", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(response.body.email === client.global.get("accountEmail"), "autre adresse");
+        client.assert(response.body.avatar === "SIGNAL", "avatar inattendu : " + response.body.avatar);
+    });
+%}
+
+### 4 · Changer d'avatar · attendu 204
+PATCH {{baseUrl}}/account/avatar
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "avatar": "RIVIERA"
+}
+
+> {%
+    client.test("l'avatar est changé", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 5 · Publier une annonce · attendu 201, sans corps
+# Disponible de J+7 à J+60, sous un box tiré au hasard.
+< {%
+    const day = function(offset) {
+        return new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+    };
+    const keep = function(name, value) {
+        request.variables.set(name, value);
+        client.global.set(name, value);
+    };
+    keep("listingBox", "B" + (100 + Math.floor(Math.random() * 900)));
+    keep("availableFrom", day(7));
+    keep("availableTo", day(60));
+    keep("fromDay", day(10));
+    keep("toDay", day(12));
+%}
 POST {{baseUrl}}/listing
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "address": "12 rue Barla, 06300 Nice",
-  "box": "12",
+  "box": "{{listingBox}}",
   "accessDescription": "portail bleu à gauche du 12, le box est au fond du premier sous-sol",
   "photos": ["photo-1.jpg"],
+  "acceptedVehicles": ["voiture", "electrique"],
   "pricing": { "dayInCents": 1200, "weekInCents": 6000, "monthInCents": 18000 },
-  "availability": { "from": "2026-10-01", "to": "2026-10-31" }
+  "availability": { "from": "{{availableFrom}}", "to": "{{availableTo}}" }
 }
 
 > {%
@@ -56,27 +138,22 @@ Authorization: Bearer {{token}}
     });
 %}
 
-### 4 · Demander la place · attendu 201
-POST {{baseUrl}}/rental-request
-Content-Type: application/json
+### 6 · Lister ses annonces · attendu 200 · l'identifiant est ici
+GET {{baseUrl}}/listing/mine
 Authorization: Bearer {{token}}
 
-{
-  "address": "12 rue Barla, 06300 Nice",
-  "box": "12",
-  "fromDay": "2026-10-05",
-  "toDay": "2026-10-07"
-}
-
 > {%
-    client.test("la demande est enregistrée", function() {
-        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+    const box = client.global.get("listingBox");
+    const listing = response.body.find(function(annonce) { return annonce.box === box; });
+    client.test("l'annonce publiée est dans la liste", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(listing !== undefined, "aucune annonce au box " + box);
+        client.assert(listing.status === "ACTIVE", "statut inattendu : " + listing.status);
     });
+    client.global.set("listingId", listing.id);
 %}
 
-### 5 · Lister toutes les places disponibles, sans compte · attendu 200
-# C'est la route de la page d'accueil du site : toutes les annonces actives.
-# Une annonce dépubliée en disparaît. La description d'accès n'y est jamais.
+### 7 · Lister toutes les places disponibles, sans compte · attendu 200
 GET {{baseUrl}}/listing
 
 > {%
@@ -90,13 +167,8 @@ GET {{baseUrl}}/listing
     });
 %}
 
-### 6 · Relire l'annonce, sans compte · attendu 200 · EX-11
-# ⚠ Il faut l'identifiant de l'annonce, et `POST /listing` ne le rend pas (il répond 201 sans corps).
-# Aucune route ne liste les annonces : va le chercher en base, puis remplace la valeur ci-dessous.
-#
-#   docker exec bp psql -U bp -d bookparking -tAc "select id from listings limit 1"
-#
-GET {{baseUrl}}/listing/colle-ici-l-identifiant
+### 8 · Relire l'annonce, sans compte · attendu 200 · SPEC-002 EX-11
+GET {{baseUrl}}/listing/{{listingId}}
 
 > {%
     client.test("l'annonce est lisible sans compte", function() {
@@ -106,7 +178,223 @@ GET {{baseUrl}}/listing/colle-ici-l-identifiant
     });
 %}
 
-### 7 · Changer son mot de passe · attendu 204
+### 9 · Changer ses tarifs · attendu 200 + l'annonce à jour
+# Un palier omis est retiré de la grille : le mois revient à null.
+PATCH {{baseUrl}}/listing/{{listingId}}/pricing
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "dayInCents": 1500,
+  "weekInCents": 8000
+}
+
+> {%
+    client.test("la grille est remplacée", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(response.body.pricing.dayInCents === 1500, "tarif du jour inattendu");
+        client.assert(response.body.pricing.monthInCents === null, "le mois devait disparaître");
+    });
+%}
+
+### 10 · Demander la place · attendu 201 + l'identifiant et la page de paiement
+# L'en-tête Idempotency-Key est obligatoire : un UUID par intention de louer.
+< {%
+    const intent = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        const r = Math.floor(Math.random() * 16);
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+    });
+    request.variables.set("intent", intent);
+    client.global.set("intent", intent);
+%}
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{intent}}
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "{{listingBox}}",
+  "fromDay": "{{fromDay}}",
+  "toDay": "{{toDay}}"
+}
+
+> {%
+    client.test("la demande attend son paiement", function() {
+        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+        client.assert(response.body.checkoutUrl.indexOf("https://checkout.stripe.com/") === 0,
+            "aucune page de paiement Stripe");
+    });
+    client.global.set("requestId", response.body.id);
+%}
+
+### 11 · Rejouer la même demande · attendu 201, même identifiant, en-tête Idempotent-Replayed: true
+# Un double clic ne fait pas deux demandes.
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{intent}}
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "{{listingBox}}",
+  "fromDay": "{{fromDay}}",
+  "toDay": "{{toDay}}"
+}
+
+> {%
+    client.test("la même demande est rendue", function() {
+        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+        client.assert(response.body.id === client.global.get("requestId"), "une seconde demande a été créée");
+        client.assert(response.headers.valueOf("Idempotent-Replayed") === "true",
+            "l'en-tête Idempotent-Replayed manque");
+    });
+%}
+
+### 12 · Lister ses demandes · attendu 200 · statut AWAITING_PAYMENT
+GET {{baseUrl}}/rental-request
+Authorization: Bearer {{token}}
+
+> {%
+    const id = client.global.get("requestId");
+    const demande = response.body.find(function(d) { return d.id === id; });
+    client.test("la demande attend son paiement", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(demande !== undefined, "la demande n'est pas dans la liste");
+        client.assert(demande.status === "AWAITING_PAYMENT", "statut inattendu : " + demande.status);
+    });
+%}
+
+### 13 · Abandonner la demande avant de payer · attendu 204
+# Les dates sont rendues aussitôt.
+POST {{baseUrl}}/rental-request/{{requestId}}/abandonment
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("la demande est abandonnée", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 14 · Redemander les mêmes dates · attendu 201
+< {%
+    const intent = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        const r = Math.floor(Math.random() * 16);
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+    });
+    request.variables.set("intent", intent);
+%}
+POST {{baseUrl}}/rental-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{intent}}
+
+{
+  "address": "12 rue Barla, 06300 Nice",
+  "box": "{{listingBox}}",
+  "fromDay": "{{fromDay}}",
+  "toDay": "{{toDay}}"
+}
+
+> {%
+    client.test("les dates abandonnées sont libres", function() {
+        client.assert(response.status === 201, "attendu 201, reçu " + response.status);
+    });
+    client.global.set("paidRequestId", response.body.id);
+    client.log("Page de paiement : " + response.body.checkoutUrl);
+%}
+
+### 15 · Payer : ouvrir la page de paiement dans le navigateur
+# L'adresse est dans le journal de l'étape 14. Carte de test 4242 4242 4242 4242, n'importe
+# quelle date future et n'importe quel code. C'est l'événement de Stripe, relayé par
+# `stripe listen` (voir le README), qui fait passer la demande PENDING — pas le retour du
+# navigateur. Sans paiement, les étapes 16 à 18 échouent : liste vide, 404, puis 409.
+
+### 16 · Lister les demandes reçues sur ses places · attendu 200 · statut PENDING
+# Le compte loue ici sa propre place : il est à la fois conducteur et loueur.
+GET {{baseUrl}}/rental-request/received
+Authorization: Bearer {{token}}
+
+> {%
+    const id = client.global.get("paidRequestId");
+    const demande = response.body.find(function(d) { return d.id === id; });
+    client.test("la demande payée attend le loueur", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+        client.assert(demande !== undefined, "demande absente : a-t-elle été payée ?");
+        client.assert(demande.status === "PENDING", "statut inattendu : " + demande.status);
+    });
+%}
+
+### 17 · Confirmer la demande, en loueur · attendu 204 · la carte est prélevée
+POST {{baseUrl}}/rental-request/{{paidRequestId}}/confirmation
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("la demande est confirmée", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 18 · Annuler la réservation · attendu 200 + l'effet sur l'argent
+POST {{baseUrl}}/rental-request/{{paidRequestId}}/cancellation
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("la réservation est annulée", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+    });
+%}
+
+### 19 · Lire ses notifications · attendu 200
+GET {{baseUrl}}/notification
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("les notifications sont lisibles", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+    });
+%}
+
+### 20 · Tout marquer comme lu · attendu 204
+POST {{baseUrl}}/notification/read
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("tout est lu", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 21 · Lire ses versements · attendu 200
+GET {{baseUrl}}/payout
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("les versements sont lisibles", function() {
+        client.assert(response.status === 200, "attendu 200, reçu " + response.status);
+    });
+%}
+
+### 22 · Dépublier l'annonce · attendu 204
+DELETE {{baseUrl}}/listing/{{listingId}}
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("l'annonce est dépubliée", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 23 · L'annonce dépubliée n'est plus lisible · attendu 404
+GET {{baseUrl}}/listing/{{listingId}}
+
+> {%
+    client.test("l'annonce a disparu", function() {
+        client.assert(response.status === 404, "attendu 404, reçu " + response.status);
+    });
+%}
+
+### 24 · Changer son mot de passe · attendu 204
 POST {{baseUrl}}/account/password
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -122,12 +410,12 @@ Authorization: Bearer {{token}}
     });
 %}
 
-### 8 · L'ancien mot de passe ne marche plus · attendu 401 · EX-29
+### 25 · L'ancien mot de passe ne marche plus · attendu 401 · SPEC-002 EX-29
 POST {{baseUrl}}/session
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
+  "email": "{{accountEmail}}",
   "password": "{{password}}"
 }
 

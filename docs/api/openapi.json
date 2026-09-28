@@ -3,7 +3,7 @@
   "info": {
     "title": "bookparking — API",
     "version": "1.0.0",
-    "description": "API de bookparking : comptes, sessions, annonces de places de parking et demandes de location.\n\nToutes les erreurs sont rendues par le filtre d'exception NestJS sous la forme `{ \"statusCode\": number, \"message\": string }`. Les messages sont en français et proviennent soit du décodage `effect/Schema` (400), soit des erreurs du domaine.\n\nL'authentification se fait par un jeton d'accès porté en `Authorization: Bearer <token>`, obtenu via `POST /session`."
+    "description": "API de bookparking : comptes, sessions, annonces de places de parking, demandes de location et leur paiement, notifications, versements aux loueurs et back-office.\n\nToutes les erreurs sont rendues par le filtre d'exception NestJS sous la forme `{ \"statusCode\": number, \"message\": string }`. Les messages sont en français et proviennent soit du décodage `effect/Schema` (400), soit des erreurs du domaine.\n\nL'authentification se fait par un jeton d'accès porté en `Authorization: Bearer <token>`, obtenu via `POST /session`."
   },
   "servers": [
     {
@@ -41,6 +41,10 @@
     {
       "name": "notification",
       "description": "Notifications d'un compte : les moments de ses demandes de location, montrés dans la cloche et envoyés par e-mail."
+    },
+    {
+      "name": "payment",
+      "description": "Événements de paiement envoyés par Stripe."
     },
     {
       "name": "payout",
@@ -1538,6 +1542,7 @@
         "operationId": "receiveStripeWebhook",
         "summary": "Recevoir un événement de Stripe",
         "description": "Appelée par Stripe seul, jamais par un client. Aucune garde de jeton : l'en-tête `Stripe-Signature` est vérifié sur le corps brut avec `STRIPE_WEBHOOK_SECRET`. Événements lus : `payment_intent.amount_capturable_updated` (empreinte posée) et `checkout.session.expired` (page de paiement expirée).",
+        "security": [],
         "responses": {
           "200": {
             "description": "Événement accusé, qu'il ait changé une demande ou non."

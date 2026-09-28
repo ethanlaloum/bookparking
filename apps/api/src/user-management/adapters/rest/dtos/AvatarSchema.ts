@@ -1,10 +1,14 @@
 import { Schema } from 'effect/index';
 
-import { AVATARS } from '../../../domain/entities/Account';
+import { AVATARS, isAvatar } from '../../../domain/entities/Account';
 
-export const AvatarSchema = Schema.Literal(...AVATARS).annotations({
-  message: () => `Avatar invalide : ${AVATARS.join(', ')}`,
-});
+const AVATAR_MESSAGE = `Avatar invalide : ${AVATARS.join(', ')}`;
+
+export const AvatarSchema = Schema.String.annotations({
+  message: () => AVATAR_MESSAGE,
+})
+  .pipe(Schema.filter(isAvatar))
+  .annotations({ message: () => AVATAR_MESSAGE });
 
 export const ChooseAvatarSchema = Schema.Struct({
   avatar: AvatarSchema,

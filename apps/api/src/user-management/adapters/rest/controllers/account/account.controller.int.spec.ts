@@ -289,6 +289,11 @@ describe('AccountController — avatar and own account', () => {
     email: LEA_EMAIL,
     avatar: 'RIVIERA' as const,
   };
+  const AVATAR_REFUSAL = {
+    statusCode: 400,
+    message:
+      'avatar: Avatar invalide : SIGNAL, MARKING, RIVIERA, ASPHALT, CHECKERED',
+  };
 
   let sut: ReturnType<typeof createAccountControllerSUT>;
   let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
@@ -331,6 +336,7 @@ describe('AccountController — avatar and own account', () => {
 
     expect(withoutAvatar.status).toEqual(400);
     expect(outsideTheFive.status).toEqual(400);
+    expect(outsideTheFive.body).toEqual(AVATAR_REFUSAL);
     sut.thenNoAccountWasRegistered();
   });
 
@@ -375,6 +381,7 @@ describe('AccountController — avatar and own account', () => {
       .send({ avatar: 'OTHER' });
 
     expect(response.status).toEqual(400);
+    expect(response.body).toEqual(AVATAR_REFUSAL);
     sut.thenNoAvatarWasChosen();
   });
 

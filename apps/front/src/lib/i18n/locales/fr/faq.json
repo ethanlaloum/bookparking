@@ -77,6 +77,10 @@
       "question": "Que faites-vous de mes données ?",
       "answer": "Seulement ce qu’il faut pour faire fonctionner le service : rien n’est vendu, et il n’y a ni publicité ni mesure d’audience. Le détail, donnée par donnée, est sur la page <privacy>Données personnelles</privacy>."
     },
+    "forgotPassword": {
+      "question": "J’ai oublié mon mot de passe : comment en choisir un nouveau ?",
+      "answer": "Sur la page de connexion, choisissez « Mot de passe oublié ? » et indiquez votre adresse. Un e-mail vous envoie un lien pour choisir un nouveau mot de passe : il vaut une heure, et ne sert qu’une fois."
+    },
     "deleteAccount": {
       "question": "Comment supprimer mon compte ?",
       "answer": "La suppression se demande par écrit, comme l’explique la page <privacy>Données personnelles</privacy> : elle n’est pas encore proposée depuis le site."

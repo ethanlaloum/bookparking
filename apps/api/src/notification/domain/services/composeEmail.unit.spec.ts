@@ -118,3 +118,63 @@ describe('composeEmail — notifications', () => {
     expect(email.html).toContain('&quot;&gt;&lt;b&gt;');
   });
 });
+
+const resetFor = (token: string, siteUrl = SITE_URL) =>
+  composeEmail(
+    OutgoingEmail.passwordReset({
+      recipient: 'marc.d@example.com',
+      token,
+      queuedAt: QUEUED_AT,
+    }),
+    siteUrl,
+  );
+
+describe('composeEmail — password reset', () => {
+  it('writes the reset link, valid once and for one hour', () => {
+    const email = resetFor('token-1');
+
+    expect({ subject: email.subject, text: email.text }).toEqual({
+      subject: 'Réinitialisez votre mot de passe',
+      text: [
+        'Bonjour,',
+        '',
+        "Une demande de réinitialisation du mot de passe de votre compte Bookparking vient d'être faite.",
+        '',
+        'Choisissez un nouveau mot de passe avec ce lien, valable une heure et une seule fois :',
+        'https://bookparking.fr/mot-de-passe/nouveau?jeton=token-1',
+        '',
+        "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail : votre mot de passe ne change pas.",
+        '',
+        "L'équipe Bookparking",
+      ].join('\n'),
+    });
+    expect(email.html).toContain(
+      'href="https://bookparking.fr/mot-de-passe/nouveau?jeton=token-1"',
+    );
+  });
+
+  it('encodes the token inside the link', () => {
+    const email = resetFor('a+b/c=d', `${SITE_URL}/`);
+
+    expect(email.text).toContain(
+      'https://bookparking.fr/mot-de-passe/nouveau?jeton=a%2Bb%2Fc%3Dd',
+    );
+  });
+
+  it('points to a new request once the token is no longer kept', () => {
+    const email = composeEmail(
+      OutgoingEmail.fromState({
+        ...OutgoingEmail.passwordReset({
+          recipient: 'marc.d@example.com',
+          token: 'token-1',
+          queuedAt: QUEUED_AT,
+        }).toState(),
+        passwordResetToken: null,
+      }),
+      SITE_URL,
+    );
+
+    expect(email.text).toContain('https://bookparking.fr/mot-de-passe-oublie');
+    expect(email.text).not.toContain('jeton=');
+  });
+});

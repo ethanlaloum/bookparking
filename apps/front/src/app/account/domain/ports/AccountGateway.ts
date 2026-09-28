@@ -17,10 +17,17 @@ export interface ChangePasswordPayload {
   newPassword: string;
 }
 
+export interface ResetPasswordPayload {
+  token: string;
+  newPassword: string;
+}
+
 export interface AccountGateway {
   register(payload: RegisterAccountPayload): Observable<Account>;
   getHumanChallenge(): Observable<HumanChallenge>;
   changePassword(payload: ChangePasswordPayload): Observable<void>;
   readOwnAccount(): Observable<OwnAccount>;
   chooseAvatar(avatar: Avatar): Observable<void>;
+  requestPasswordReset(email: string): Observable<void>;
+  resetPassword(payload: ResetPasswordPayload): Observable<void>;
 }

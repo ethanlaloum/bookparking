@@ -62,6 +62,12 @@ const PROCESSINGS: Processing[] = [
     retention: 'En mémoire seulement, jamais écrite ; effacée au redémarrage du service',
   },
   {
+    data: 'Demandes de réinitialisation du mot de passe : leur heure, leur échéance, l’heure d’utilisation, et l’empreinte SHA-256 du lien envoyé. Le lien lui-même n’est gardé que le temps d’envoyer l’e-mail',
+    purpose: 'Vous laisser choisir un nouveau mot de passe si vous avez oublié le vôtre',
+    basis: 'Exécution du contrat',
+    retention: 'Tant que le compte existe ; le lien ne sert qu’une fois, pendant une heure',
+  },
+  {
     data: 'Actions de modération : compte de l’administrateur, action, annonce ou compte visé, motif, date',
     purpose: 'Tracer et justifier les décisions de modération',
     basis: 'Intérêt légitime ; obligation légale (règlement européen sur les services numériques)',

@@ -76,3 +76,86 @@ describe('KnexEmailOutbox @SPEC-006', () => {
     await sut.thenRowIsSentAt(email, AT('09:00:30'));
   });
 });
+
+describe('KnexEmailOutbox — password reset', () => {
+  beforeAll(async () => {
+    await startTestDatabase();
+  }, 120000);
+
+  afterEach(async () => {
+    await cleanDatabase();
+  });
+
+  afterAll(async () => {
+    await stopTestDatabase();
+  });
+
+  it('keeps the reset token while the email waits, and reads it back', async () => {
+    const sut = createKnexEmailOutboxSUT();
+    const email = await sut.givenQueuedPasswordReset(
+      MARC_EMAIL,
+      'token-1',
+      AT('09:00:00'),
+    );
+    await sut.givenOneUnavailableAttempt(email);
+
+    await sut.thenResetTokenOfRowIs(email, 'token-1');
+    await sut.thenQueueReadsResetToken('token-1');
+  });
+
+  it('forgets the reset token once the email is sent', async () => {
+    const sut = createKnexEmailOutboxSUT();
+    const email = await sut.givenQueuedPasswordReset(
+      MARC_EMAIL,
+      'token-1',
+      AT('09:00:00'),
+    );
+
+    await sut.whenMarkingSent(email, AT('09:00:30'));
+
+    await sut.thenResetTokenOfRowIs(email, null);
+  });
+
+  it('forgets the reset token once the email is abandoned', async () => {
+    const sut = createKnexEmailOutboxSUT();
+    const email = await sut.givenQueuedPasswordReset(
+      MARC_EMAIL,
+      'token-1',
+      AT('09:00:00'),
+    );
+
+    await sut.givenMarkedFailed(email, AT('09:00:30'));
+
+    await sut.thenResetTokenOfRowIs(email, null);
+  });
+
+  it('refuses a reset token on any other kind of email', async () => {
+    const sut = createKnexEmailOutboxSUT();
+
+    const outcome = await sut.whenInsertingRawly({
+      kind: 'WELCOME',
+      status: 'PENDING',
+      password_reset_token: 'token-1',
+    });
+
+    sut.thenInsertWasRefusedBy(
+      outcome,
+      'outgoing_emails_password_reset_token_check',
+    );
+  });
+
+  it('refuses a pending reset email without its token', async () => {
+    const sut = createKnexEmailOutboxSUT();
+
+    const outcome = await sut.whenInsertingRawly({
+      kind: 'PASSWORD_RESET',
+      status: 'PENDING',
+      password_reset_token: null,
+    });
+
+    sut.thenInsertWasRefusedBy(
+      outcome,
+      'outgoing_emails_password_reset_token_check',
+    );
+  });
+});

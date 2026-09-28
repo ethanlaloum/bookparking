@@ -4,6 +4,7 @@ import type {
   AccountGateway,
   ChangePasswordPayload,
   RegisterAccountPayload,
+  ResetPasswordPayload,
 } from '../../app/account/domain/ports/AccountGateway';
 import type { Account, OwnAccount } from '../../app/account/domain/entities/Account';
 import type { Avatar } from '../../app/account/domain/entities/Avatar';
@@ -326,6 +327,10 @@ export class InMemoryAccountGateway implements AccountGateway {
   public avatarRejection: string | null = null;
   // Une api qui ne répond pas encore : ce que l'écran montre pendant l'attente.
   public avatarResponseHeld = false;
+  public readonly passwordResetRequests: string[] = [];
+  public passwordResetRequestRejection: string | null = null;
+  public readonly passwordResets: ResetPasswordPayload[] = [];
+  public passwordResetRejection: string | null = null;
 
   getHumanChallenge(): Observable<HumanChallenge> {
     this.challengesServed += 1;
@@ -350,6 +355,18 @@ export class InMemoryAccountGateway implements AccountGateway {
     this.avatarsChosen.push(avatar);
     if (this.avatarResponseHeld) return NEVER;
     return this.avatarRejection === null ? of(undefined) : fail(this.avatarRejection);
+  }
+
+  requestPasswordReset(email: string): Observable<void> {
+    this.passwordResetRequests.push(email);
+    return this.passwordResetRequestRejection === null
+      ? of(undefined)
+      : fail(this.passwordResetRequestRejection);
+  }
+
+  resetPassword(payload: ResetPasswordPayload): Observable<void> {
+    this.passwordResets.push(payload);
+    return this.passwordResetRejection === null ? of(undefined) : fail(this.passwordResetRejection);
   }
 }
 

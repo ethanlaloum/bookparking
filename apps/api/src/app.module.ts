@@ -71,6 +71,10 @@ import { KnexNotificationOutbox } from './shared/notification-outbox/adapters/re
 import { KnexUnitOfWork } from './shared/unit-of-work/KnexUnitOfWork';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
+import { PasswordResetController } from './user-management/adapters/rest/controllers/password-reset/password-reset.controller';
+import { KnexPasswordResetRepository } from './user-management/adapters/repositories/password-reset/KnexPasswordResetRepository';
+import { RequestPasswordReset } from './user-management/domain/usecases/request-password-reset/RequestPasswordReset';
+import { ResetPassword } from './user-management/domain/usecases/reset-password/ResetPassword';
 import { SessionController } from './user-management/adapters/rest/controllers/session/session.controller';
 import { SlidingAccessTokenVerifier } from './user-management/adapters/services/access-token/SlidingAccessTokenVerifier';
 import { HashcashHumanProof } from './user-management/adapters/services/human-proof/HashcashHumanProof';
@@ -106,6 +110,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
 @Module({
   controllers: [
     AccountController,
+    PasswordResetController,
     SessionController,
     ListingController,
     RentalRequestController,
@@ -194,6 +199,28 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
       provide: ReadOwnAccount,
       useFactory: (connection: DatabaseConnection) =>
         new ReadOwnAccount(new KnexAccountRepository(typedAs(connection))),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: RequestPasswordReset,
+      useFactory: (connection: DatabaseConnection) =>
+        new RequestPasswordReset(
+          new KnexAccountRepository(typedAs(connection)),
+          new KnexPasswordResetRepository(typedAs(connection)),
+          new KnexEmailOutbox(typedAs(connection)),
+          new KnexUnitOfWork(connection),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ResetPassword,
+      useFactory: (connection: DatabaseConnection) =>
+        new ResetPassword(
+          new KnexAccountRepository(typedAs(connection)),
+          new KnexPasswordResetRepository(typedAs(connection)),
+          new KnexUnitOfWork(connection),
+          new ScryptPasswordHasher(),
+        ),
       inject: [DATABASE_CONNECTION],
     },
     {

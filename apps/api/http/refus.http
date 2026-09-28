@@ -328,3 +328,39 @@ Content-Type: application/json
   "type": "payment_intent.amount_capturable_updated",
   "data": { "object": {} }
 }
+
+### 32 · Demander un lien pour une adresse inconnue · attendu 204, la MÊME réponse qu'une adresse connue
+# Rien n'est écrit, rien ne part : la réponse ne dit pas si l'adresse a un compte.
+POST {{baseUrl}}/account/password-reset
+Content-Type: application/json
+
+{
+  "email": "delivered+personne@resend.dev"
+}
+
+### 33 · Demander un lien avec une adresse qui n'est pas du texte · attendu 400
+POST {{baseUrl}}/account/password-reset
+Content-Type: application/json
+
+{
+  "email": 1234567
+}
+
+### 34 · Choisir un mot de passe avec un lien inventé · attendu 400
+POST {{baseUrl}}/account/password-reset/confirmation
+Content-Type: application/json
+
+{
+  "token": "lien-invente",
+  "newPassword": "Promenade2027#"
+}
+
+### 35 · Choisir un mot de passe mal typé · attendu 400
+# ⚠ La réponse ne doit PAS contenir 12345678.
+POST {{baseUrl}}/account/password-reset/confirmation
+Content-Type: application/json
+
+{
+  "token": "lien-invente",
+  "newPassword": 12345678
+}

@@ -68,6 +68,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demander un lien de réinitialisation du mot de passe
+         * @description Route publique. Si un compte actif porte cette adresse, un lien valable une heure et une seule fois lui est envoyé par e-mail ; l'api n'en garde que l'empreinte SHA-256. La réponse est la même que l'adresse ait un compte ou non. Une seconde demande pour le même compte moins de deux minutes après la précédente n'envoie rien de plus.
+         */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/password-reset/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choisir un nouveau mot de passe avec le lien reçu
+         * @description Route publique. Le jeton est celui du lien reçu par e-mail (`/mot-de-passe/nouveau?jeton=…`). Une réinitialisation réussie dépense tous les liens encore valables du compte. Les sessions déjà ouvertes restent valables, comme après un changement de mot de passe.
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session": {
         parameters: {
             query?: never;
@@ -1134,6 +1174,13 @@ export interface components {
              */
             url: string;
         };
+        RequestPasswordResetRequest: {
+            email: string;
+        };
+        ResetPasswordRequest: {
+            token: string;
+            newPassword: string;
+        };
     };
     responses: {
         /** @description Jeton d'accès absent, mal formé ou invalide. */
@@ -1303,6 +1350,70 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Mot de passe actuel incorrect. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Demande reçue. Aucun corps de réponse, que l'adresse ait un compte ou non. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps de requête invalide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Mot de passe remplacé. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps de requête invalide, lien inconnu, expiré ou déjà utilisé, ou nouveau mot de passe trop faible. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

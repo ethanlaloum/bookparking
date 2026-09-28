@@ -319,6 +319,121 @@
         }
       }
     },
+    "/account/password-reset": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "requestPasswordReset",
+        "summary": "Demander un lien de réinitialisation du mot de passe",
+        "description": "Route publique. Si un compte actif porte cette adresse, un lien valable une heure et une seule fois lui est envoyé par e-mail ; l'api n'en garde que l'empreinte SHA-256. La réponse est la même que l'adresse ait un compte ou non. Une seconde demande pour le même compte moins de deux minutes après la précédente n'envoie rien de plus.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPasswordResetRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "email": "marc.d@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Demande reçue. Aucun corps de réponse, que l'adresse ait un compte ou non."
+          },
+          "400": {
+            "description": "Corps de requête invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "adresseInvalide": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "email: Adresse e-mail invalide"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/account/password-reset/confirmation": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "resetPassword",
+        "summary": "Choisir un nouveau mot de passe avec le lien reçu",
+        "description": "Route publique. Le jeton est celui du lien reçu par e-mail (`/mot-de-passe/nouveau?jeton=…`). Une réinitialisation réussie dépense tous les liens encore valables du compte. Les sessions déjà ouvertes restent valables, comme après un changement de mot de passe.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "token": "Jx3…",
+                    "newPassword": "Promenade2027#"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Mot de passe remplacé. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Corps de requête invalide, lien inconnu, expiré ou déjà utilisé, ou nouveau mot de passe trop faible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "lienPerime": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Ce lien de réinitialisation n'est plus valable. Demandez-en un nouveau."
+                    }
+                  },
+                  "motDePasseFaible": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Ce mot de passe est trop faible : allongez-le, ou mêlez minuscules, majuscules, chiffres et symboles"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/session": {
       "post": {
         "tags": [
@@ -496,6 +611,9 @@
               }
             }
           },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
           "502": {
             "description": "Le stockage des photos a échoué.",
             "content": {
@@ -513,9 +631,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
           }
         }
       },
@@ -863,6 +978,16 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "409": {
+            "description": "Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "422": {
             "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ».",
             "content": {
@@ -898,16 +1023,6 @@
           },
           "503": {
             "description": "Stripe ne répond pas : la demande est abandonnée et ses dates rendues.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3317,6 +3432,37 @@
             "type": "string",
             "format": "uri",
             "description": "Une page de Stripe, valable quelques minutes."
+          }
+        }
+      },
+      "RequestPasswordResetRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": [
+          "token",
+          "newPassword"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
           }
         }
       }

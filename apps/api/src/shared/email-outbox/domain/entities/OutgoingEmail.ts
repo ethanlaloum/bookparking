@@ -2,11 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { NotificationKind } from '../../../notification-outbox/domain/entities/Notification';
 
-// Les e-mails que l'api sait rédiger : la bienvenue, et un par type de
-// notification. Un moment clé de plus ajoute son type ici, dans
-// `outgoing_emails_kind_check` et dans `composeEmail` — les trois ensemble,
-// sans quoi l'insertion ou la rédaction échoue.
-export type OutgoingEmailKind = 'WELCOME' | NotificationKind;
+export type OutgoingEmailKind = 'WELCOME' | 'PASSWORD_RESET' | NotificationKind;
 
 export type OutgoingEmailStatus = 'PENDING' | 'SENT' | 'FAILED';
 
@@ -19,6 +15,7 @@ interface Props {
   queuedAt: Date;
   sentAt: Date | null;
   failedAt: Date | null;
+  passwordResetToken: string | null;
 }
 
 export class OutgoingEmail {
@@ -32,40 +29,51 @@ export class OutgoingEmail {
     return new OutgoingEmail(state);
   }
 
-  // L'identifiant naît ici, et c'est aussi la clé d'idempotence de l'envoi :
-  // deux balayages qui envoient le même e-mail envoient la même clé.
   public static welcome(params: {
     recipient: string;
     queuedAt: Date;
   }): OutgoingEmail {
-    return new OutgoingEmail({
-      id: randomUUID(),
-      kind: 'WELCOME',
-      recipient: params.recipient,
-      status: 'PENDING',
-      attempts: 0,
-      queuedAt: params.queuedAt,
-      sentAt: null,
-      failedAt: null,
-    });
+    return OutgoingEmail.queued('WELCOME', params.recipient, params.queuedAt);
   }
 
-  // L'e-mail d'une notification ne dit ni l'adresse de la place ni les dates :
-  // il renvoie au site, où la cloche les montre à qui est connecté.
   public static aboutNotification(params: {
     kind: NotificationKind;
     recipient: string;
     queuedAt: Date;
   }): OutgoingEmail {
+    return OutgoingEmail.queued(params.kind, params.recipient, params.queuedAt);
+  }
+
+  public static passwordReset(params: {
+    recipient: string;
+    token: string;
+    queuedAt: Date;
+  }): OutgoingEmail {
+    return new OutgoingEmail({
+      ...OutgoingEmail.queued(
+        'PASSWORD_RESET',
+        params.recipient,
+        params.queuedAt,
+      ).props,
+      passwordResetToken: params.token,
+    });
+  }
+
+  private static queued(
+    kind: OutgoingEmailKind,
+    recipient: string,
+    queuedAt: Date,
+  ): OutgoingEmail {
     return new OutgoingEmail({
       id: randomUUID(),
-      kind: params.kind,
-      recipient: params.recipient,
+      kind,
+      recipient,
       status: 'PENDING',
       attempts: 0,
-      queuedAt: params.queuedAt,
+      queuedAt,
       sentAt: null,
       failedAt: null,
+      passwordResetToken: null,
     });
   }
 
@@ -83,5 +91,9 @@ export class OutgoingEmail {
 
   public get queuedAt(): Date {
     return this.props.queuedAt;
+  }
+
+  public get passwordResetToken(): string | null {
+    return this.props.passwordResetToken;
   }
 }

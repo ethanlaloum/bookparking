@@ -77,6 +77,10 @@
       "question": "What do you do with my data?",
       "answer": "Only what the service needs to work: nothing is sold, and there is no advertising and no audience measurement. The details, item by item, are on the <privacy>personal data</privacy> page."
     },
+    "forgotPassword": {
+      "question": "I forgot my password: how do I choose a new one?",
+      "answer": "On the sign-in page, choose “Forgot your password?” and enter your address. An email sends you a link to choose a new password: it is valid for one hour, and works only once."
+    },
     "deleteAccount": {
       "question": "How do I delete my account?",
       "answer": "Deletion is requested in writing, as explained on the <privacy>personal data</privacy> page: it is not yet available from the site."

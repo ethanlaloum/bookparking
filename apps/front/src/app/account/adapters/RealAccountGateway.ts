@@ -8,6 +8,7 @@ import type {
   AccountGateway,
   ChangePasswordPayload,
   RegisterAccountPayload,
+  ResetPasswordPayload,
 } from '../domain/ports/AccountGateway';
 
 export class BookparkingRxAccountGateway implements AccountGateway {
@@ -37,5 +38,17 @@ export class BookparkingRxAccountGateway implements AccountGateway {
 
   chooseAvatar(avatar: Avatar): Observable<void> {
     return this.httpClient.patch<void>('/account/avatar', { avatar }).pipe(map(() => undefined));
+  }
+
+  requestPasswordReset(email: string): Observable<void> {
+    return this.httpClient
+      .post<void>('/account/password-reset', { email })
+      .pipe(map(() => undefined));
+  }
+
+  resetPassword(payload: ResetPasswordPayload): Observable<void> {
+    return this.httpClient
+      .post<void>('/account/password-reset/confirmation', payload)
+      .pipe(map(() => undefined));
   }
 }

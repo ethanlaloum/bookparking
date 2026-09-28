@@ -1,3 +1,5 @@
+import { chooseNewPasswordEpic } from '../../app/account/domain/use-cases/choose-new-password/chooseNewPasswordEpic';
+import { requestPasswordResetEpic } from '../../app/account/domain/use-cases/request-password-reset/requestPasswordResetEpic';
 import { changePasswordEpic } from '../../app/account/domain/use-cases/change-password/changePasswordEpic';
 import { humanProofEpic } from '../../app/account/domain/use-cases/human-proof/humanProofEpic';
 import { chooseAvatarEpic } from '../../app/account/domain/use-cases/choose-avatar/chooseAvatarEpic';
@@ -10,4 +12,6 @@ export const accountEpics = [
   humanProofEpic,
   readOwnAccountEpic,
   chooseAvatarEpic,
+  requestPasswordResetEpic,
+  chooseNewPasswordEpic,
 ];

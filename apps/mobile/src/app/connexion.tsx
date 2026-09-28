@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, type TextInput } from 'react-native';
@@ -12,6 +13,7 @@ import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { Notice } from '../components/ui/Notice';
 import { Text } from '../components/ui/Text';
+import { resolveFrontBaseUrl } from '../lib/apiBaseUrl';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 
 export default function SignInScreen() {
@@ -88,6 +90,15 @@ export default function SignInScreen() {
         returnKeyType="go"
         onSubmitEditing={submit}
       />
+      <Pressable
+        accessibilityRole="link"
+        onPress={() => void WebBrowser.openBrowserAsync(`${resolveFrontBaseUrl()}/mot-de-passe-oublie`)}
+        style={{ alignSelf: 'flex-end' }}
+      >
+        <Text size={14} weight="medium" tone="accent" style={{ textDecorationLine: 'underline' }}>
+          {t('auth:signIn.forgotPassword')}
+        </Text>
+      </Pressable>
       <Button size="lg" block loading={loading} label={t('auth:signIn.submit')} onPress={submit} style={{ marginTop: 8 }} />
     </AuthSheet>
   );

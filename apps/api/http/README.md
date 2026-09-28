@@ -39,7 +39,7 @@ STRIPE_API_KEY="$STRIPE_SECRET_KEY" stripe listen \
 - `parcours.intellij.http` — le parcours complet, de l'inscription à l'annulation (IntelliJ).
   Ses scripts résolvent le défi anti-robot et capturent jeton, annonce et demandes : rien à copier.
 - `parcours.vscode.http` — le même, syntaxe REST Client (VS Code).
-- `refus.http` — les refus attendus : 400, 401, 404, 409. **Identique dans les deux outils.**
+- `refus.http` — les refus attendus : 400, 401, 404, 409, et les réponses qui ne disent rien. **Identique dans les deux outils.**
 - `human-proof.mjs` — résout le défi anti-robot, pour les deux fichiers qui ne savent pas le faire.
 
 Chaque requête porte en commentaire le code attendu et, quand il y en a un, l'exemple de la spec
@@ -78,7 +78,7 @@ répondent une liste vide, `404`, puis `409`.
 
 ## Les routes
 
-37 routes. « Jeton » : `Authorization: Bearer <token>`, rendu par `POST /session`. « Admin » : jeton
+39 routes. « Jeton » : `Authorization: Bearer <token>`, rendu par `POST /session`. « Admin » : jeton
 **et** compte inscrit dans `back_office_admins`. Le détail de chaque route (corps, réponses, erreurs)
 est dans `docs/api/openapi.json`.
 
@@ -89,6 +89,8 @@ est dans `docs/api/openapi.json`.
 | `GET /account/human-challenge` | public | Obtenir un défi anti-robot |
 | `POST /account` | public | Inscrire un compte |
 | `POST /session` | public | Ouvrir une session |
+| `POST /account/password-reset` | public | Demander un lien de réinitialisation du mot de passe (toujours `204`) |
+| `POST /account/password-reset/confirmation` | public | Choisir un nouveau mot de passe avec le lien reçu |
 | `GET /account` | jeton | Lire son propre compte |
 | `PATCH /account/avatar` | jeton | Changer d'avatar |
 | `POST /account/password` | jeton | Changer son mot de passe |
@@ -155,7 +157,7 @@ est dans `docs/api/openapi.json`.
   pagination : la proximité, le véhicule et la durée sont jugés par le site.
 - **Seuls les tarifs se modifient.** Dates, consignes d'accès et véhicules acceptés n'ont pas de
   route : il faut dépublier puis republier.
-- **Ni mot de passe oublié, ni suppression de compte, ni réclamation.**
+- **Ni suppression de compte, ni réclamation.**
 
 ## Un détail qui surprend
 

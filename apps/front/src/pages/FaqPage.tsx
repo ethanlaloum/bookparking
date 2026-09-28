@@ -43,7 +43,7 @@ const SECTIONS = [
   {
     id: 'compte',
     title: 'section.account',
-    questions: ['cookies', 'data', 'deleteAccount', 'contact'],
+    questions: ['forgotPassword', 'cookies', 'data', 'deleteAccount', 'contact'],
   },
 ] as const;
 

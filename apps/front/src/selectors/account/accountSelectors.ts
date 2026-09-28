@@ -54,3 +54,25 @@ export const selectHumanProofPending = (state: AppState): boolean =>
 
 export const selectHumanProofFailed = (state: AppState): boolean =>
   state.core.account.humanProof.state === 'failed';
+
+export const selectRequestPasswordResetLoading = (state: AppState): boolean =>
+  state.core.account.requestPasswordReset.state === 'pending';
+
+export const selectRequestPasswordResetError = (state: AppState): string | null =>
+  state.core.account.requestPasswordReset.state === 'failed'
+    ? (state.core.account.requestPasswordReset.errorCode ?? null)
+    : null;
+
+export const selectPasswordResetSentTo = (state: AppState): string | null =>
+  state.core.account.passwordResetSentTo;
+
+export const selectChooseNewPasswordLoading = (state: AppState): boolean =>
+  state.core.account.chooseNewPassword.state === 'pending';
+
+export const selectChooseNewPasswordError = (state: AppState): string | null =>
+  state.core.account.chooseNewPassword.state === 'failed'
+    ? (state.core.account.chooseNewPassword.errorCode ?? null)
+    : null;
+
+export const selectChooseNewPasswordSuccess = (state: AppState): boolean =>
+  state.core.account.chooseNewPassword.state === 'succeeded';

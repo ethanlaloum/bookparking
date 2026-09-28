@@ -629,6 +629,35 @@ compte (`payout_accounts`), les virements (`owner_transfers`) et `GET /payout`,
 - **`RegisterAccount` dépense la preuve avant de juger le mot de passe et l'adresse**, exprès : une preuve ne sert
   pas à sonder plusieurs adresses. Ne pas déplacer ce contrôle après `create`.
 
+## Le mot de passe oublié
+
+`POST /account/password-reset` (public, toujours `204`) met en file un e-mail portant un lien
+`/mot-de-passe/nouveau?jeton=…`, valable une heure et une seule fois ; `POST /account/password-reset/confirmation`
+remplace le mot de passe. Contexte `user-management` : `RequestPasswordReset`, `ResetPassword`, table `password_resets`.
+
+- **Le jeton en clair ne vit que dans `outgoing_emails.password_reset_token`, le temps de l'envoi.**
+  `password_resets` n'en garde que l'empreinte SHA-256, en clé primaire. `markSent` et `markFailed` vident la
+  colonne ; `recordUnavailable` la garde pour l'essai suivant. `outgoing_emails_password_reset_token_check`
+  interdit un jeton sur un autre type d'e-mail, et un e-mail de réinitialisation `PENDING` sans jeton. Ne jamais
+  recopier le jeton ailleurs.
+- **La réponse ne dit jamais si l'adresse a un compte.** Adresse inconnue, compte suspendu, ou seconde demande
+  moins de deux minutes après la précédente (`PasswordReset.allowsAnotherRequestAt`) : `204`, rien d'écrit. Le
+  temps de réponse, lui, diffère d'une écriture ; ce n'est pas une fuite nouvelle, `POST /account` répond déjà
+  `409` sur une adresse prise.
+- **Les deux minutes sont l'idempotence de la route**, pas un en-tête `Idempotency-Key` : un double clic n'envoie
+  qu'un e-mail, et un tiers ne peut pas remplir la boîte d'un autre.
+- **Réinitialiser dépense tous les liens encore valables du compte**, dans la transaction qui remplace le mot de
+  passe. `spendUnspentByAccountId` rend les empreintes qu'il a dépensées, et `ResetPassword` refuse si celle du
+  lien présenté n'y est pas : deux confirmations simultanées ne changent le mot de passe qu'une fois.
+- **Un mot de passe trop faible ne dépense pas le lien** : la robustesse est jugée avant la transaction.
+- **Les sessions ouvertes survivent à une réinitialisation**, comme à un changement de mot de passe (EX-002-33) :
+  les jetons d'accès sont signés et sans état, rien ne sait les révoquer. Une session volée reste valable
+  jusqu'à son expiration.
+- **`/mot-de-passe/nouveau?jeton=` est écrit par `composeEmail` et lu par `NewPasswordPage` du site.** Renommer
+  l'un casse les liens déjà partis.
+- **La rédaction d'un e-mail ne doit jamais lever** : l'e-mail resterait premier de la file et bloquerait tous
+  les autres. Sans jeton, celui de réinitialisation renvoie vers `/mot-de-passe-oublie`.
+
 ## Frozen versions — do not bump without reading the reason
 
 | App | Paquet | Pin | Pourquoi — ce qui casse |

@@ -93,6 +93,12 @@ change côté api casse la compilation du front plutôt que sa production.
   La jauge de l'inscription est bloquante : le site doit refuser exactement ce que l'api refuse.
   `Password.unit.spec.ts` rejoue les niveaux de l'api (EX-08) ; toute évolution se reporte des deux côtés.
 
+- **Le mot de passe oublié tient en deux pages publiques, `/mot-de-passe-oublie` et `/mot-de-passe/nouveau?jeton=…`.**
+  La seconde est l'adresse qu'écrit l'e-mail de l'api (`composeEmail.ts`) : la renommer casse les liens déjà
+  partis. L'adresse tapée sur la connexion passe à la première par l'état du routeur, jamais par l'URL, pour ne
+  finir ni dans l'historique ni dans un journal du serveur. L'écran dit « si un compte existe » : l'api répond
+  pareil pour une adresse inconnue. L'app iPhone ouvre la même page du site.
+
 - **L'inscription a besoin d'une preuve anti-robot, calculée par `humanProofEpic`** dès que l'écran s'ouvre,
   et redemandée après chaque inscription refusée : l'api dépense la preuve à chaque essai. Le SHA-256 vient de
   `@noble/hashes`, pas de `crypto.subtle`, absent de l'app iPhone. « Créer mon compte » reste désactivé tant que

@@ -424,3 +424,20 @@ Content-Type: application/json
         client.assert(response.status === 401, "attendu 401, reçu " + response.status);
     });
 %}
+
+### 26 · Demander un lien de réinitialisation du mot de passe · attendu 204
+# La même réponse pour une adresse inconnue. Le lien part par e-mail, valable une heure et une
+# seule fois ; l'api n'en garde que l'empreinte, et une adresse de test de Resend ne le montre à
+# personne : le choisir se fait depuis une vraie boîte, sur le site.
+POST {{baseUrl}}/account/password-reset
+Content-Type: application/json
+
+{
+  "email": "{{accountEmail}}"
+}
+
+> {%
+    client.test("la demande est reçue", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}

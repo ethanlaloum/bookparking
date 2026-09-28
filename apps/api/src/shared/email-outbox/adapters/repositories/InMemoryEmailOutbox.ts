@@ -49,6 +49,8 @@ export class InMemoryEmailOutbox implements EmailOutbox {
         ...stamps,
         status,
         attempts: state.attempts + 1,
+        passwordResetToken:
+          status === 'PENDING' ? state.passwordResetToken : null,
       });
     });
   }

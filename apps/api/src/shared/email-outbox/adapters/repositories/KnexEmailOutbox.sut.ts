@@ -132,6 +132,55 @@ export const createKnexEmailOutboxSUT = () => {
       );
     },
 
+    async givenQueuedPasswordReset(
+      recipient: string,
+      token: string,
+      queuedAt: string,
+    ): Promise<OutgoingEmail> {
+      const email = OutgoingEmail.passwordReset({
+        recipient,
+        token,
+        queuedAt: new Date(queuedAt),
+      });
+      await emailOutbox.enqueue(email);
+      return email;
+    },
+
+    async whenInsertingRawly(row: {
+      kind: string;
+      status: string;
+      password_reset_token: string | null;
+    }): Promise<unknown> {
+      return testDbConnection(TABLE)
+        .insert({
+          id: '3c9e7a41-5d2b-4f8a-9e6c-0b1d3f5a7c9e',
+          recipient: 'marc.d@example.com',
+          attempts: 0,
+          queued_at: new Date('2026-10-01T07:00:00.000Z'),
+          ...row,
+        })
+        .then(
+          () => null,
+          (error: { constraint?: string }) => error.constraint,
+        );
+    },
+
+    thenInsertWasRefusedBy(outcome: unknown, constraint: string) {
+      expect(outcome).toEqual(constraint);
+    },
+
+    async thenResetTokenOfRowIs(email: OutgoingEmail, token: string | null) {
+      const row = await rowOf(email);
+      expect(row?.password_reset_token).toEqual(token);
+    },
+
+    async thenQueueReadsResetToken(expected: string) {
+      const queue = await emailOutbox.findQueued(10);
+      expect(queue.map((email) => email.passwordResetToken)).toEqual([
+        expected,
+      ]);
+    },
+
     async thenRowIsSentAt(email: OutgoingEmail, sentAt: string) {
       const row = await rowOf(email);
       expect(row?.status).toEqual('SENT');

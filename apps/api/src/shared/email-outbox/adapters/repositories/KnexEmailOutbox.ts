@@ -42,7 +42,11 @@ export class KnexEmailOutbox implements EmailOutbox {
   }
 
   public async markSent(emailId: string, sentAt: Date): Promise<void> {
-    await this.leavePending(emailId, { status: 'SENT', sent_at: sentAt });
+    await this.leavePending(emailId, {
+      status: 'SENT',
+      sent_at: sentAt,
+      password_reset_token: null,
+    });
   }
 
   public async recordUnavailable(emailId: string): Promise<void> {
@@ -50,14 +54,23 @@ export class KnexEmailOutbox implements EmailOutbox {
   }
 
   public async markFailed(emailId: string, failedAt: Date): Promise<void> {
-    await this.leavePending(emailId, { status: 'FAILED', failed_at: failedAt });
+    await this.leavePending(emailId, {
+      status: 'FAILED',
+      failed_at: failedAt,
+      password_reset_token: null,
+    });
   }
 
   // Chaque essai compte, qu'il réussisse ou non. Le filtre `PENDING` fait
   // qu'une transition rejouée — deux balayages, deux instances — n'écrit rien.
   private async leavePending(
     emailId: string,
-    change: Partial<Pick<OutgoingEmailRow, 'status' | 'sent_at' | 'failed_at'>>,
+    change: Partial<
+      Pick<
+        OutgoingEmailRow,
+        'status' | 'sent_at' | 'failed_at' | 'password_reset_token'
+      >
+    >,
   ): Promise<void> {
     await this.connection(this.tableName)
       .where({ id: emailId, status: 'PENDING' })
@@ -79,6 +92,7 @@ export class KnexEmailOutbox implements EmailOutbox {
       queued_at: state.queuedAt,
       sent_at: state.sentAt,
       failed_at: state.failedAt,
+      password_reset_token: state.passwordResetToken,
     };
   }
 
@@ -92,6 +106,7 @@ export class KnexEmailOutbox implements EmailOutbox {
       queuedAt: new Date(row.queued_at),
       sentAt: dateOrNull(row.sent_at),
       failedAt: dateOrNull(row.failed_at),
+      passwordResetToken: row.password_reset_token,
     });
   }
 }

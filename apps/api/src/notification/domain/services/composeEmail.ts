@@ -161,7 +161,7 @@ const NOTICES: Record<NotificationKind, NoticeCopy> = {
 
 const composeNotice =
   (copy: NoticeCopy) =>
-  (_recipient: string, siteUrl: string): ComposedEmail => {
+  (_email: OutgoingEmail, siteUrl: string): ComposedEmail => {
     const link = `${siteUrl.replace(/\/+$/, '')}${copy.path}`;
     return {
       subject: copy.subject,
@@ -190,11 +190,67 @@ ${copy.lines.map((line) => `      <p style="margin:0 0 16px;line-height:1.5;">${
 
 // Un type d'e-mail sans rédaction ne compile pas : le `Record` exige une
 // entrée par valeur de `OutgoingEmailKind`.
+const RESET_NO_LONGER_KEPT: NoticeCopy = {
+  subject: 'Réinitialisez votre mot de passe',
+  lines: [
+    "Ce lien de réinitialisation n'est plus disponible.",
+    'Demandez-en un nouveau depuis la page de connexion.',
+  ],
+  action: 'Demander un nouveau lien',
+  path: '/mot-de-passe-oublie',
+};
+
+const composePasswordReset = (
+  email: OutgoingEmail,
+  siteUrl: string,
+): ComposedEmail => {
+  const token = email.passwordResetToken;
+  if (token === null)
+    return composeNotice(RESET_NO_LONGER_KEPT)(email, siteUrl);
+  const link = `${siteUrl.replace(/\/+$/, '')}/mot-de-passe/nouveau?jeton=${encodeURIComponent(token)}`;
+  const subject = 'Réinitialisez votre mot de passe';
+  const intro =
+    "Une demande de réinitialisation du mot de passe de votre compte Bookparking vient d'être faite.";
+  const invitation =
+    'Choisissez un nouveau mot de passe avec ce lien, valable une heure et une seule fois :';
+  const reassurance =
+    "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail : votre mot de passe ne change pas.";
+  return {
+    subject,
+    text: [
+      'Bonjour,',
+      '',
+      intro,
+      '',
+      invitation,
+      link,
+      '',
+      reassurance,
+      '',
+      "L'équipe Bookparking",
+    ].join('\n'),
+    html: `<!doctype html>
+<html lang="fr">
+  <body style="margin:0;padding:24px;background:#f5f5f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1a1a1a;">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;">
+      <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;">${escapeHtml(subject)}</h1>
+      <p style="margin:0 0 16px;line-height:1.5;">${escapeHtml(intro)}</p>
+      <p style="margin:0 0 16px;line-height:1.5;">Choisissez un nouveau mot de passe avec ce lien, valable une heure et une seule fois.</p>
+      <p style="margin:8px 0 24px;"><a href="${escapeHtml(link)}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;">Choisir un nouveau mot de passe</a></p>
+      <p style="margin:0 0 16px;line-height:1.5;color:#6b6b6b;font-size:14px;">${escapeHtml(reassurance)}</p>
+      <p style="margin:0;color:#6b6b6b;font-size:14px;">L'équipe Bookparking</p>
+    </div>
+  </body>
+</html>`,
+  };
+};
+
 const composers: Record<
   OutgoingEmailKind,
-  (recipient: string, siteUrl: string) => ComposedEmail
+  (email: OutgoingEmail, siteUrl: string) => ComposedEmail
 > = {
-  WELCOME: composeWelcome,
+  WELCOME: (email, siteUrl) => composeWelcome(email.recipient, siteUrl),
+  PASSWORD_RESET: composePasswordReset,
   RENTAL_REQUEST_RECEIVED: composeNotice(NOTICES.RENTAL_REQUEST_RECEIVED),
   RENTAL_REQUEST_ACCEPTED: composeNotice(NOTICES.RENTAL_REQUEST_ACCEPTED),
   RENTAL_REQUEST_DECLINED: composeNotice(NOTICES.RENTAL_REQUEST_DECLINED),
@@ -212,4 +268,4 @@ const composers: Record<
 export const composeEmail = (
   email: OutgoingEmail,
   siteUrl: string,
-): ComposedEmail => composers[email.kind](email.recipient, siteUrl);
+): ComposedEmail => composers[email.kind](email, siteUrl);

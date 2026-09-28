@@ -33,6 +33,18 @@ import {
   humanProofRequested,
   humanProofSolved,
 } from '../domain/use-cases/human-proof/humanProofEpic';
+import {
+  requestPasswordResetFailed,
+  requestPasswordResetRequested,
+  requestPasswordResetSucceeded,
+  resetRequestPasswordResetState,
+} from '../domain/use-cases/request-password-reset/requestPasswordResetEpic';
+import {
+  chooseNewPasswordFailed,
+  chooseNewPasswordRequested,
+  chooseNewPasswordSucceeded,
+  resetChooseNewPasswordState,
+} from '../domain/use-cases/choose-new-password/chooseNewPasswordEpic';
 
 export interface AccountState {
   account: Account | null;
@@ -46,6 +58,9 @@ export interface AccountState {
   chooseAvatar: CommonState;
   // Le pilote d'avant un choix en cours, rendu si l'api le refuse.
   avatarBeforeChoice: Avatar | null;
+  requestPasswordReset: CommonState;
+  passwordResetSentTo: string | null;
+  chooseNewPassword: CommonState;
 }
 
 const initialState: AccountState = {
@@ -58,6 +73,9 @@ const initialState: AccountState = {
   readOwnAccount: initialCommonState,
   chooseAvatar: initialCommonState,
   avatarBeforeChoice: null,
+  requestPasswordReset: initialCommonState,
+  passwordResetSentTo: null,
+  chooseNewPassword: initialCommonState,
 };
 
 export const accountReducer = createReducer(initialState, (builder) => {
@@ -135,6 +153,33 @@ export const accountReducer = createReducer(initialState, (builder) => {
     })
     .addCase(resetChooseAvatarState, (state) => {
       state.chooseAvatar = initialCommonState;
+    })
+    .addCase(requestPasswordResetRequested, (state) => {
+      state.requestPasswordReset = { state: 'pending' };
+      state.passwordResetSentTo = null;
+    })
+    .addCase(requestPasswordResetSucceeded, (state, action) => {
+      state.requestPasswordReset = { state: 'succeeded' };
+      state.passwordResetSentTo = action.payload;
+    })
+    .addCase(requestPasswordResetFailed, (state, action) => {
+      state.requestPasswordReset = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(resetRequestPasswordResetState, (state) => {
+      state.requestPasswordReset = initialCommonState;
+      state.passwordResetSentTo = null;
+    })
+    .addCase(chooseNewPasswordRequested, (state) => {
+      state.chooseNewPassword = { state: 'pending' };
+    })
+    .addCase(chooseNewPasswordSucceeded, (state) => {
+      state.chooseNewPassword = { state: 'succeeded' };
+    })
+    .addCase(chooseNewPasswordFailed, (state, action) => {
+      state.chooseNewPassword = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(resetChooseNewPasswordState, (state) => {
+      state.chooseNewPassword = initialCommonState;
     })
     .addCase(logoutSucceeded, () => initialState);
 });

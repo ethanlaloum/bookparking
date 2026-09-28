@@ -31,6 +31,12 @@ const ConfirmRequestPage = lazy(async () => ({
 const PaymentReturnPage = lazy(async () => ({
   default: (await import('../pages/PaymentReturnPage')).PaymentReturnPage,
 }));
+const ForgotPasswordPage = lazy(async () => ({
+  default: (await import('../pages/ForgotPasswordPage')).ForgotPasswordPage,
+}));
+const NewPasswordPage = lazy(async () => ({
+  default: (await import('../pages/NewPasswordPage')).NewPasswordPage,
+}));
 const FaqPage = lazy(async () => ({
   default: (await import('../pages/FaqPage')).FaqPage,
 }));
@@ -58,6 +64,8 @@ export const Routes = () => (
       <Route path="/place/:id" element={<ListingDetailPage />} />
       <Route path="/connexion" element={<SignInPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
+      <Route path="/mot-de-passe/nouveau" element={<NewPasswordPage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/application" element={<MobileAppPage />} />
       <Route path="/mentions-legales" element={<LegalNoticePage />} />

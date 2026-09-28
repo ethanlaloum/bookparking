@@ -5,6 +5,8 @@ import { Either } from 'effect/index';
 import { InMemoryPublishedListingReader } from '../../../adapters/repositories/published-listing/InMemoryPublishedListingReader';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
+import { InMemoryNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/InMemoryNotificationOutbox';
+import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnitOfWork';
 import { ConfirmedRentalBuilder } from '../../builders/ConfirmedRentalBuilder';
 import {
   CalendarDay,
@@ -61,6 +63,7 @@ export const createRequestRentalSUT = () => {
   const publishedListingReader = new InMemoryPublishedListingReader();
   const rentalRepository = new InMemoryRentalRepository();
   const paymentGateway = new InMemoryPaymentGateway();
+  const notificationOutbox = new InMemoryNotificationOutbox();
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
@@ -75,8 +78,11 @@ export const createRequestRentalSUT = () => {
     publishedListingReader,
     rentalRepository,
     paymentGateway,
+    notificationOutbox,
+    new InMemoryUnitOfWork(),
     testConstants.requestExpiryInHoursForTest,
     24,
+    15,
   );
 
   const accountIdsByPersonName: Record<string, string> = {
@@ -203,6 +209,25 @@ export const createRequestRentalSUT = () => {
       context.rentalRepository.placeWithoutPayment(
         result.right.rentalRequest.id,
       );
+      context.rentalRepository.ownerIdByRequestId.set(
+        result.right.rentalRequest.id,
+        toAccountId(context.testConstants.ownerNameForTest),
+      );
+      return result.right.rentalRequest.id;
+    },
+
+    thenPlatformFeeInCentsIs(expected: number) {
+      expect(
+        context.rentalRepository.rentalRequestList.map(
+          (request) => request.toState().platformFeeInCents,
+        ),
+      ).toEqual([expected]);
+    },
+
+    thenNotificationsAre(
+      expected: { kind: string; recipientId: string; requestId: string }[],
+    ) {
+      expect(notificationOutbox.sent()).toEqual(expected);
     },
 
     givenStripeDoesNotAnswer() {

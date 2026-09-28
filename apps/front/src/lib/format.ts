@@ -53,3 +53,22 @@ export const formatMoment = (iso: string): string =>
 
 export const formatCount = (value: number): string =>
   new Intl.NumberFormat('fr-FR').format(value);
+
+// Une notification se lit dans la semaine : le jour et l'heure suffisent.
+export const formatShortMoment = (iso: string): string =>
+  new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+
+// Une échéance se lit au jour de la semaine près : « lun. 5 oct., 09:05 ».
+export const formatDeadline = (iso: string): string =>
+  new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));

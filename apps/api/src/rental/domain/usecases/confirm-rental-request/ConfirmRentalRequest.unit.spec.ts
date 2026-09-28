@@ -229,3 +229,117 @@ describe('ConfirmRentalRequest @SPEC-004', () => {
     sut.thenNothingWasConfirmed();
   });
 });
+
+describe('ConfirmRentalRequest — notifications', () => {
+  const MARC = 'account-marc';
+  const LEA = 'account-lea';
+
+  it('tells the renter her request was accepted', async () => {
+    const sut = createConfirmRentalRequestSUT();
+    const requestId = await sut.givenHoldPlaced({
+      ownerId: MARC,
+      renterId: LEA,
+      paymentId: 'pi_lea',
+      placedAt: '2026-10-01T07:05:00.000Z',
+    });
+
+    await sut.whenConfirmingAt({
+      requestId,
+      ownerId: MARC,
+      confirmedAt: '2026-10-01T09:00:00.000Z',
+    });
+
+    sut.thenNotificationsAre([
+      { kind: 'RENTAL_REQUEST_ACCEPTED', recipientId: LEA, requestId },
+    ]);
+    sut.thenNotificationsWereCreatedAt(['2026-10-01T09:00:00.000Z']);
+  });
+
+  it('tells the renter once when the owner confirms twice', async () => {
+    const sut = createConfirmRentalRequestSUT();
+    const requestId = await sut.givenPendingRequest({
+      ownerId: MARC,
+      renterId: LEA,
+    });
+    await sut.whenConfirming({ requestId, ownerId: MARC });
+
+    await sut.whenConfirming({ requestId, ownerId: MARC });
+
+    sut.thenNotificationsAre([
+      { kind: 'RENTAL_REQUEST_ACCEPTED', recipientId: LEA, requestId },
+    ]);
+  });
+
+  it('tells nobody when the request was already confirmed by a concurrent write', async () => {
+    const sut = createConfirmRentalRequestSUT();
+    const requestId = await sut.givenPendingRequest({
+      ownerId: MARC,
+      renterId: LEA,
+    });
+    sut.givenTheWriteFindsTheRequestNoLongerPending(requestId);
+
+    await sut.whenConfirming({ requestId, ownerId: MARC });
+
+    sut.thenNotificationsAre([]);
+  });
+
+  it('tells nobody when the confirmation is refused', async () => {
+    const sut = createConfirmRentalRequestSUT();
+    const expired = await sut.givenPendingRequest({
+      ownerId: MARC,
+      renterId: LEA,
+    });
+    sut.givenRequestHasExpired(expired);
+    const unpaid = await sut.givenRequestAwaitingPayment({
+      ownerId: MARC,
+      renterId: LEA,
+    });
+    const notOwned = await sut.givenPendingRequest({
+      ownerId: 'account-paul',
+      renterId: LEA,
+    });
+
+    await sut.whenConfirming({ requestId: expired, ownerId: MARC });
+    await sut.whenConfirming({ requestId: unpaid, ownerId: MARC });
+    await sut.whenConfirming({ requestId: notOwned, ownerId: MARC });
+
+    sut.thenNotificationsAre([]);
+  });
+
+  it('tells nobody when Stripe does not answer', async () => {
+    const sut = createConfirmRentalRequestSUT();
+    const requestId = await sut.givenHoldPlaced({
+      ownerId: MARC,
+      renterId: LEA,
+      paymentId: 'pi_lea',
+      placedAt: '2026-10-01T07:05:00.000Z',
+    });
+    sut.givenStripeDoesNotAnswer();
+
+    await sut.whenConfirming({ requestId, ownerId: MARC });
+
+    sut.thenNotificationsAre([]);
+  });
+
+  it('tells the renter her card was declined when the bank refuses the capture', async () => {
+    const sut = createConfirmRentalRequestSUT();
+    const requestId = await sut.givenHoldPlaced({
+      ownerId: MARC,
+      renterId: LEA,
+      paymentId: 'pi_lea',
+      placedAt: '2026-10-01T07:05:00.000Z',
+    });
+    sut.givenTheBankDeclinesTheCapture('pi_lea');
+
+    await sut.whenConfirmingAt({
+      requestId,
+      ownerId: MARC,
+      confirmedAt: '2026-10-01T09:00:00.000Z',
+    });
+
+    sut.thenNotificationsAre([
+      { kind: 'RENTAL_PAYMENT_FAILED', recipientId: LEA, requestId },
+    ]);
+    sut.thenNotificationsWereCreatedAt(['2026-10-01T09:00:00.000Z']);
+  });
+});

@@ -9,6 +9,8 @@ import { BookparkingRxBackOfficeGateway } from '@front/app/back-office/adapters/
 import { SystemClock } from '@front/app/consent/adapters/SystemClock';
 import { BanGeocodingGateway } from '@front/app/listing/adapters/RealGeocodingGateway';
 import { BookparkingRxListingGateway } from '@front/app/listing/adapters/RealListingGateway';
+import { BookparkingRxNotificationGateway } from '@front/app/notification/adapters/RealNotificationGateway';
+import { BookparkingRxPayoutGateway } from '@front/app/payout/adapters/RealPayoutGateway';
 import { BookparkingRxRentalGateway } from '@front/app/rental/adapters/RealRentalGateway';
 import { FetchHttpClient } from '@front/lib/http/FetchHttpClient';
 import type { AppState } from '@front/store/AppState';
@@ -41,7 +43,9 @@ export const buildMobileDependencies = (baseUrl: string): Dependencies => {
     consentStore: new NoThirdPartyConsentStore(),
     geocodingGateway: new BanGeocodingGateway(),
     listingGateway: new BookparkingRxListingGateway(httpClient),
+    notificationGateway: new BookparkingRxNotificationGateway(httpClient),
     paymentPageNavigator: paymentBrowser,
+    payoutGateway: new BookparkingRxPayoutGateway(httpClient),
     rentalGateway: new BookparkingRxRentalGateway(httpClient),
     sessionGateway: new BookparkingRxSessionGateway(httpClient),
     sessionStore,

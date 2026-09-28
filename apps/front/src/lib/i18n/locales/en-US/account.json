@@ -26,7 +26,8 @@
       "places": "My spaces",
       "received": "Requests received",
       "mine": "My bookings",
-      "settings": "Settings"
+      "settings": "Settings",
+      "payouts": "Payouts"
     }
   },
   "metric": {
@@ -77,7 +78,9 @@
     "period": "From {{from}} to {{to}}",
     "nights_one": "{{count}} night",
     "nights_other": "{{count}} nights",
-    "requestedOn": "Requested on {{date}}"
+    "requestedOn": "Requested on {{date}}",
+    "answerBy": "The owner answers by {{date}}",
+    "answerByOwner": "Confirm by {{date}}"
   },
   "money": {
     "awaitingPayment": "Payment being verified",
@@ -121,5 +124,42 @@
     "title": "Your avatar",
     "hint": "It shows in the header, on the website and in the app.",
     "saved": "Avatar saved."
+  },
+  "access": {
+    "title": "Access instructions",
+    "hint": "Valid until your rental ends.",
+    "copy": "Copy the instructions",
+    "copied": "Copied"
+  },
+  "payouts": {
+    "missingTitle": "Get paid for your rentals",
+    "missingBody": "Bookparking charges the driver, keeps a {{fee}}% commission and sends you the rest, at the latest 24 hours after each rental starts — as soon as they arrive if they confirm it.",
+    "stripeNote": "Your identity and IBAN are entered at Stripe, our payment provider: Bookparking never sees them.",
+    "add": "Add my bank details",
+    "incompleteTitle": "Stripe is checking your details",
+    "incompleteBody": "Verification often takes a few minutes. If a document is missing, Stripe will ask for it.",
+    "resume": "Continue at Stripe",
+    "readyTitle": "Payouts enabled",
+    "readyBody": "Each rental goes to your bank account, less the {{fee}}% commission.",
+    "dashboard": "Open my Stripe space",
+    "upcoming": "Upcoming",
+    "upcomingHint": "Held until the driver arrives",
+    "sent": "Already paid",
+    "sentHint": "Sent to your bank account",
+    "listTitle": "Rental by rental",
+    "empty": "No paid rental yet.",
+    "receive": "You receive {{amount}} of {{price}}",
+    "status": {
+      "HELD": "Held until {{date}}",
+      "AWAITING_ACCOUNT": "Waiting for your bank details",
+      "SENDING": "Transfer in progress",
+      "SENT": "Paid on {{date}}"
+    },
+    "waiting": "Money is waiting for you: add your bank details to receive it.",
+    "waitingAction": "See my payouts"
+  },
+  "arrival": {
+    "action": "I have arrived",
+    "done": "Arrival confirmed"
   }
 }

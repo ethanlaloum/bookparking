@@ -1,6 +1,8 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   holdExpiryDeadlineAt,
@@ -8,6 +10,7 @@ import {
 } from '../../entities/RentalMoney';
 import { PaymentGateway } from '../../ports/PaymentGateway';
 import { RentalRepository } from '../../ports/RentalRepository';
+import { expireLapsedRequests } from '../../services/expireLapsedRequests';
 import { settleMoneyOwed } from '../../services/settleMoneyOwed';
 
 interface Props {
@@ -28,6 +31,8 @@ export class SweepRentalRequests implements UseCase<
   constructor(
     private readonly rentalRepository: RentalRepository,
     private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
     private readonly requestExpiryInHours: number,
   ) {}
 
@@ -46,9 +51,13 @@ export class SweepRentalRequests implements UseCase<
         props.now,
         this.requestExpiryInHours,
       );
-      const expired =
-        (await this.rentalRepository.expireHoldsPlacedSince(deadline)) +
-        (await this.rentalRepository.expireRequestsPendingSince(deadline));
+      const expired = await expireLapsedRequests(
+        deadline,
+        props.now,
+        this.rentalRepository,
+        this.notificationOutbox,
+        this.unitOfWork,
+      );
 
       let settled = 0;
       let stillOwed = 0;

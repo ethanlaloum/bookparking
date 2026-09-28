@@ -1,6 +1,13 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import {
+  Notification,
+  NotificationKind,
+} from '../../../../shared/notification-outbox/domain/entities/Notification';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   hasReachedTheOwner,
@@ -8,7 +15,10 @@ import {
 } from '../../entities/RentalMoney';
 import { PaymentUnavailableError } from '../../errors/PaymentUnavailableError';
 import { PaymentGateway } from '../../ports/PaymentGateway';
-import { RentalRepository } from '../../ports/RentalRepository';
+import {
+  RentalRepository,
+  RentalRequestSummary,
+} from '../../ports/RentalRepository';
 import { RentalRequestExpiredError } from './errors/RentalRequestExpiredError';
 import { RentalRequestPaymentFailedError } from './errors/RentalRequestPaymentFailedError';
 import { RentalRequestNotFoundError } from '../../errors/RentalRequestNotFoundError';
@@ -35,6 +45,8 @@ export class ConfirmRentalRequest implements UseCase<
   constructor(
     private readonly rentalRepository: RentalRepository,
     private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
   public async execute(
@@ -96,15 +108,37 @@ export class ConfirmRentalRequest implements UseCase<
           throw error;
         }
         if (outcome === 'DECLINED') {
-          await this.rentalRepository.markPaymentFailed(summary.id);
+          await this.unitOfWork.process(async (trx) => {
+            if (await this.rentalRepository.markPaymentFailed(summary.id, trx))
+              await this.tellTheRenter(
+                'RENTAL_PAYMENT_FAILED',
+                summary,
+                props,
+                trx,
+              );
+          });
           return Either.left(new RentalRequestPaymentFailedError());
         }
       }
 
-      await this.rentalRepository.confirmRequest(
-        props.requestId,
-        props.confirmedAt,
-      );
+      // Seule l'écriture qui confirme prévient le conducteur : une
+      // confirmation concurrente, ou une demande expirée entre la lecture et
+      // l'écriture, ne trouve plus de ligne en attente et ne dit rien.
+      await this.unitOfWork.process(async (trx) => {
+        if (
+          await this.rentalRepository.confirmRequest(
+            props.requestId,
+            props.confirmedAt,
+            trx,
+          )
+        )
+          await this.tellTheRenter(
+            'RENTAL_REQUEST_ACCEPTED',
+            summary,
+            props,
+            trx,
+          );
+      });
       return Either.right(undefined);
     } catch (error: unknown) {
       return Either.left(
@@ -113,5 +147,22 @@ export class ConfirmRentalRequest implements UseCase<
         ),
       );
     }
+  }
+
+  private async tellTheRenter(
+    kind: NotificationKind,
+    summary: RentalRequestSummary,
+    props: Props,
+    trx: GenericTransaction,
+  ): Promise<void> {
+    await this.notificationOutbox.notify(
+      Notification.about({
+        kind,
+        recipientId: summary.renterId,
+        rentalRequestId: summary.id,
+        createdAt: props.confirmedAt,
+      }),
+      trx,
+    );
   }
 }

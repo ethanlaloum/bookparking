@@ -12,6 +12,8 @@ import { CancelRental } from '../../../../domain/usecases/cancel-rental/CancelRe
 import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-rental/errors/RentalAlreadyStartedError';
 import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
+import { ConfirmArrival } from '../../../../domain/usecases/confirm-arrival/ConfirmArrival';
+import { PresentedRentalRequest } from '../../../../domain/services/presentRentalRequest';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
 import { RentalRequestController } from './rental-request.controller';
 
@@ -45,7 +47,15 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     Either.Either<void, RentalRequestExpiredError | RentalRequestNotFoundError>
   >();
 
+  const listRenterRentalRequests = new UseCaseDouble<
+    { renterId: string; now: Date },
+    Either.Either<PresentedRentalRequest[], Error>
+  >();
   const abandonRentalRequest = new UseCaseDouble();
+  const confirmArrival = new UseCaseDouble<
+    { requestId: string; renterId: string; arrivedAt: Date },
+    Either.Either<void, Error>
+  >();
   const cancelRental = new UseCaseDouble<
     { requestId: string; accountId: string; cancelledAt: Date },
     Either.Either<string, Error>
@@ -56,10 +66,11 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     providers: [
       { provide: RequestRental, useValue: requestRental },
       { provide: ConfirmRentalRequest, useValue: confirmRentalRequest },
-      { provide: ListRenterRentalRequests, useValue: new UseCaseDouble() },
+      { provide: ListRenterRentalRequests, useValue: listRenterRentalRequests },
       { provide: ListOwnerRentalRequests, useValue: new UseCaseDouble() },
       { provide: AbandonRentalRequest, useValue: abandonRentalRequest },
       { provide: CancelRental, useValue: cancelRental },
+      { provide: ConfirmArrival, useValue: confirmArrival },
     ],
   };
 
@@ -68,6 +79,8 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     authState,
     requestRental,
     confirmRentalRequest,
+    listRenterRentalRequests,
+    confirmArrival,
 
     givenTheCancellationRefunds() {
       cancelRental.willResolve(Either.right('REFUNDED'));

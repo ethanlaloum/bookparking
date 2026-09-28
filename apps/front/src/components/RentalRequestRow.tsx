@@ -1,4 +1,4 @@
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, Hourglass } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,7 +7,8 @@ import {
   type RentalRequestStatus,
   type RentalRequestView,
 } from '../app/rental/domain/entities/RentalRequestView';
-import { formatCents, formatShortDay } from '../lib/format';
+import { formatCents, formatDeadline, formatShortDay } from '../lib/format';
+import { AccessInstructions } from './AccessInstructions';
 import { BayThumbnail } from './art/BayThumbnail';
 import { Badge } from './ui/badge';
 import type { BadgeVariantProps } from './ui/badgeVariants';
@@ -26,16 +27,18 @@ export const RentalRequestRow = ({
   request,
   action,
   moneyLabel,
+  perspective = 'renter',
 }: {
   request: RentalRequestView;
   action?: ReactNode;
   moneyLabel?: string;
+  perspective?: 'renter' | 'owner';
 }) => {
   const { t } = useTranslation('account');
   const nights = rentedNightCount(request);
 
   return (
-    <li className="flex flex-col gap-4 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-bg-sunken/40 sm:flex-row sm:items-center sm:gap-5">
+    <li className="flex flex-col gap-4 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-bg-sunken/40 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <BayThumbnail box={request.box} className="h-16 w-13 shrink-0 rounded-lg" />
         <div className="min-w-0">
@@ -57,6 +60,14 @@ export const RentalRequestRow = ({
           {moneyLabel !== undefined && (
             <p className="mt-1.5 text-sm font-medium text-fg-muted">{moneyLabel}</p>
           )}
+          {request.answerBy !== null && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-warn">
+              <Hourglass className="size-3.5" aria-hidden="true" />
+              {t(perspective === 'owner' ? 'row.answerByOwner' : 'row.answerBy', {
+                date: formatDeadline(request.answerBy),
+              })}
+            </p>
+          )}
         </div>
       </div>
 
@@ -70,6 +81,10 @@ export const RentalRequestRow = ({
       </Badge>
 
       {action !== undefined && <div className="shrink-0">{action}</div>}
+
+      {request.accessInstructions !== null && (
+        <AccessInstructions instructions={request.accessInstructions} className="sm:basis-full" />
+      )}
     </li>
   );
 };

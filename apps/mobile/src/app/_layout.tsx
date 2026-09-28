@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux';
 
+import { BookingCelebration } from '../components/BookingCelebration';
 import { resolveApiBaseUrl } from '../lib/apiBaseUrl';
 import { createMobileStore } from '../store/createMobileStore';
 import { useTheme } from '../theme/useTheme';
@@ -89,7 +90,9 @@ const Navigation = () => {
         <Stack.Screen name="publier" options={{ presentation: 'modal' }} />
         <Stack.Screen name="connexion" options={{ presentation: 'modal' }} />
         <Stack.Screen name="inscription" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
       </Stack>
+      <BookingCelebration />
     </ThemeProvider>
   );
 };

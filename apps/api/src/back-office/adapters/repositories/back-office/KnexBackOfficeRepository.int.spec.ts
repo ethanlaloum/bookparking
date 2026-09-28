@@ -5,6 +5,8 @@ import {
 } from '../../../../infra/testcontainers-setup';
 import { createKnexBackOfficeRepositorySUT } from './KnexBackOfficeRepository.sut';
 
+const LEA_AND_MARC = { renterId: 'account-lea', ownerId: 'account-marc' };
+
 describe('KnexBackOfficeRepository @SPEC-004', () => {
   beforeAll(async () => {
     await startTestDatabase();
@@ -24,7 +26,7 @@ describe('KnexBackOfficeRepository @SPEC-004', () => {
 
     const cancelled = await sut.whenTheOperatorCancels(requestId);
 
-    expect(cancelled).toEqual(true);
+    expect(cancelled).toEqual(LEA_AND_MARC);
     await sut.thenStoredRowIs(requestId, {
       status: 'CANCELLED',
       money: 'REFUND_DUE',
@@ -37,7 +39,7 @@ describe('KnexBackOfficeRepository @SPEC-004', () => {
 
     const cancelled = await sut.whenTheOperatorCancels(requestId);
 
-    expect(cancelled).toEqual(true);
+    expect(cancelled).toEqual(LEA_AND_MARC);
     await sut.thenStoredRowIs(requestId, {
       status: 'CANCELLED',
       money: 'RELEASE_DUE',
@@ -50,10 +52,20 @@ describe('KnexBackOfficeRepository @SPEC-004', () => {
 
     const cancelled = await sut.whenTheOperatorCancels(requestId);
 
-    expect(cancelled).toEqual(true);
+    expect(cancelled).toEqual(LEA_AND_MARC);
     await sut.thenStoredRowIs(requestId, {
       status: 'CANCELLED',
       money: 'NONE',
     });
+  });
+
+  it('cancels nothing, and names no one, when the request is already cancelled', async () => {
+    const sut = createKnexBackOfficeRepositorySUT();
+    const requestId = await sut.givenLeaRequestWithHoldPlaced();
+    await sut.whenTheOperatorCancels(requestId);
+
+    const again = await sut.whenTheOperatorCancels(requestId);
+
+    expect(again).toBeNull();
   });
 });

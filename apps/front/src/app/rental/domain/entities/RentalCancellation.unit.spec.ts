@@ -21,6 +21,12 @@ const aReservation = (overrides: Partial<RentalRequestView> = {}): RentalRequest
   money: overrides.money ?? 'CAPTURED',
   startsAt: overrides.startsAt ?? '2026-10-09T22:00:00.000Z',
   freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-10-08T22:00:00.000Z',
+  answerBy: overrides.answerBy === undefined ? null : overrides.answerBy,
+  accessInstructions:
+    overrides.accessInstructions === undefined ? null : overrides.accessInstructions,
+  ownerShareInCents:
+    overrides.ownerShareInCents === undefined ? null : overrides.ownerShareInCents,
+  arrivedAt: overrides.arrivedAt === undefined ? null : overrides.arrivedAt,
 });
 
 const FIVE_DAYS_BEFORE = new Date('2026-10-05T08:00:00.000Z');

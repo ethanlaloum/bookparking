@@ -27,6 +27,20 @@ const FREE_CANCELLATION_HOURS_BEFORE_START_BY_DEFAULT = 24;
 // SPEC-006 : trente secondes entre deux balayages de la file d'e-mails.
 const EMAIL_SWEEP_INTERVAL_IN_SECONDS_BY_DEFAULT = 30;
 
+// D-10 du brainstorm du 10/09 : la commission de la plateforme, en pourcentage
+// du prix payé par le conducteur. 15 %, décidé le 24/09/2026 ; un réglage du
+// back-office à terme, figé sur chaque demande au moment où elle est faite.
+const PLATFORM_FEE_PERCENT_BY_DEFAULT = 15;
+
+// D-22 : l'argent est libéré vers le loueur à l'arrivée confirmée par le
+// conducteur, ou au plus tard ce délai après le premier instant loué.
+const PAYOUT_RELEASE_DELAY_IN_HOURS_BY_DEFAULT = 24;
+
+const PAYOUT_SWEEP_INTERVAL_IN_SECONDS_BY_DEFAULT = 300;
+
+// Un push vaut pour l'instant : dix secondes entre deux balayages.
+const PUSH_SWEEP_INTERVAL_IN_SECONDS_BY_DEFAULT = 10;
+
 export interface ResendSettings {
   apiKey: string;
   from: string;
@@ -70,6 +84,38 @@ export const environment = {
       process.env.EMAIL_SWEEP_INTERVAL_IN_SECONDS ??
         EMAIL_SWEEP_INTERVAL_IN_SECONDS_BY_DEFAULT,
     ),
+  platformFeePercent: (): number => {
+    const percent = Number(
+      process.env.PLATFORM_FEE_PERCENT ?? PLATFORM_FEE_PERCENT_BY_DEFAULT,
+    );
+    if (!Number.isFinite(percent) || percent < 0 || percent >= 100)
+      throw new Error(
+        "La variable d'environnement PLATFORM_FEE_PERCENT doit être un pourcentage entre 0 et 100. Le démarrage est interrompu.",
+      );
+    return percent;
+  },
+  payoutReleaseDelayInHours: (): number =>
+    Number(
+      process.env.PAYOUT_RELEASE_DELAY_IN_HOURS ??
+        PAYOUT_RELEASE_DELAY_IN_HOURS_BY_DEFAULT,
+    ),
+  payoutSweepIntervalInSeconds: (): number =>
+    Number(
+      process.env.PAYOUT_SWEEP_INTERVAL_IN_SECONDS ??
+        PAYOUT_SWEEP_INTERVAL_IN_SECONDS_BY_DEFAULT,
+    ),
+  pushSweepIntervalInSeconds: (): number =>
+    Number(
+      process.env.PUSH_SWEEP_INTERVAL_IN_SECONDS ??
+        PUSH_SWEEP_INTERVAL_IN_SECONDS_BY_DEFAULT,
+    ),
+  // Facultatif : Expo n'exige un jeton d'accès que si la « sécurité renforcée
+  // des push » est activée sur le projet. Les clés Apple, elles, vivent chez
+  // Expo (EAS), jamais ici.
+  expoAccessToken: (): string | null => {
+    const token = process.env.EXPO_ACCESS_TOKEN;
+    return token === undefined || token.trim() === '' ? null : token.trim();
+  },
   freeCancellationHoursBeforeStart: (): number =>
     Number(
       process.env.FREE_CANCELLATION_HOURS_BEFORE_START ??

@@ -10,6 +10,9 @@ import { ListingStatus } from '../../../../listing/domain/entities/Listing';
 import { UnpublishListing } from '../../../../listing/domain/usecases/unpublish-listing/UnpublishListing';
 import { getTestDbConnection } from '../../../../infra/testcontainers-setup';
 import { buildTestKnexConfig } from '../../../../infra/testKnexfile';
+import { KnexEmailOutbox } from '../../../../shared/email-outbox/adapters/repositories/KnexEmailOutbox';
+import { KnexNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/KnexNotificationOutbox';
+import { KnexUnitOfWork } from '../../../../shared/unit-of-work/KnexUnitOfWork';
 import {
   CalendarDay,
   PARIS_TIME_ZONE,
@@ -133,8 +136,11 @@ export const createKnexRentalRequestRepositorySUT = () => {
       new KnexPublishedListingReader(connection),
       new KnexRentalRequestRepository(connection),
       paymentGateway,
+      new KnexNotificationOutbox(connection, new KnexEmailOutbox(connection)),
+      new KnexUnitOfWork(connection),
       testConstants.requestExpiryInHoursForTest,
       24,
+      15,
     ).execute({
       renterId: toAccountId(input.renter),
       address: input.address,
@@ -267,6 +273,11 @@ export const createKnexRentalRequestRepositorySUT = () => {
       return new ConfirmRentalRequest(
         new KnexRentalRequestRepository(context.testDbConnection),
         paymentGateway,
+        new KnexNotificationOutbox(
+          context.testDbConnection,
+          new KnexEmailOutbox(context.testDbConnection),
+        ),
+        new KnexUnitOfWork(context.testDbConnection),
       ).execute({
         requestId: input.requestId,
         ownerId: toAccountId(input.owner),

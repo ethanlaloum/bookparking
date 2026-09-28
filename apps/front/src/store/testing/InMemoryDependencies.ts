@@ -35,6 +35,13 @@ import type {
   PublishListingPayload,
   UpdatePricingPayload,
 } from '../../app/listing/domain/ports/ListingGateway';
+import type {
+  Notification,
+  NotificationList,
+} from '../../app/notification/domain/entities/Notification';
+import type { NotificationGateway } from '../../app/notification/domain/ports/NotificationGateway';
+import type { PayoutLine, PayoutSummary } from '../../app/payout/domain/entities/Payout';
+import type { PayoutGateway } from '../../app/payout/domain/ports/PayoutGateway';
 import type { RentalRequestView } from '../../app/rental/domain/entities/RentalRequestView';
 import type { PaymentPageNavigator } from '../../app/rental/domain/ports/PaymentPageNavigator';
 import type {
@@ -155,6 +162,8 @@ export class InMemoryRentalGateway implements RentalGateway {
   public readonly confirmed: string[] = [];
   public readonly abandoned: string[] = [];
   public readonly cancelled: string[] = [];
+  public readonly arrivals: string[] = [];
+  public listMineCallCount = 0;
   public cancellationOutcome: CancellationOutcome = 'REFUNDED';
   public requestedRental: RequestedRental = {
     id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
@@ -181,7 +190,13 @@ export class InMemoryRentalGateway implements RentalGateway {
   }
 
   listMine(): Observable<RentalRequestView[]> {
+    this.listMineCallCount += 1;
     return this.rejection === null ? of(this.myRequests) : fail(this.rejection);
+  }
+
+  confirmArrival(requestId: string): Observable<void> {
+    this.arrivals.push(requestId);
+    return this.rejection === null ? of(undefined) : fail(this.rejection);
   }
 
   listReceived(): Observable<RentalRequestView[]> {
@@ -194,6 +209,97 @@ export class InMemoryRentalGateway implements RentalGateway {
     return this.rejection === null ? of(undefined) : fail(this.rejection);
   }
 }
+
+export class InMemoryNotificationGateway implements NotificationGateway {
+  public held: NotificationList = { unreadCount: 0, items: [] };
+  public rejection: string | null = null;
+  public markReadRejection: string | null = null;
+  public listCallCount = 0;
+  public markAllReadCallCount = 0;
+  public readonly markedRead: string[] = [];
+  public readonly registeredPushDevices: string[] = [];
+  public readonly forgottenPushDevices: string[] = [];
+  public pushDeviceRejection: string | null = null;
+
+  list(): Observable<NotificationList> {
+    this.listCallCount += 1;
+    return this.rejection === null ? of(this.held) : fail(this.rejection);
+  }
+
+  markAllRead(): Observable<void> {
+    this.markAllReadCallCount += 1;
+    return this.markReadRejection === null ? of(undefined) : fail(this.markReadRejection);
+  }
+
+  markRead(notificationId: string): Observable<void> {
+    this.markedRead.push(notificationId);
+    return this.markReadRejection === null ? of(undefined) : fail(this.markReadRejection);
+  }
+
+  registerPushDevice(token: string): Observable<void> {
+    this.registeredPushDevices.push(token);
+    return this.pushDeviceRejection === null ? of(undefined) : fail(this.pushDeviceRejection);
+  }
+
+  forgetPushDevice(token: string): Observable<void> {
+    this.forgottenPushDevices.push(token);
+    return this.pushDeviceRejection === null ? of(undefined) : fail(this.pushDeviceRejection);
+  }
+}
+
+export const aNotification = (overrides: Partial<Notification> = {}): Notification => ({
+  id: '9b1f0c1e-0000-4000-8000-000000000001',
+  kind: 'RENTAL_REQUEST_RECEIVED',
+  audience: 'OWNER',
+  createdAt: '2026-10-01T07:05:00.000Z',
+  readAt: null,
+  requestId: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
+  address: '12 rue Barla, 06300 Nice',
+  box: 'B12',
+  fromDay: '2026-10-10',
+  toDay: '2026-10-12',
+  ...overrides,
+});
+
+export class InMemoryPayoutGateway implements PayoutGateway {
+  public summary: PayoutSummary = {
+    accountStatus: 'MISSING',
+    feePercent: 15,
+    upcomingInCents: 0,
+    sentInCents: 0,
+    payouts: [],
+  };
+  public rejection: string | null = null;
+  public readonly linksAsked: ('onboarding' | 'dashboard')[] = [];
+
+  read(): Observable<PayoutSummary> {
+    return this.rejection === null ? of(this.summary) : fail(this.rejection);
+  }
+
+  onboardingLink(): Observable<string> {
+    this.linksAsked.push('onboarding');
+    return this.rejection === null ? of('https://connect.stripe.com/setup/e/acct_marc') : fail(this.rejection);
+  }
+
+  dashboardLink(): Observable<string> {
+    this.linksAsked.push('dashboard');
+    return this.rejection === null ? of('https://connect.stripe.com/express/acct_marc') : fail(this.rejection);
+  }
+}
+
+export const aPayoutLine = (overrides: Partial<PayoutLine> = {}): PayoutLine => ({
+  requestId: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
+  address: '12 rue Barla, 06300 Nice',
+  box: 'B12',
+  fromDay: '2026-10-10',
+  toDay: '2026-10-12',
+  priceInCents: 4500,
+  amountInCents: 3825,
+  status: 'HELD',
+  releaseAt: '2026-10-10T22:00:00.000Z',
+  transferredAt: null,
+  ...overrides,
+});
 
 export class InMemoryPaymentPageNavigator implements PaymentPageNavigator {
   public readonly opened: string[] = [];
@@ -272,7 +378,9 @@ export interface InMemoryDependencies extends Dependencies {
   consentStore: InMemoryConsentStore;
   geocodingGateway: InMemoryGeocodingGateway;
   listingGateway: InMemoryListingGateway;
+  notificationGateway: InMemoryNotificationGateway;
   paymentPageNavigator: InMemoryPaymentPageNavigator;
+  payoutGateway: InMemoryPayoutGateway;
   rentalGateway: InMemoryRentalGateway;
   sessionGateway: InMemorySessionGateway;
   sessionStore: InMemorySessionStore;
@@ -285,7 +393,9 @@ export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   consentStore: new InMemoryConsentStore(),
   geocodingGateway: new InMemoryGeocodingGateway(),
   listingGateway: new InMemoryListingGateway(),
+  notificationGateway: new InMemoryNotificationGateway(),
   paymentPageNavigator: new InMemoryPaymentPageNavigator(),
+  payoutGateway: new InMemoryPayoutGateway(),
   rentalGateway: new InMemoryRentalGateway(),
   sessionGateway: new InMemorySessionGateway(),
   sessionStore: new InMemorySessionStore(),
@@ -321,6 +431,12 @@ export const aRentalRequestView = (
   money: overrides.money ?? 'NONE',
   startsAt: overrides.startsAt ?? '2026-10-09T22:00:00.000Z',
   freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-10-08T22:00:00.000Z',
+  answerBy: overrides.answerBy === undefined ? null : overrides.answerBy,
+  accessInstructions:
+    overrides.accessInstructions === undefined ? null : overrides.accessInstructions,
+  ownerShareInCents:
+    overrides.ownerShareInCents === undefined ? null : overrides.ownerShareInCents,
+  arrivedAt: overrides.arrivedAt === undefined ? null : overrides.arrivedAt,
 });
 
 export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerListing => ({

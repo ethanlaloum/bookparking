@@ -1,6 +1,8 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import { CalendarDay } from '../../entities/CalendarDay';
 import {
@@ -15,6 +17,7 @@ import { NoPriceForRequestedPeriodError } from '../../errors/NoPriceForRequested
 import { RequestedPeriodTooLongError } from '../../errors/RequestedPeriodTooLongError';
 import { PaymentGateway } from '../../ports/PaymentGateway';
 import { PublishedListingReader } from '../../ports/PublishedListingReader';
+import { expireLapsedRequests } from '../../services/expireLapsedRequests';
 import {
   IdempotentRentalRequest,
   RentalRepository,
@@ -64,8 +67,11 @@ export class RequestRental implements UseCase<
     private readonly publishedListingReader: PublishedListingReader,
     private readonly rentalRepository: RentalRepository,
     private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
     private readonly requestExpiryInHours: number,
     private readonly freeCancellationHours: number,
+    private readonly platformFeePercent: number,
   ) {}
 
   public async execute(
@@ -115,6 +121,7 @@ export class RequestRental implements UseCase<
         requestedAt: props.requestedAt,
         idempotencyKey: props.idempotencyKey,
         freeCancellationHours: this.freeCancellationHours,
+        platformFeePercent: this.platformFeePercent,
       });
       if (Either.isLeft(rentalRequest)) return Either.left(rentalRequest.left);
 
@@ -130,8 +137,13 @@ export class RequestRental implements UseCase<
         props.requestedAt.getTime() -
           this.requestExpiryInHours * MILLISECONDS_PER_HOUR,
       );
-      await this.rentalRepository.expireRequestsPendingSince(expiryDeadline);
-      await this.rentalRepository.expireHoldsPlacedSince(expiryDeadline);
+      await expireLapsedRequests(
+        expiryDeadline,
+        props.requestedAt,
+        this.rentalRepository,
+        this.notificationOutbox,
+        this.unitOfWork,
+      );
       await this.rentalRepository.abandonUnpaidRequestsSince(
         unpaidAbandonDeadlineAt(props.requestedAt),
       );

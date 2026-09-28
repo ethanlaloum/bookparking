@@ -1,10 +1,12 @@
 import { router, useFocusEffect } from 'expo-router';
+import { MapPinCheck } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { moneyLabelOf } from '@front/app/rental/domain/entities/RentalRequestView';
+import { canConfirmArrival, moneyLabelOf } from '@front/app/rental/domain/entities/RentalRequestView';
+import { confirmArrivalRequested } from '@front/app/rental/domain/use-cases/confirm-arrival/confirmArrivalEpic';
 import { listMyRentalRequestsRequested } from '@front/app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import { selectIsAuthenticated } from '@front/selectors/auth/authSelectors';
 import {
@@ -17,8 +19,10 @@ import {
 } from '@front/selectors/rental/rentalSelectors';
 
 import { ApiUnreachable } from '../../components/ApiUnreachable';
+import { NotificationBell } from '../../components/NotificationBell';
 import { RentalRequestRow, RowList } from '../../components/RequestRows';
 import { SignInGate } from '../../components/SignInGate';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { EmptyState, Rise, Skeleton, useTabBarSpace } from '../../components/ui/Layout';
 import { Notice } from '../../components/ui/Notice';
@@ -63,7 +67,12 @@ export default function BookingsScreen() {
       }
     >
       <Rise>
-        <Display size={34}>{t('account:mine.title')}</Display>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <Display size={34} style={{ flex: 1 }}>
+            {t('account:mine.title')}
+          </Display>
+          <NotificationBell />
+        </View>
         <Text tone="muted" style={{ marginTop: 6 }}>
           {t('mobile:bookings.subtitle')}
         </Text>
@@ -102,14 +111,27 @@ export default function BookingsScreen() {
                   request={request}
                   moneyLabel={t(`account:money.${money.key}`, { amount: money.amount })}
                   action={
-                    cancellable(request, 'renter') ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={cancelling}
-                        label={t('account:cancel.action')}
-                        onPress={() => offer(request, 'renter')}
-                      />
+                    canConfirmArrival(request, new Date()) || request.arrivedAt !== null || cancellable(request, 'renter') ? (
+                      <>
+                        {canConfirmArrival(request, new Date()) && (
+                          <Button
+                            size="sm"
+                            icon={MapPinCheck}
+                            label={t('account:arrival.action')}
+                            onPress={() => dispatch(confirmArrivalRequested({ requestId: request.id }))}
+                          />
+                        )}
+                        {request.arrivedAt !== null && <Badge tone="ok" dot label={t('account:arrival.done')} />}
+                        {cancellable(request, 'renter') && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={cancelling}
+                            label={t('account:cancel.action')}
+                            onPress={() => offer(request, 'renter')}
+                          />
+                        )}
+                      </>
                     ) : undefined
                   }
                 />

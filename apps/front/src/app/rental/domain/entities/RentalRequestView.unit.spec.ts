@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { i18n } from '../../../../lib/i18n';
 
 import {
+  canConfirmArrival,
   confirmedRevenueInCents,
   countByStatus,
   moneyLabelOf,
@@ -27,6 +28,12 @@ const aRequest = (overrides: Partial<RentalRequestView> = {}): RentalRequestView
   money: overrides.money ?? 'NONE',
   startsAt: overrides.startsAt ?? '2026-09-30T22:00:00.000Z',
   freeCancellationUntil: overrides.freeCancellationUntil ?? '2026-09-29T22:00:00.000Z',
+  answerBy: overrides.answerBy === undefined ? null : overrides.answerBy,
+  accessInstructions:
+    overrides.accessInstructions === undefined ? null : overrides.accessInstructions,
+  ownerShareInCents:
+    overrides.ownerShareInCents === undefined ? null : overrides.ownerShareInCents,
+  arrivedAt: overrides.arrivedAt === undefined ? null : overrides.arrivedAt,
 });
 
 describe('the owner revenue', () => {
@@ -129,3 +136,27 @@ describe('a late cancellation, read as such @SPEC-005', () => {
   });
 });
 
+
+describe('what the owner earns and when the renter says she arrived', () => {
+  it('counts what the owner receives once the commission is taken, not what the renter paid', () => {
+    expect(
+      confirmedRevenueInCents([
+        aRequest({ status: 'CONFIRMED', priceInCents: 4500, ownerShareInCents: 3825 }),
+      ]),
+    ).toEqual(3825);
+  });
+
+  it('lets the renter confirm her arrival from the first instant of a confirmed booking, once', () => {
+    const starts = '2026-10-09T22:00:00.000Z';
+    const booking = aRequest({ status: 'CONFIRMED', startsAt: starts });
+
+    expect(canConfirmArrival(booking, new Date('2026-10-09T21:59:59.000Z'))).toEqual(false);
+    expect(canConfirmArrival(booking, new Date(starts))).toEqual(true);
+    expect(
+      canConfirmArrival({ ...booking, arrivedAt: starts }, new Date('2026-10-10T08:00:00.000Z')),
+    ).toEqual(false);
+    expect(
+      canConfirmArrival({ ...booking, status: 'PENDING' }, new Date('2026-10-10T08:00:00.000Z')),
+    ).toEqual(false);
+  });
+});

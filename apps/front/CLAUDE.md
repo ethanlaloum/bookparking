@@ -59,6 +59,31 @@ change côté api casse la compilation du front plutôt que sa production.
   compte connecté et c'est l'api qui tranche en 403. Le texte `listing:detail.ownerHint` le
   dit à l'utilisateur plutôt que de faire semblant.
 
+- **La cloche se relit toutes les minutes, et l'ouvrir lit tout.** `NotificationBell` cadence
+  `listNotificationsRequested` (et au retour sur l'onglet) ; l'ouvrir envoie `POST /notification/read`.
+  Seul le compteur tombe : les notifications gardent leur `readAt: null` jusqu'à la relecture, pour
+  que le panneau ouvert montre encore ce qui était nouveau. Une notification mène à
+  `/compte?onglet=…` (`lib/accountTabs.ts`), adresses que les e-mails de l'api écrivent aussi.
+  Sur téléphone l'en-tête porte quatre icônes : sous 19,4 rem la marque perd son nom, sinon la page
+  défile de côté avec une police agrandie.
+
+- **La fête d'une réservation confirmée vient de la cloche.** `selectBookingToCelebrate` prend la plus
+  ancienne notification `RENTAL_REQUEST_ACCEPTED` non lue et pas encore montrée (`acknowledged`) ;
+  `BookingCelebration`, montée dans `App.tsx` pour une session ouverte, la ferme par
+  `POST /notification/:id/read`. Ouvrir la cloche la range aussi dans `acknowledged` : sans quoi elle
+  surgirait après coup, `readAt` n'étant relu qu'à la minute suivante.
+- **Les animations de la barrière sont des keyframes de `index.css`** (`barrier-idle`, `barrier-open`,
+  `car-through`, `confetti`) sur un SVG vu de dessus (`art/BarrierScene.tsx`). `rotate` négatif = le bras
+  pivote hors de la voie. La règle `prefers-reduced-motion` les fige à leur état final : garder
+  `both`/`forwards` sur toute animation qui finit dans un état utile. L'app les rejoue avec Reanimated
+  (`apps/mobile/src/components/art/BarrierScene.tsx`), même repère 360 × 150.
+
+- **Les coordonnées bancaires ne s'affichent ni ne se saisissent jamais sur le site.** L'onglet
+  « Versements » (`PayoutsPanel`) ouvre les pages de Stripe par `stripePageRequested`, qui réutilise le
+  `PaymentPageNavigator` — redirection sur le site, navigateur intégré dans l'app. Les montants
+  (`amountInCents`, `ownerShareInCents`) et le taux viennent de l'api : aucun calcul de commission ici.
+  Les revenus du tableau de bord comptent la part du loueur, pas le prix payé.
+
 - **`src/store/redux.ts` est le seul fichier autorisé à importer `useDispatch`/`useSelector`.**
   Une règle `no-restricted-imports` bannit l'import brut partout ailleurs, avec une dérogation
   explicite sur ce fichier dans `eslint.config.js`. Passer par `useAppDispatch` /

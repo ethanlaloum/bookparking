@@ -14,6 +14,33 @@ même logique métier — qu'elle ne réécrit pas.
    `Constants.expoConfig.hostUri` (celle d'où Expo Go charge le bundle) et vise le port 3000.
    `EXPO_PUBLIC_API_BASE_URL` force une autre adresse (tunnel, autre machine).
 
+## Le push : une « development build », pas Expo Go
+
+Expo Go ne reçoit aucune notification push : l'app y garde la cloche, relue toutes les minutes.
+Pour le push, il faut l'app compilée par EAS, qui porte la clé Apple du projet. Une fois :
+
+1. `pnpm dlx eas-cli login`, puis, dans `apps/mobile`, `pnpm dlx eas-cli init` — il écrit
+   `extra.eas.projectId` dans `app.json` (à commiter). Sans lui, `usePushNotifications` ne demande
+   aucun jeton et le dit en `console.warn`.
+2. `pnpm dlx eas-cli credentials` → iOS → clé de push : déposer la clé APNs (`.p8`). Elle reste chez
+   Expo ; ni le dépôt ni l'api ne la voient.
+3. `pnpm dlx eas-cli device:create` pour inscrire l'iPhone, puis
+   `pnpm dlx eas-cli build --profile development --platform ios`, et installer la build par le lien
+   rendu.
+4. `pnpm --filter bookparking-mobile start:dev-client`, puis ouvrir l'app installée.
+   `start` reste `expo start --go` : sans ce `--go`, `expo-dev-client` fait viser la build par
+   défaut, et le QR code ne s'ouvre plus dans Expo Go.
+
+- **Le jeton part à chaque session ouverte, et s'oublie à la déconnexion** (`forgetPushDeviceOnSignOutEpic`
+  dans le front). iOS ne pose la question qu'une fois : un refus se corrige dans Réglages.
+- **Toucher un push ouvre l'écran qu'il concerne** (`destinationOfPush`, `openNotificationDestination`),
+  y compris quand il a réveillé l'app (`getLastNotificationResponse`).
+- **`expo-notifications` est épinglé à `57.0.20`** : la 57.0.21 avait moins d'un jour, et `pnpm` a voulu
+  ajouter une exception à `minimumReleaseAge` dans `pnpm-workspace.yaml` — refusée. Repasser en `~57.0.x`
+  quand une version assez ancienne existe.
+- **La première build EAS n'a pas encore été faite** : l'install du monorepo (pnpm, `@front/*` par
+  Metro) n'a été vérifiée que par `expo export`, pas par EAS.
+
 ## Architecture : un hexagone, deux côtés pilotants
 
 - **`@front/*` pointe sur `apps/front/src`** (`tsconfig.json` + Metro, qui lit les `paths`).
@@ -29,7 +56,9 @@ même logique métier — qu'elle ne réécrit pas.
   - `NoThirdPartyConsentStore` — voir plus bas.
 - **Écrans** : `src/app/` (expo-router). Quatre onglets (`(tabs)/` : accueil, recherche,
   réservations, compte), la fiche `place/[id]`, l'écran `paiement/[requestId]`, et trois
-  feuilles modales (`connexion`, `inscription`, `publier`). Les quatre onglets
+  feuilles modales (`connexion`, `inscription`, `publier`), plus `notifications`, ouverte par la cloche
+  de Réservations et Compte. La barre d'onglets relit la cloche toutes les minutes et au retour au
+  premier plan ; une notification de loueur ouvre Compte sur « Demandes reçues » (`?onglet=`). Les quatre onglets
   d'administration du site n'existent pas ici : l'app le dit au compte administrateur.
 
 ## Things that will bite you
@@ -83,6 +112,7 @@ même logique métier — qu'elle ne réécrit pas.
 | Intention | Commande |
 |---|---|
 | lancer (QR code pour Expo Go) | `pnpm --filter bookparking-mobile start` |
+| lancer pour la build de dev (push) | `pnpm --filter bookparking-mobile start:dev-client` |
 | typecheck (app + fichiers du front importés) | `pnpm --filter bookparking-mobile typecheck` |
 | bundle iOS sans téléphone (vérifie Metro) | `pnpm --filter bookparking-mobile exec expo export --platform ios --output-dir <dossier temporaire>` |
 | ajouter un paquet natif | `pnpm --filter bookparking-mobile exec expo install <paquet>` — jamais `pnpm add` : `expo install` choisit la version que porte Expo Go |

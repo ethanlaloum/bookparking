@@ -37,6 +37,14 @@
     {
       "name": "admin",
       "description": "Back-office. Réservé aux comptes inscrits dans `back_office_admins` — appartenance accordée hors de l'application, par migration ou commande d'exploitation : aucune route ne promeut qui que ce soit."
+    },
+    {
+      "name": "notification",
+      "description": "Notifications d'un compte : les moments de ses demandes de location, montrés dans la cloche et envoyés par e-mail."
+    },
+    {
+      "name": "payout",
+      "description": "Versements aux loueurs, par Stripe Connect Express : identité et coordonnées bancaires sont saisies chez Stripe, jamais chez Bookparking."
     }
   ],
   "paths": {
@@ -1655,6 +1663,366 @@
           }
         }
       }
+    },
+    "/notification": {
+      "get": {
+        "tags": [
+          "notification"
+        ],
+        "operationId": "listNotifications",
+        "summary": "Lire ses notifications",
+        "description": "Rend les trente notifications les plus récentes du compte porté par le jeton, et le nombre de ses notifications non lues. La route ne prend aucun identifiant : un compte ne lit que les siennes. L'adresse, le box et les jours sont lus sur l'annonce et la demande au moment de la lecture.",
+        "responses": {
+          "200": {
+            "description": "Les notifications du compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                },
+                "examples": {
+                  "nominal": {
+                    "value": {
+                      "unreadCount": 1,
+                      "items": [
+                        {
+                          "id": "9b1f0c1e-0000-4000-8000-000000000001",
+                          "kind": "RENTAL_REQUEST_RECEIVED",
+                          "audience": "OWNER",
+                          "createdAt": "2026-10-01T07:05:00.000Z",
+                          "readAt": null,
+                          "requestId": "45fed099-ae81-4a57-b24e-7005a96cd4a0",
+                          "address": "12 rue Barla, 06300 Nice",
+                          "box": "12",
+                          "fromDay": "2026-10-10",
+                          "toDay": "2026-10-12"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/notification/read": {
+      "post": {
+        "tags": [
+          "notification"
+        ],
+        "operationId": "markNotificationsRead",
+        "summary": "Marquer ses notifications comme lues",
+        "description": "Marque comme lues toutes les notifications non lues du compte porté par le jeton. Une notification déjà lue garde l'instant de sa première lecture : rejouer la requête ne change rien.",
+        "responses": {
+          "204": {
+            "description": "Notifications marquées comme lues. Aucun corps de réponse."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/notification/push-device": {
+      "post": {
+        "tags": [
+          "notification"
+        ],
+        "operationId": "registerPushDevice",
+        "summary": "Enregistrer son téléphone",
+        "description": "Rattache le téléphone au compte porté par le jeton, pour qu'il reçoive ses notifications en push. Un téléphone déjà enregistré par un autre compte passe à celui-ci : il n'appartient qu'au dernier compte connecté. L'app l'appelle à chaque session ouverte ; la rejouer ne change rien.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushDeviceRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "token": "ExponentPushToken[xG7wQ2mK9pL4vR1s]"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Téléphone enregistré. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Jeton absent, ou qui n'est pas un jeton de push Expo. La valeur soumise n'est jamais recopiée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/notification/push-device/removal": {
+      "post": {
+        "tags": [
+          "notification"
+        ],
+        "operationId": "forgetPushDevice",
+        "summary": "Oublier un téléphone",
+        "description": "Le téléphone cesse de recevoir des push. Sans authentification : l'app l'appelle en se déconnectant, quand la session est peut-être déjà effacée — et qui connaît le jeton peut déjà pousser vers ce téléphone par Expo. Répond 204 que le jeton soit connu ou non.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushDeviceRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "token": "ExponentPushToken[xG7wQ2mK9pL4vR1s]"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Téléphone oublié, ou inconnu. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Jeton absent, ou qui n'est pas un jeton de push Expo. La valeur soumise n'est jamais recopiée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/notification/{id}/read": {
+      "post": {
+        "tags": [
+          "notification"
+        ],
+        "operationId": "markNotificationRead",
+        "summary": "Marquer une notification comme lue",
+        "description": "Marque comme lue une seule notification du compte porté par le jeton — celle d'une réservation confirmée, une fois fêtée à l'écran. Un identifiant mal formé, inconnu ou appartenant à un autre compte répond 204 comme les autres et ne marque rien : la route ne dit jamais qu'une notification existe.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Aucun corps de réponse."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/payout": {
+      "get": {
+        "tags": [
+          "payout"
+        ],
+        "operationId": "readPayouts",
+        "summary": "Lire ses versements",
+        "description": "L'état du compte Stripe du loueur porté par le jeton, et chaque location payée sur ses places : retenue, libérée ou virée. Un compte pas encore validé est relu chez Stripe à chaque lecture.",
+        "responses": {
+          "200": {
+            "description": "Les versements du compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/payout/onboarding": {
+      "post": {
+        "tags": [
+          "payout"
+        ],
+        "operationId": "startPayoutOnboarding",
+        "summary": "Saisir ses coordonnées bancaires chez Stripe",
+        "description": "Crée au premier appel le compte Stripe Connect Express du loueur, puis rend un lien vers les pages de Stripe où il saisit son identité et son IBAN. Au retour, Stripe renvoie vers `/compte?onglet=versements`.",
+        "responses": {
+          "200": {
+            "description": "Le lien vers Stripe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StripeLink"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Stripe ne répond pas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payout/dashboard": {
+      "post": {
+        "tags": [
+          "payout"
+        ],
+        "operationId": "openPayoutDashboard",
+        "summary": "Ouvrir son espace Stripe",
+        "description": "Rend un lien de connexion à l'espace Stripe Express du loueur : son IBAN, ses virements vers sa banque.",
+        "responses": {
+          "200": {
+            "description": "Le lien vers Stripe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StripeLink"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Stripe n'a pas encore validé le compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Stripe ne répond pas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rental-request/{id}/arrival": {
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "confirmArrival",
+        "summary": "Confirmer son arrivée",
+        "description": "Le conducteur d'une réservation confirmée dit qu'il est arrivé, à partir du premier instant de la location : l'argent est libéré vers le loueur (D-22). Rejouée, la requête ne change rien.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Arrivée enregistrée."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Demande inconnue, mal nommée ou d'un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Réservation pas encore confirmée, ou location pas encore commencée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2179,7 +2547,11 @@
           "requestedAt",
           "confirmedAt",
           "startsAt",
-          "freeCancellationUntil"
+          "freeCancellationUntil",
+          "answerBy",
+          "accessInstructions",
+          "ownerShareInCents",
+          "arrivedAt"
         ],
         "properties": {
           "id": {
@@ -2258,6 +2630,36 @@
             ],
             "format": "date-time",
             "description": "L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité."
+          },
+          "answerBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Tant que la demande attend le loueur (`PENDING`) : l'instant où elle expirera sans réponse, 48 heures (réglables) après l'empreinte, ou après la demande pour celles d'avant l'encaissement. `null` sinon."
+          },
+          "accessInstructions": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Les consignes d'accès du loueur (digicode, étage, repères). Rendues au seul conducteur d'une réservation `CONFIRMED`, jusqu'à la fin du dernier jour loué ; `null` partout ailleurs, y compris pour le loueur dans `GET /rental-request/received`."
+          },
+          "ownerShareInCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Pour le seul loueur (`GET /rental-request/received`) : le prix moins la commission figée au moment de la demande. `null` pour le conducteur."
+          },
+          "arrivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "L'instant où le conducteur a confirmé son arrivée (`POST /rental-request/{id}/arrival`), qui libère l'argent vers le loueur."
           }
         }
       },
@@ -2679,6 +3081,237 @@
         "properties": {
           "avatar": {
             "$ref": "#/components/schemas/Avatar"
+          }
+        }
+      },
+      "NotificationKind": {
+        "type": "string",
+        "enum": [
+          "RENTAL_REQUEST_RECEIVED",
+          "RENTAL_REQUEST_ACCEPTED",
+          "RENTAL_REQUEST_DECLINED",
+          "RENTAL_REQUEST_EXPIRED",
+          "RENTAL_REQUEST_UNANSWERED",
+          "RENTAL_CANCELLED_BY_RENTER",
+          "RENTAL_CANCELLED_BY_OWNER",
+          "RENTAL_CANCELLED_BY_OPERATOR",
+          "RENTAL_PAYMENT_FAILED",
+          "RENTAL_PAYOUT_SENT"
+        ],
+        "description": "Le moment notifié. Reçue, restée sans réponse et annulée par le conducteur vont au loueur ; acceptée, refusée, expirée, annulée par le loueur et paiement refusé vont au conducteur ; annulée par Bookparking va aux deux. Le virement parti vers son compte Stripe va au loueur."
+      },
+      "Notification": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "audience",
+          "createdAt",
+          "readAt",
+          "requestId",
+          "address",
+          "box",
+          "fromDay",
+          "toDay"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/NotificationKind"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "RENTER"
+            ],
+            "description": "Le rôle du destinataire sur la demande : loueur ou conducteur. Décide où le site l'emmène."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "`null` tant que la cloche n'a pas été ouverte."
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "La demande de location concernée."
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "fromDay": {
+            "type": "string",
+            "format": "date",
+            "description": "Premier jour loué, calendrier de Paris."
+          },
+          "toDay": {
+            "type": "string",
+            "format": "date",
+            "description": "Dernier jour loué, inclus."
+          }
+        }
+      },
+      "NotificationList": {
+        "type": "object",
+        "required": [
+          "unreadCount",
+          "items"
+        ],
+        "properties": {
+          "unreadCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Toutes les notifications non lues du compte, y compris au-delà des trente rendues."
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "description": "Les trente plus récentes, de la plus récente à la plus ancienne."
+          }
+        }
+      },
+      "PushDeviceRequest": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^Expo(?:nent)?PushToken\\[[A-Za-z0-9_-]+\\]$",
+            "description": "Le jeton de push Expo du téléphone, tel que le rend `getExpoPushTokenAsync`."
+          }
+        }
+      },
+      "PayoutLine": {
+        "type": "object",
+        "required": [
+          "requestId",
+          "address",
+          "box",
+          "fromDay",
+          "toDay",
+          "priceInCents",
+          "amountInCents",
+          "status",
+          "releaseAt",
+          "transferredAt"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "fromDay": {
+            "type": "string",
+            "format": "date"
+          },
+          "toDay": {
+            "type": "string",
+            "format": "date"
+          },
+          "priceInCents": {
+            "type": "integer",
+            "description": "Ce que le conducteur a payé."
+          },
+          "amountInCents": {
+            "type": "integer",
+            "description": "Ce que le loueur reçoit : le prix moins la commission figée à la demande."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "HELD",
+              "AWAITING_ACCOUNT",
+              "SENDING",
+              "SENT"
+            ],
+            "description": "HELD : retenu jusqu'à l'arrivée du conducteur ou 24 h après le début. AWAITING_ACCOUNT : libéré, en attente des coordonnées bancaires. SENDING : libéré, viré au prochain passage. SENT : viré."
+          },
+          "releaseAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "transferredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "PayoutSummary": {
+        "type": "object",
+        "required": [
+          "accountStatus",
+          "feePercent",
+          "upcomingInCents",
+          "sentInCents",
+          "payouts"
+        ],
+        "properties": {
+          "accountStatus": {
+            "type": "string",
+            "enum": [
+              "MISSING",
+              "INCOMPLETE",
+              "READY"
+            ],
+            "description": "MISSING : aucune coordonnée bancaire. INCOMPLETE : inscription Stripe commencée ou en vérification. READY : Stripe accepte les virements."
+          },
+          "feePercent": {
+            "type": "number",
+            "description": "La commission en vigueur pour les nouvelles demandes."
+          },
+          "upcomingInCents": {
+            "type": "integer"
+          },
+          "sentInCents": {
+            "type": "integer"
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayoutLine"
+            }
+          }
+        }
+      },
+      "StripeLink": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Une page de Stripe, valable quelques minutes."
           }
         }
       }

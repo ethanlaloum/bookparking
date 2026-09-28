@@ -12,6 +12,7 @@ export interface RentalGateway {
   abandon(requestId: string): Observable<void>;
   cancel(requestId: string): Observable<CancellationOutcome>;
   confirm(requestId: string): Observable<void>;
+  confirmArrival(requestId: string): Observable<void>;
   listMine(): Observable<RentalRequestView[]>;
   listReceived(): Observable<RentalRequestView[]>;
 }

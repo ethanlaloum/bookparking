@@ -2,6 +2,8 @@ import { Either } from 'effect/index';
 
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
+import { InMemoryNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/InMemoryNotificationOutbox';
+import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnitOfWork';
 import { RentalRequest } from '../../entities/RentalRequest';
 import { ListOwnerRentalRequests } from '../list-owner-rental-requests/ListOwnerRentalRequests';
 import { RecordPaymentEvent } from './RecordPaymentEvent';
@@ -11,11 +13,17 @@ const DAY_PRICE = { dayInCents: 1500, weekInCents: null, monthInCents: null };
 export const createRecordPaymentEventSUT = () => {
   const rentalRepository = new InMemoryRentalRepository();
   const paymentGateway = new InMemoryPaymentGateway();
+  const notificationOutbox = new InMemoryNotificationOutbox();
   const recordPaymentEvent = new RecordPaymentEvent(
     rentalRepository,
     paymentGateway,
+    notificationOutbox,
+    new InMemoryUnitOfWork(),
   );
-  const listOwnerRentalRequests = new ListOwnerRentalRequests(rentalRepository);
+  const listOwnerRentalRequests = new ListOwnerRentalRequests(
+    rentalRepository,
+    48,
+  );
 
   const testConstants = {
     ownerId: 'account-marc',
@@ -109,6 +117,20 @@ export const createRecordPaymentEventSUT = () => {
 
     thenReleasesAre(expected: { paymentId: string; idempotencyKey: string }[]) {
       expect(paymentGateway.releases).toEqual(expected);
+    },
+
+    thenNotificationsAre(
+      expected: { kind: string; recipientId: string; requestId: string }[],
+    ) {
+      expect(notificationOutbox.sent()).toEqual(expected);
+    },
+
+    thenNotificationCreatedAt(at: string) {
+      expect(
+        notificationOutbox.notifications.map(
+          (notification) => notification.createdAt,
+        ),
+      ).toEqual([new Date(at)]);
     },
   };
 };

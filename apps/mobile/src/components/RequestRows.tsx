@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { CalendarRange, ChevronRight } from 'lucide-react-native';
+import { CalendarRange, ChevronRight, Hourglass } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -11,10 +11,11 @@ import {
   type RentalRequestStatus,
   type RentalRequestView,
 } from '@front/app/rental/domain/entities/RentalRequestView';
-import { formatCents, formatDay, formatShortDay } from '@front/lib/format';
+import { formatCents, formatDay, formatDeadline, formatShortDay } from '@front/lib/format';
 
 import { fonts } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
+import { AccessInstructions } from './AccessInstructions';
 import { BayThumbnail } from './art/BayThumbnail';
 import { Badge, type BadgeTone } from './ui/Badge';
 import { Display, Text } from './ui/Text';
@@ -64,10 +65,12 @@ export const RentalRequestRow = ({
   request,
   moneyLabel,
   action,
+  perspective = 'renter',
 }: {
   request: RentalRequestView;
   moneyLabel?: string;
   action?: ReactNode;
+  perspective?: 'renter' | 'owner';
 }) => {
   const { t } = useTranslation('account');
   const { colors } = useTheme();
@@ -111,6 +114,17 @@ export const RentalRequestRow = ({
           </Text>
         )}
       </View>
+
+      {request.answerBy !== null && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Hourglass size={13} color={colors.warn} />
+          <Text size={12} weight="medium" tone="warn">
+            {t(perspective === 'owner' ? 'row.answerByOwner' : 'row.answerBy', { date: formatDeadline(request.answerBy) })}
+          </Text>
+        </View>
+      )}
+
+      {request.accessInstructions !== null && <AccessInstructions instructions={request.accessInstructions} />}
 
       {action !== undefined && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{action}</View>}
     </View>

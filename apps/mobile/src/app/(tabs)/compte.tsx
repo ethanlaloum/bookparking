@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CircleCheck, Clock3, Euro, LogOut, Moon, Plus, ShieldCheck, SquareParking } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,14 @@ import { listOwnerListingsRequested } from '@front/app/listing/domain/use-cases/
 import { rentedNightCount } from '@front/app/rental/domain/entities/RentalRequestView';
 import { confirmRentalRequestRequested } from '@front/app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listReceivedRentalRequestsRequested } from '@front/app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
-import { formatCents, formatDay } from '@front/lib/format';
+import { readPayoutsRequested } from '@front/app/payout/domain/use-cases/read-payouts/readPayoutsEpic';
+import {
+  selectMoneyWaitsForBankDetails,
+  selectPayoutSummary,
+  selectPayoutsError,
+} from '@front/selectors/payout/payoutSelectors';
+import { ACCOUNT_TAB_PARAM, accountTabOfSlug } from '@front/lib/accountTabs';
+import { formatCents, formatCentsPrecisely, formatDay } from '@front/lib/format';
 import {
   selectChangePasswordError,
   selectChangePasswordLoading,
@@ -57,6 +64,8 @@ import { ApiUnreachable } from '../../components/ApiUnreachable';
 import { Avatar } from '../../components/Avatar';
 import { AvatarPicker } from '../../components/AvatarPicker';
 import { MetricTile } from '../../components/MetricTile';
+import { PayoutsSection } from '../../components/PayoutsSection';
+import { NotificationBell } from '../../components/NotificationBell';
 import { OwnerListingRow, RentalRequestRow, RowList } from '../../components/RequestRows';
 import { SignInGate } from '../../components/SignInGate';
 import { Button } from '../../components/ui/Button';
@@ -70,7 +79,7 @@ import { useCancelRental } from '../../lib/useCancelRental';
 import { useAppDispatch, useAppSelector } from '../../store/redux';
 import { useTheme } from '../../theme/useTheme';
 
-const TABS = ['overview', 'places', 'received', 'settings'] as const;
+const TABS = ['overview', 'places', 'received', 'payouts', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
 /**
@@ -85,6 +94,16 @@ export default function AccountScreen() {
   const insets = useSafeAreaInsets();
   const tabBarSpace = useTabBarSpace();
   const [tab, setTab] = useState<Tab>('overview');
+  // Une notification de loueur ouvre les demandes reçues, comme sur le site.
+  const params = useLocalSearchParams<{ [ACCOUNT_TAB_PARAM]?: string }>();
+  // « Mes réservations » est un onglet de l'app : seuls ces deux-là mènent ici.
+  const requestedSlug = accountTabOfSlug(params[ACCOUNT_TAB_PARAM] ?? null);
+  const requestedTab = requestedSlug === 'received' || requestedSlug === 'payouts' ? requestedSlug : null;
+  const [followedTab, setFollowedTab] = useState<Tab | null>(null);
+  if (requestedTab !== followedTab) {
+    setFollowedTab(requestedTab);
+    if (requestedTab !== null) setTab(requestedTab);
+  }
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const session = useAppSelector(selectSession);
@@ -107,6 +126,9 @@ export default function AccountScreen() {
   const cancelling = useAppSelector(selectCancelRentalLoading);
   const cancelError = useAppSelector(selectCancelRentalError);
   const { offer, cancellable } = useCancelRental();
+  const payoutSummary = useAppSelector(selectPayoutSummary);
+  const payoutsError = useAppSelector(selectPayoutsError);
+  const moneyWaits = useAppSelector(selectMoneyWaitsForBankDetails);
 
   const refresh = useCallback(() => {
     // La sonde d'administration part avec les lectures du tableau de bord : un
@@ -114,6 +136,7 @@ export default function AccountScreen() {
     dispatch(confirmAdminAccessRequested());
     dispatch(listOwnerListingsRequested());
     dispatch(listReceivedRentalRequestsRequested());
+    dispatch(readPayoutsRequested());
   }, [dispatch]);
 
   useFocusEffect(
@@ -141,6 +164,7 @@ export default function AccountScreen() {
           <Display size={34} style={{ flex: 1 }}>
             {t('account:dashboard.title')}
           </Display>
+          <NotificationBell />
           <Button size="sm" icon={Plus} label={t('mobile:account.publish')} onPress={() => router.push('/publier')} />
         </View>
         <Text tone="muted">{t('account:dashboard.subtitle')}</Text>
@@ -242,9 +266,25 @@ export default function AccountScreen() {
         </>
       )}
 
+      {tab === 'payouts' && (
+        <>
+          {payoutSummary === null && payoutsError === null && <Skeleton height={200} />}
+          {payoutSummary === null && payoutsError !== null && <ApiUnreachable message={payoutsError} />}
+          {payoutSummary !== null && <PayoutsSection summary={payoutSummary} />}
+        </>
+      )}
+
       {tab === 'received' && (
         <>
           <Notice tone="info">{t('account:received.hint')}</Notice>
+          {moneyWaits && (
+            <View style={{ gap: 10, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.warnLine, backgroundColor: colors.warnBg }}>
+              <Text size={14} weight="medium" tone="warn">
+                {t('account:payouts.waiting')}
+              </Text>
+              <Button size="sm" variant="outline" label={t('account:payouts.waitingAction')} onPress={() => setTab('payouts')} />
+            </View>
+          )}
           {confirmError !== null && (
             <Notice tone="error" title={t('common:error.title')}>
               {confirmError}
@@ -264,6 +304,15 @@ export default function AccountScreen() {
               render={(request) => (
                 <RentalRequestRow
                   request={request}
+                  perspective="owner"
+                  moneyLabel={
+                    request.ownerShareInCents === null
+                      ? undefined
+                      : t('account:payouts.receive', {
+                          amount: formatCentsPrecisely(request.ownerShareInCents),
+                          price: formatCentsPrecisely(request.priceInCents),
+                        })
+                  }
                   action={
                     request.status === 'PENDING' || cancellable(request, 'owner') ? (
                       <>

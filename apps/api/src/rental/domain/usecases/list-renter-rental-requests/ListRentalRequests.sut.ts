@@ -3,7 +3,7 @@ import { Either } from 'effect/index';
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { RentalRequest } from '../../entities/RentalRequest';
-import { RentalRequestView } from '../../ports/RentalRepository';
+import { PresentedRentalRequest } from '../../services/presentRentalRequest';
 import { ListOwnerRentalRequests } from '../list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from './ListRenterRentalRequests';
 
@@ -14,6 +14,9 @@ const PRICING = {
 };
 
 const REQUESTED_AT = new Date('2026-10-01T09:00:00.000Z');
+
+export const ACCESS_INSTRUCTIONS =
+  'Portail 4821B, deuxième sous-sol, place au fond à gauche.';
 
 interface Arrangement {
   ownerId: string;
@@ -28,8 +31,13 @@ export const createListRentalRequestsSUT = () => {
   const rentalRepository = new InMemoryRentalRepository();
   const listRenterRentalRequests = new ListRenterRentalRequests(
     rentalRepository,
+    48,
   );
-  const listOwnerRentalRequests = new ListOwnerRentalRequests(rentalRepository);
+  const listOwnerRentalRequests = new ListOwnerRentalRequests(
+    rentalRepository,
+    48,
+  );
+  let now = new Date('2026-10-05T09:00:00.000Z');
 
   const context = {
     rentalRepository,
@@ -40,6 +48,7 @@ export const createListRentalRequestsSUT = () => {
   const arrange = async (
     arrangement: Arrangement,
     paid: 'before-payments' | 'awaiting-payment' = 'before-payments',
+    platformFeePercent?: number,
   ): Promise<string> => {
     const request = RentalRequest.request({
       renterId: arrangement.renterId,
@@ -48,6 +57,7 @@ export const createListRentalRequestsSUT = () => {
       days: { from: arrangement.from, to: arrangement.to },
       pricing: PRICING,
       requestedAt: REQUESTED_AT,
+      platformFeePercent,
     });
     if (Either.isLeft(request))
       throw new Error('failed to arrange a pending request');
@@ -63,6 +73,7 @@ export const createListRentalRequestsSUT = () => {
       listingId: `listing-${arrangement.box}`,
       address: arrangement.address,
       box: arrangement.box,
+      accessInstructions: ACCESS_INSTRUCTIONS,
     });
     return request.right.id;
   };
@@ -89,6 +100,56 @@ export const createListRentalRequestsSUT = () => {
       return id;
     },
 
+    async givenConfirmedRequestWithFee(
+      arrangement: Arrangement,
+      platformFeePercent: number,
+    ): Promise<string> {
+      const id = await arrange(
+        arrangement,
+        'before-payments',
+        platformFeePercent,
+      );
+      await context.rentalRepository.confirmRequest(
+        id,
+        new Date('2026-10-02T09:00:00.000Z'),
+      );
+      return id;
+    },
+
+    thenOwnerSharesAre(
+      result: Either.Either<PresentedRentalRequest[], unknown>,
+      expected: (number | null)[],
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (!Either.isRight(result)) return;
+      expect(result.right.map((view) => view.ownerShareInCents)).toEqual(
+        expected,
+      );
+    },
+
+    async givenHoldPlacedAt(arrangement: Arrangement, placedAt: string) {
+      const id = await arrange(arrangement, 'awaiting-payment');
+      await context.rentalRepository.markHoldPlaced(
+        id,
+        'pi_louise',
+        new Date(placedAt),
+      );
+      return id;
+    },
+
+    async givenCancelledByTheRenter(requestId: string) {
+      await context.rentalRepository.markCancelledBy(
+        requestId,
+        'RENTER',
+        'NONE',
+        new Date('2026-10-03T09:00:00.000Z'),
+      );
+    },
+
+    givenItIsNow(instant: string) {
+      now = new Date(instant);
+    },
+
     givenRentalRepositoryFailsToRead() {
       context.rentalRepository.findAllForOwner = () => {
         throw new Error('rental repository is unreachable');
@@ -99,7 +160,7 @@ export const createListRentalRequestsSUT = () => {
     },
 
     async whenListingAsRenter(renterId: string) {
-      return context.listRenterRentalRequests.execute({ renterId });
+      return context.listRenterRentalRequests.execute({ renterId, now });
     },
 
     async whenListingAsOwner(ownerId: string) {
@@ -107,7 +168,7 @@ export const createListRentalRequestsSUT = () => {
     },
 
     thenRequestedPlacesAre(
-      result: Either.Either<RentalRequestView[], unknown>,
+      result: Either.Either<PresentedRentalRequest[], unknown>,
       expected: { address: string; box: string }[],
     ) {
       expect(Either.isRight(result)).toEqual(true);
@@ -118,7 +179,7 @@ export const createListRentalRequestsSUT = () => {
     },
 
     thenStatusesAre(
-      result: Either.Either<RentalRequestView[], unknown>,
+      result: Either.Either<PresentedRentalRequest[], unknown>,
       expected: string[],
     ) {
       expect(Either.isRight(result)).toEqual(true);
@@ -127,12 +188,34 @@ export const createListRentalRequestsSUT = () => {
     },
 
     thenPricesInCentsAre(
-      result: Either.Either<RentalRequestView[], unknown>,
+      result: Either.Either<PresentedRentalRequest[], unknown>,
       expected: number[],
     ) {
       expect(Either.isRight(result)).toEqual(true);
       if (!Either.isRight(result)) return;
       expect(result.right.map((view) => view.priceInCents)).toEqual(expected);
+    },
+
+    thenAccessInstructionsAre(
+      result: Either.Either<PresentedRentalRequest[], unknown>,
+      expected: (string | null)[],
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (!Either.isRight(result)) return;
+      expect(result.right.map((view) => view.accessInstructions)).toEqual(
+        expected,
+      );
+    },
+
+    thenAnswerDeadlinesAre(
+      result: Either.Either<PresentedRentalRequest[], unknown>,
+      expected: (string | null)[],
+    ) {
+      expect(Either.isRight(result)).toEqual(true);
+      if (!Either.isRight(result)) return;
+      expect(
+        result.right.map((view) => view.answerBy?.toISOString() ?? null),
+      ).toEqual(expected);
     },
 
     thenResultIsAnUnknownError(result: Either.Either<unknown, unknown>) {

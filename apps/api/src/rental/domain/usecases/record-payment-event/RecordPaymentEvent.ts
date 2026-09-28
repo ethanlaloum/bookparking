@@ -1,6 +1,9 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { Notification } from '../../../../shared/notification-outbox/domain/entities/Notification';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import { PaymentGateway } from '../../ports/PaymentGateway';
 import { settleMoneyOwed } from '../../services/settleMoneyOwed';
@@ -24,6 +27,8 @@ export class RecordPaymentEvent implements UseCase<
   constructor(
     private readonly rentalRepository: RentalRepository,
     private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
   // Un événement qui ne désigne aucune demande, ou qui arrive une seconde fois,
@@ -43,12 +48,28 @@ export class RecordPaymentEvent implements UseCase<
         return Either.right(undefined);
       }
 
+      // C'est l'empreinte qui fait arriver la demande chez le loueur : il en
+      // est prévenu dans la même transaction, et une seule fois — un
+      // événement rejoué ne pose plus rien, et ne prévient donc personne.
       if (summary.status === 'AWAITING_PAYMENT') {
-        await this.rentalRepository.markHoldPlaced(
-          props.requestId,
-          props.paymentId,
-          props.placedAt,
-        );
+        await this.unitOfWork.process(async (trx) => {
+          const placed = await this.rentalRepository.markHoldPlaced(
+            props.requestId,
+            props.paymentId,
+            props.placedAt,
+            trx,
+          );
+          if (placed)
+            await this.notificationOutbox.notify(
+              Notification.about({
+                kind: 'RENTAL_REQUEST_RECEIVED',
+                recipientId: summary.ownerId,
+                rentalRequestId: props.requestId,
+                createdAt: props.receivedAt,
+              }),
+              trx,
+            );
+        });
         return Either.right(undefined);
       }
 

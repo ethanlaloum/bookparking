@@ -15,6 +15,7 @@ import { RentalPeriod } from '../../../domain/services/computeRentalPrice';
 import {
   AbandonedUnpaidRequest,
   IdempotentRentalRequest,
+  LapsedRentalRequest,
   RentalRepository,
   RentalRequestSummary,
   RentalRequestView,
@@ -43,10 +44,21 @@ interface ViewRow {
   requested_at: Date | string;
   confirmed_at: Date | string | null;
   period_from: Date | string;
+  period_to: Date | string;
+  hold_placed_at: Date | string | null;
   free_cancellation_until: Date | string | null;
   owner_id: string;
   address: string;
   box: string;
+  access_description: string;
+  platform_fee_in_cents: number | null;
+  arrived_at: Date | string | null;
+}
+
+interface ExpiredRow {
+  id: string;
+  renter_id: string;
+  listing_id: string;
 }
 
 const EXCLUSION_VIOLATION = '23P01';
@@ -144,6 +156,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
         requested_at: state.requestedAt,
         idempotency_key: state.idempotencyKey ?? null,
         free_cancellation_until: state.freeCancellationUntil ?? null,
+        platform_fee_in_cents: state.platformFeeInCents ?? null,
       });
     } catch (error: unknown) {
       if (isIntentUniqueViolation(error))
@@ -224,7 +237,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
     requestId: string,
     confirmedAt: Date,
     trx?: GenericTransaction,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
       .where({ id: requestId, status: RentalRequestStatus.PENDING })
       .update({
@@ -236,7 +249,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
         updated_at: new Date(),
       });
     if (trx) query.transacting(trx);
-    await query;
+    return (await query) > 0;
   }
 
   // Only PENDING rows expire: a confirmed rental is a booking, and re-expiring
@@ -247,7 +260,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
   public async expireRequestsPendingSince(
     deadline: Date,
     trx?: GenericTransaction,
-  ): Promise<number> {
+  ): Promise<LapsedRentalRequest[]> {
     const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
       .where('status', RentalRequestStatus.PENDING)
       .andWhere('money_status', 'NONE')
@@ -255,9 +268,37 @@ export class KnexRentalRequestRepository implements RentalRepository {
       .update({
         status: RentalRequestStatus.EXPIRED,
         updated_at: new Date(),
-      });
+      })
+      .returning(['id', 'renter_id', 'listing_id']);
     if (trx) query.transacting(trx);
-    return await query;
+    return this.withOwners((await query) as ExpiredRow[], trx);
+  }
+
+  // `RETURNING` ne rend que les colonnes de la demande : le loueur est lu sur
+  // `listings`, dans la même transaction, pour chaque annonce touchée.
+  private async withOwners(
+    rows: ExpiredRow[],
+    trx?: GenericTransaction,
+  ): Promise<LapsedRentalRequest[]> {
+    if (rows.length === 0) return [];
+    const query = this.connection(LISTINGS_TABLE)
+      .whereIn(
+        'id',
+        rows.map((row) => row.listing_id),
+      )
+      .select('id', 'owner_id');
+    if (trx) query.transacting(trx);
+    const owners = new Map(
+      ((await query) as { id: string; owner_id: string }[]).map((listing) => [
+        listing.id,
+        listing.owner_id,
+      ]),
+    );
+    return rows.map((row) => ({
+      requestId: row.id,
+      renterId: row.renter_id,
+      ownerId: owners.get(row.listing_id) ?? '',
+    }));
   }
 
   public async findAllByRenter(
@@ -303,10 +344,15 @@ export class KnexRentalRequestRepository implements RentalRepository {
         `${this.tableName}.requested_at as requested_at`,
         `${this.tableName}.confirmed_at as confirmed_at`,
         `${this.tableName}.period_from as period_from`,
+        `${this.tableName}.period_to as period_to`,
+        `${this.tableName}.hold_placed_at as hold_placed_at`,
         `${this.tableName}.free_cancellation_until as free_cancellation_until`,
         `${LISTINGS_TABLE}.owner_id as owner_id`,
         `${LISTINGS_TABLE}.address as address`,
         `${LISTINGS_TABLE}.box as box`,
+        `${LISTINGS_TABLE}.access_description as access_description`,
+        `${this.tableName}.platform_fee_in_cents as platform_fee_in_cents`,
+        `${this.tableName}.arrived_at as arrived_at`,
       );
     if (trx) query.transacting(trx);
 
@@ -327,10 +373,19 @@ export class KnexRentalRequestRepository implements RentalRepository {
       confirmedAt:
         row.confirmed_at === null ? null : new Date(row.confirmed_at),
       startsAt: new Date(row.period_from),
+      endsAt: new Date(row.period_to),
+      holdPlacedAt:
+        row.hold_placed_at === null ? null : new Date(row.hold_placed_at),
       freeCancellationUntil:
         row.free_cancellation_until === null
           ? null
           : new Date(row.free_cancellation_until),
+      accessInstructions: row.access_description,
+      platformFeeInCents:
+        row.platform_fee_in_cents === null
+          ? null
+          : Number(row.platform_fee_in_cents),
+      arrivedAt: row.arrived_at === null ? null : new Date(row.arrived_at),
     }));
   }
 
@@ -488,6 +543,19 @@ export class KnexRentalRequestRepository implements RentalRepository {
     );
   }
 
+  public async markArrived(
+    requestId: string,
+    arrivedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .where({ id: requestId, status: RentalRequestStatus.CONFIRMED })
+      .whereNull('arrived_at')
+      .update({ arrived_at: arrivedAt, updated_at: new Date() });
+    if (trx) query.transacting(trx);
+    return (await query) > 0;
+  }
+
   public async markAbandoned(
     requestId: string,
     trx?: GenericTransaction,
@@ -560,7 +628,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
   public async expireHoldsPlacedSince(
     deadline: Date,
     trx?: GenericTransaction,
-  ): Promise<number> {
+  ): Promise<LapsedRentalRequest[]> {
     const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
       .where('status', RentalRequestStatus.PENDING)
       .andWhere('money_status', 'AUTHORIZED')
@@ -569,9 +637,10 @@ export class KnexRentalRequestRepository implements RentalRepository {
         status: RentalRequestStatus.EXPIRED,
         money_status: 'RELEASE_DUE',
         updated_at: new Date(),
-      });
+      })
+      .returning(['id', 'renter_id', 'listing_id']);
     if (trx) query.transacting(trx);
-    return await query;
+    return this.withOwners((await query) as ExpiredRow[], trx);
   }
 
   public async findMoneyOwed(trx?: GenericTransaction): Promise<MoneyOwed[]> {

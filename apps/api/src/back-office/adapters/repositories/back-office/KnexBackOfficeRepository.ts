@@ -11,6 +11,7 @@ import {
   AdminListingView,
   AdminRentalRequestView,
   BackOfficeRepository,
+  CancelledRentalParties,
   OverviewActivity,
   OverviewAttention,
   OverviewCounts,
@@ -274,7 +275,7 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
   public async cancelRentalRequest(
     requestId: string,
     trx?: GenericTransaction,
-  ): Promise<boolean> {
+  ): Promise<CancelledRentalParties | null> {
     // Une demande déjà expirée ou annulée ne se ré-annule pas : le filtre rend
     // l'opération idempotente et libère la place par la contrainte partielle.
     // L'argent du conducteur change dans le même UPDATE que le statut : une
@@ -292,9 +293,24 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
         cancelled_at: new Date(),
         cancelled_by: 'OPERATOR',
         updated_at: new Date(),
-      });
+      })
+      .returning(['renter_id', 'listing_id']);
     if (trx) query.transacting(trx);
-    return (await query) > 0;
+    const [cancelled] = (await query) as {
+      renter_id: string;
+      listing_id: string;
+    }[];
+    if (!cancelled) return null;
+
+    const owner = this.connection('listings')
+      .where({ id: cancelled.listing_id })
+      .first('owner_id');
+    if (trx) owner.transacting(trx);
+    const listing = (await owner) as { owner_id: string } | undefined;
+    return {
+      renterId: cancelled.renter_id,
+      ownerId: listing?.owner_id ?? '',
+    };
   }
 
   public async recordAction(

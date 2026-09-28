@@ -2,6 +2,8 @@ import { Either } from 'effect/index';
 
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
+import { InMemoryNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/InMemoryNotificationOutbox';
+import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnitOfWork';
 import { CancellationOutcome } from '../../entities/RentalCancellation';
 import { RentalRequest } from '../../entities/RentalRequest';
 import { CancelRental } from './CancelRental';
@@ -16,9 +18,12 @@ export const createCancelRentalSUT = (
 ) => {
   const rentalRepository = new InMemoryRentalRepository();
   const paymentGateway = new InMemoryPaymentGateway();
+  const notificationOutbox = new InMemoryNotificationOutbox();
   const cancelRental = new CancelRental(
     rentalRepository,
     paymentGateway,
+    notificationOutbox,
+    new InMemoryUnitOfWork(),
     options.freeCancellationHoursNow ?? 24,
   );
 
@@ -113,6 +118,20 @@ export const createCancelRentalSUT = (
           idempotencyKey: `refund-${id}`,
         })),
       );
+    },
+
+    thenNotificationsAre(
+      expected: { kind: string; recipientId: string; requestId: string }[],
+    ) {
+      expect(notificationOutbox.sent()).toEqual(expected);
+    },
+
+    thenNotificationsWereCreatedAt(at: string[]) {
+      expect(
+        notificationOutbox.notifications.map(
+          (notification) => notification.createdAt,
+        ),
+      ).toEqual(at.map((instant) => new Date(instant)));
     },
 
     thenReleasesAre(requestIds: string[]) {

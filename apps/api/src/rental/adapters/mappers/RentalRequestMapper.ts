@@ -1,4 +1,4 @@
-import { RentalRequestView } from '../../domain/ports/RentalRepository';
+import { PresentedRentalRequest } from '../../domain/services/presentRentalRequest';
 import { GetRentalRequestResponseDto } from '../rest/dtos/GetRentalRequestResponseDto';
 
 // `renterId` et `ownerId` ne traversent pas : les deux routes sont déjà clés
@@ -6,7 +6,7 @@ import { GetRentalRequestResponseDto } from '../rest/dtos/GetRentalRequestRespon
 // destinataire légitime et désignerait un tiers à quiconque lirait la réponse.
 export class RentalRequestMapper {
   public static toGetRentalRequestDto(
-    view: RentalRequestView,
+    view: PresentedRentalRequest,
   ): GetRentalRequestResponseDto {
     return {
       id: view.id,
@@ -26,6 +26,10 @@ export class RentalRequestMapper {
         view.freeCancellationUntil === null
           ? null
           : view.freeCancellationUntil.toISOString(),
+      answerBy: view.answerBy === null ? null : view.answerBy.toISOString(),
+      accessInstructions: view.accessInstructions,
+      ownerShareInCents: view.ownerShareInCents,
+      arrivedAt: view.arrivedAt === null ? null : view.arrivedAt.toISOString(),
     };
   }
 }

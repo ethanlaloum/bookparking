@@ -1,4 +1,5 @@
 import { cancelRentalEpic } from '../../app/rental/domain/use-cases/cancel-rental/cancelRentalEpic';
+import { confirmArrivalEpic } from '../../app/rental/domain/use-cases/confirm-arrival/confirmArrivalEpic';
 import { abandonRentalRequestEpic } from '../../app/rental/domain/use-cases/abandon-rental-request/abandonRentalRequestEpic';
 import { confirmRentalRequestEpic } from '../../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listMyRentalRequestsEpic } from '../../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
@@ -12,4 +13,5 @@ export const rentalEpics = [
   listReceivedRentalRequestsEpic,
   abandonRentalRequestEpic,
   cancelRentalEpic,
+  confirmArrivalEpic,
 ];

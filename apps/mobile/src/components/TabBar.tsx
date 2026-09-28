@@ -4,19 +4,24 @@ import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { CalendarRange, House, Search, UserRound, type LucideIcon } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { AppState, Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { readOwnAccountRequested } from '@front/app/account/domain/use-cases/read-own-account/readOwnAccountEpic';
+import { listNotificationsRequested } from '@front/app/notification/domain/use-cases/list-notifications/listNotificationsEpic';
 import { selectOwnAvatar } from '@front/selectors/account/accountSelectors';
 import { selectIsAuthenticated } from '@front/selectors/auth/authSelectors';
 
+import { usePushNotifications } from '../lib/usePushNotifications';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { fonts } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
 import { Avatar } from './Avatar';
 import { Text } from './ui/Text';
+
+// La même cadence que la cloche du site.
+const NOTIFICATION_POLL_INTERVAL_IN_MS = 60_000;
 
 const TABS: Record<string, { icon: LucideIcon; label: string }> = {
   index: { icon: House, label: 'mobile:tab.home' },
@@ -42,6 +47,24 @@ export const TabBar = ({ state, navigation }: BottomTabBarProps) => {
   // qu'une session s'ouvre, comme l'en-tête du site.
   useEffect(() => {
     if (isAuthenticated) dispatch(readOwnAccountRequested());
+  }, [dispatch, isAuthenticated]);
+
+  usePushNotifications();
+
+  // Et c'est elle qui relit la cloche : toutes les minutes tant qu'une session
+  // est ouverte, et aussitôt que l'app revient au premier plan.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const read = () => dispatch(listNotificationsRequested());
+    read();
+    const timer = setInterval(read, NOTIFICATION_POLL_INTERVAL_IN_MS);
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') read();
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
   }, [dispatch, isAuthenticated]);
 
   return (

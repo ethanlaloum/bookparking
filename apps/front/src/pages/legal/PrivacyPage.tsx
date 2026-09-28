@@ -50,6 +50,12 @@ const PROCESSINGS: Processing[] = [
     retention: '10 ans pour les pièces comptables (article L.123-22 du Code de commerce)',
   },
   {
+    data: 'Notifications : le moment prévenu (demande reçue, acceptée, annulée…), la demande concernée, l’heure de lecture ; l’identifiant de push de votre iPhone, si vous avez autorisé les notifications',
+    purpose: 'Vous prévenir des moments de vos demandes, dans l’app, par e-mail et en push',
+    basis: 'Exécution du contrat ; pour le push, l’autorisation donnée à votre iPhone',
+    retention: 'Les notifications, comme la demande qu’elles concernent ; l’identifiant de push, jusqu’à la déconnexion ou la désinstallation de l’app',
+  },
+  {
     data: 'Adresse IP des tentatives de connexion échouées',
     purpose: 'Ralentir les essais répétés de mot de passe',
     basis: 'Intérêt légitime : la sécurité des comptes',
@@ -127,6 +133,13 @@ export const PrivacyPage = () => {
             <strong className="text-fg">Stripe</strong> (Stripe Payments Europe, Ltd., Irlande)
             traite le paiement. Les transferts de données vers les États-Unis sont encadrés par le
             Data Privacy Framework et des clauses contractuelles types.
+          </li>
+          <li>
+            <strong className="text-fg">Expo</strong> (650 Industries, Inc., États-Unis) relaie les
+            notifications push à <strong className="text-fg">Apple</strong>, qui les délivre à votre
+            iPhone. Ils reçoivent l’identifiant de push de votre téléphone et le texte de la
+            notification, qui ne contient ni l’adresse de la place ni les dates — seulement si vous
+            avez autorisé les notifications dans l’app.
           </li>
           <li>
             <strong className="text-fg">L’hébergeur</strong> : <ToComplete>nom de l’hébergeur</ToComplete>.

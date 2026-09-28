@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { moneyLabelOf } from '@front/app/rental/domain/entities/RentalRequestView';
 import { abandonRentalRequestRequested } from '@front/app/rental/domain/use-cases/abandon-rental-request/abandonRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '@front/app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import {
@@ -16,6 +15,7 @@ import {
 } from '@front/selectors/rental/rentalSelectors';
 
 import { paymentBrowser } from '../../adapters/InAppBrowserPaymentPageNavigator';
+import { AwaitingOwner } from '../../components/AwaitingOwner';
 import { ParkingMark } from '../../components/art/Glyphs';
 import { STATUS_TONE } from '../../components/RequestRows';
 import { Badge } from '../../components/ui/Badge';
@@ -33,6 +33,8 @@ const POLL_EVERY_MILLISECONDS = 2500;
 // payer, trente au plus avant de se taire.
 const GRACE_POLLS = 3;
 const MAXIMUM_POLLS_AFTER_CLOSE = 30;
+// L'empreinte posée, l'écran attend le loueur sans le presser.
+const WAIT_FOR_OWNER_EVERY_MILLISECONDS = 20_000;
 
 /**
  * Le pendant mobile de `PaymentReturnPage`. Sur le site, Stripe renvoie le
@@ -77,6 +79,13 @@ export default function PaymentScreen() {
     return () => clearTimeout(timer);
   }, [abandonPending, abandoned, awaiting, browserOpen, closedPolls, dispatch, tick]);
 
+  const withTheOwner = request?.status === 'PENDING';
+  useEffect(() => {
+    if (!withTheOwner) return;
+    const timer = setInterval(() => dispatch(listMyRentalRequestsRequested()), WAIT_FOR_OWNER_EVERY_MILLISECONDS);
+    return () => clearInterval(timer);
+  }, [dispatch, withTheOwner]);
+
   // L'empreinte est posée : la page de Stripe n'a plus rien à montrer.
   useEffect(() => {
     if (!awaiting && browserOpen) paymentBrowser.close();
@@ -100,11 +109,11 @@ export default function PaymentScreen() {
         ? t('mobile:payment.left')
         : awaiting
           ? t('rental:payment.verifying')
-          : sent
-            ? t('rental:payment.sent')
-            : t(`account:status.${request?.status ?? 'AWAITING_PAYMENT'}`);
-
-  const money = request === null ? null : moneyLabelOf(request);
+          : request?.status === 'CONFIRMED'
+            ? t('common:celebration.title')
+            : sent
+              ? t('rental:payment.sent')
+              : t(`account:status.${request?.status ?? 'AWAITING_PAYMENT'}`);
 
   const toBookings = (): void => {
     router.dismissAll();
@@ -173,17 +182,12 @@ export default function PaymentScreen() {
               </Row>
             )
           ) : (
-            request !== null && (
-              <>
-                <Badge tone={STATUS_TONE[request.status]} dot large label={t(`account:status.${request.status}`)} />
-                <Text weight="medium">{money !== null && t(`account:money.${money.key}`, { amount: money.amount })}</Text>
-                {sent && (
-                  <Text size={14} tone="muted" style={{ lineHeight: 22 }}>
-                    {t('rental:payment.sentBody')}
-                  </Text>
-                )}
-              </>
-            )
+            request !== null &&
+            (sent ? (
+              <AwaitingOwner request={request} />
+            ) : (
+              <Badge tone={STATUS_TONE[request.status]} dot large label={t(`account:status.${request.status}`)} />
+            ))
           )}
 
           {settled && (

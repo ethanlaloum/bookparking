@@ -24,6 +24,8 @@ import { PaymentUnavailableError } from '../../../../domain/errors/PaymentUnavai
 import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequestNotFoundError';
 import { AbandonRentalRequest } from '../../../../domain/usecases/abandon-rental-request/AbandonRentalRequest';
 import { CancelRental } from '../../../../domain/usecases/cancel-rental/CancelRental';
+import { ConfirmArrival } from '../../../../domain/usecases/confirm-arrival/ConfirmArrival';
+import { ArrivalNotYetPossibleError } from '../../../../domain/usecases/confirm-arrival/errors/ArrivalNotYetPossibleError';
 import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-rental/errors/RentalAlreadyStartedError';
 import { RentalNotCancellableError } from '../../../../domain/usecases/cancel-rental/errors/RentalNotCancellableError';
 import { RentalRequestAlreadyPaidError } from '../../../../domain/usecases/abandon-rental-request/errors/RentalRequestAlreadyPaidError';
@@ -46,6 +48,7 @@ export class RentalRequestController {
     private readonly listOwnerRentalRequestsUseCase: ListOwnerRentalRequests,
     private readonly abandonRentalRequestUseCase: AbandonRentalRequest,
     private readonly cancelRentalUseCase: CancelRental,
+    private readonly confirmArrivalUseCase: ConfirmArrival,
   ) {}
 
   @Get()
@@ -55,6 +58,7 @@ export class RentalRequestController {
   ): Promise<GetRentalRequestResponseDto[]> {
     const result = await this.listRenterRentalRequestsUseCase.execute({
       renterId: req.user.id,
+      now: new Date(),
     });
 
     if (Either.isLeft(result))
@@ -256,6 +260,48 @@ export class RentalRequestController {
   // Le conducteur comme le loueur passent par cette route : c'est le cas
   // d'usage qui reconnaît qui annule, et une demande que le compte ne peut ni
   // voir ni annuler répond comme une demande inconnue.
+  // D-22 : l'arrivée du conducteur libère l'argent vers le loueur.
+  @Post(':id/arrival')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public async confirmArrival(
+    @Req() req: TokenRequest,
+    @Param('id') id: string,
+  ): Promise<void> {
+    try {
+      const decode = Schema.decodeUnknownEither(Schema.UUID)(id);
+      if (Either.isLeft(decode))
+        throw new HttpException(
+          new RentalRequestNotFoundError().message,
+          HttpStatus.NOT_FOUND,
+        );
+
+      const result = await this.confirmArrivalUseCase.execute({
+        requestId: decode.right,
+        renterId: req.user.id,
+        arrivedAt: new Date(),
+      });
+
+      if (Either.isLeft(result)) {
+        const error = result.left;
+        if (error instanceof RentalRequestNotFoundError)
+          throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        if (error instanceof ArrivalNotYetPossibleError)
+          throw new HttpException(error.message, HttpStatus.CONFLICT);
+        throw new HttpException(
+          "Votre arrivée n'a pas pu être enregistrée",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'RentalRequestController',
+        method: 'confirmArrival',
+        userId: req.user.id,
+      });
+    }
+  }
+
   @Post(':id/cancellation')
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)

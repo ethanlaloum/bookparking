@@ -1,6 +1,9 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { Notification } from '../../../../shared/notification-outbox/domain/entities/Notification';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   AdminActionKind,
@@ -42,7 +45,11 @@ export class CancelRentalRequest implements UseCase<
     >
   >
 > {
-  constructor(private readonly backOfficeRepository: BackOfficeRepository) {}
+  constructor(
+    private readonly backOfficeRepository: BackOfficeRepository,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
+  ) {}
 
   public async execute(
     props: Props,
@@ -62,9 +69,27 @@ export class CancelRentalRequest implements UseCase<
       if (!isUsableReason(props.reason))
         return Either.left(new MissingModerationReasonError());
 
-      const done = await this.backOfficeRepository.cancelRentalRequest(
-        props.targetId,
-      );
+      // Le conducteur et le loueur sont prévenus dans la transaction de
+      // l'annulation : ni l'un ni l'autre n'apprend la nouvelle par un écran
+      // qui aurait changé sans rien dire.
+      const done = await this.unitOfWork.process(async (trx) => {
+        const parties = await this.backOfficeRepository.cancelRentalRequest(
+          props.targetId,
+          trx,
+        );
+        if (!parties) return false;
+        for (const recipientId of [parties.renterId, parties.ownerId])
+          await this.notificationOutbox.notify(
+            Notification.about({
+              kind: 'RENTAL_CANCELLED_BY_OPERATOR',
+              recipientId,
+              rentalRequestId: props.targetId,
+              createdAt: props.actedAt,
+            }),
+            trx,
+          );
+        return true;
+      });
       if (!done) return Either.left(new ModerationTargetNotFoundError());
 
       // Le journal est écrit après l'effet, jamais avant : une trace d'une

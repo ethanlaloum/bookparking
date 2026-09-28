@@ -208,7 +208,10 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   Cette description partait dans la réponse publique jusqu'à la revue de sécurité de US-009 ; §8 de la spec
   n'autorise publiquement que l'adresse exacte et le box, et §10 fait de ce texte le substitut du code de portail
   (AUTO-29, `docs/autonomous/SPEC-001.md`). EX-44 fige cette non-exposition.
-  Ne pas ajouter ce champ à `GetListingResponseDto` sans rouvrir AUTO-29 — qui doit le voir, et quand, reste une question ouverte.
+  Ne pas ajouter ce champ à `GetListingResponseDto` sans rouvrir AUTO-29. Qui le voit est désormais tranché
+  ailleurs : `GET /rental-request` le rend en `accessInstructions` au seul conducteur d'une réservation
+  `CONFIRMED`, jusqu'au dernier instant loué (`presentRentalRequest`, contexte `rental`) — jamais par la
+  fiche publique, jamais par e-mail ni par push.
 
 - **Le paramètre de chemin `:id` de `GET /listing/:id` est décodé comme un UUID avant d'atteindre le dépôt — un identifiant mal formé répond comme une annonce inconnue, jamais 500.**
   `listing.controller.ts:108` appelle `Schema.decodeUnknownEither(Schema.UUID)(id)` et lève, sur un échec de décodage,
@@ -453,8 +456,9 @@ quand le loueur confirme, levée sinon. Le contexte `rental` porte le port `Paym
   « Ces dates sont déjà louées » pendant deux heures, au conducteur lui-même. Le chevauchement est jugé
   en SQL avec le même `tstzrange` que la contrainte d'exclusion ; le filtre `renter_id` est ce qui
   empêche de libérer les dates d'un autre, et seul EX-51 au barreau `int-repo` le garde.
-- **Aucune clé `sk_live_…` avant la spec du reversement.** Sans Stripe Connect, l'exploitant encaisserait
-  sur son propre compte de l'argent dû aux loueurs — une activité réglementée (SPEC-004 §11).
+- **Aucune clé `sk_live_…` tant que Stripe n'a pas validé la plateforme Connect.** Le reversement existe
+  (voir « Le reversement au loueur ») ; sans Connect activé et validé côté Stripe, l'exploitant
+  encaisserait pour compte de tiers — une activité réglementée (SPEC-004 §11).
 
 ## L'annulation d'une réservation (SPEC-005)
 
@@ -495,6 +499,7 @@ même transaction (`KnexUnitOfWork`). `EmailSweepScheduler` passe toutes les 30 
   Resend, et un e-mail partirait pour un compte dont l'écriture a ensuite échoué.
 - **Ajouter un moment clé, c'est trois endroits à la fois** : `OutgoingEmailKind` (`OutgoingEmail.ts`),
   `outgoing_emails_kind_check` (une nouvelle migration) et le `Record` `composers` de `composeEmail.ts`.
+  Pour une notification, quatre : `NotificationKind` (`Notification.ts`) et `notifications_kind_check` en plus.
   Le `Record` refuse de compiler sans rédaction ; rien ne rattrape un oubli dans le `CHECK`, sinon une
   insertion qui échoue — et avec elle toute la transaction du cas d'usage.
 - **`RESEND_API_KEY` et `MAIL_FROM` n'ont pas de repli** : `main.ts` refuse de démarrer sans eux, sauf
@@ -522,6 +527,88 @@ même transaction (`KnexUnitOfWork`). `EmailSweepScheduler` passe toutes les 30 
   cette spec.
 - **`outgoing_emails.recipient` garde l'adresse de chaque e-mail envoyé.** Son effacement suit celui du
   compte, que porte SPEC-003 avec la dette #18.
+
+## Les notifications
+
+Chaque moment clé d'une demande écrit une ligne dans `notifications` **et** met un e-mail en file, dans
+la transaction qui le motive : reçue (webhook d'empreinte → loueur), acceptée ou paiement refusé
+(`ConfirmRentalRequest` → conducteur), refusée ou annulée (`CancelRental` → l'autre partie), expirée
+(`expireLapsedRequests`, partagé par le balayage et `RequestRental` → les deux), annulée par Bookparking
+(back-office → les deux). La file vit dans le noyau partagé (`src/shared/notification-outbox/`), la
+cloche dans `src/notification` (`GET /notification`, `POST /notification/read`).
+
+- **L'idempotence est l'index unique `notifications_once_per_recipient_unique`** (demande, type,
+  destinataire). `KnexNotificationOutbox` insère en `ON CONFLICT DO NOTHING` et ne met l'e-mail en file
+  que s'il a inséré : un webhook rejoué ou deux balayages ne doublent ni la cloche ni l'e-mail.
+- **Seule l'écriture qui gagne la transition prévient.** `confirmRequest` rend désormais un booléen ;
+  une confirmation concurrente, ou une demande expirée entre la lecture et l'écriture, ne dit rien.
+- **L'e-mail ne dit ni l'adresse ni les dates** : il renvoie à `/compte?onglet=demandes-recues` ou
+  `/compte?onglet=reservations`, que le site lit (`apps/front/src/lib/accountTabs.ts`). Renommer un
+  onglet d'un côté casse les liens de l'autre.
+- **`recipient_id` est du texte, sans clé étrangère**, comme `renter_id` et `owner_id` ; l'adresse de
+  l'e-mail est lue sur `accounts` par `id::text`. Un identifiant sans compte a la cloche, pas d'e-mail.
+- **Une capture relue « confirmée » par `settleMoneyOwed` ne prévient personne.** Ce cas rare (écriture
+  perdue après le prélèvement, puis expiration) laisse au conducteur l'e-mail « expirée » alors que la
+  réservation tient. Non traité.
+- **Le push lit la même table.** `PushSweepScheduler` passe toutes les 10 s
+  (`PUSH_SWEEP_INTERVAL_IN_SECONDS`) : `SendPendingPushes` lit les notifications où `pushed_at` est
+  `NULL`, les pousse vers chaque téléphone du destinataire (`push_devices`) par l'api HTTP d'Expo,
+  puis les clôt. Sans téléphone, ou plus d'une heure après, une notification est close sans rien
+  envoyer. Envoyer puis clore n'est pas atomique : un arrêt entre les deux double un push, jamais
+  ne le perd. La migration a clos toutes les notifications d'avant.
+- **Les clés Apple vivent chez Expo (EAS), jamais dans l'api.** `EXPO_ACCESS_TOKEN` est facultatif :
+  Expo ne l'exige que si la « sécurité renforcée des push » est activée sur le projet. Un refus
+  `InvalidCredentials` (clé APNs absente ou révoquée chez EAS) garde tout le lot en file, et le
+  journal `ExpoPushSender` le dit à chaque balayage.
+- **`POST /notification/push-device/removal` n'a pas de garde, exprès** : l'app l'appelle en se
+  déconnectant. Un jeton Expo permet déjà de pousser vers le téléphone ; l'oublier ne donne rien de
+  plus. Un téléphone n'appartient qu'au dernier compte qui l'a enregistré (clé primaire `token`).
+- **`DeviceNotRegistered` efface le téléphone** : l'app a été désinstallée.
+
+## Consignes d'accès et échéance de réponse
+
+- **`presentRentalRequest` décide ce qu'une liste de demandes montre.** Le dépôt lit toujours
+  `listings.access_description` (jointure, comme l'adresse) ; le cas d'usage ne la rend qu'au conducteur
+  (`ListRenterRentalRequests`), statut `CONFIRMED`, et tant que `now < period_to`. Annulée, expirée, pas
+  encore confirmée ou terminée : `null`. Le loueur ne la reçoit jamais dans `GET /rental-request/received`.
+- **`answerBy` recopie la règle du balayage** : `hold_placed_at` (ou `requested_at` avant l'encaissement)
+  + `RENTAL_REQUEST_EXPIRY_IN_HOURS`. Changer l'expiration dans `SweepRentalRequests` sans toucher
+  `presentRentalRequest` ferait afficher une échéance fausse aux deux parties.
+- **`POST /notification/:id/read` marque une seule notification** : c'est ce qui fait qu'une réservation
+  confirmée n'est fêtée qu'une fois, sur le site ou dans l'app. Identifiant mal formé, inconnu ou d'un
+  autre compte : 204, rien de marqué.
+
+## Le reversement au loueur (D-10, D-22)
+
+Stripe Connect Express, en « charges et virements séparés » : le conducteur paie la plateforme
+(inchangé), puis `SendDuePayouts` (`PayoutSweepScheduler`, 5 min, `PAYOUT_SWEEP_INTERVAL_IN_SECONDS`)
+vire au loueur le prix moins la commission, vers son compte Stripe. Le contexte `src/payout` porte le
+compte (`payout_accounts`), les virements (`owner_transfers`) et `GET /payout`,
+`POST /payout/onboarding`, `POST /payout/dashboard`.
+
+- **Aucune coordonnée bancaire ni pièce d'identité ne passe par l'api.** Le loueur les saisit sur les
+  pages de Stripe (`accountLinks`) ; la base ne garde que `acct_…` et `payouts_enabled`. Ne jamais
+  ajouter un champ IBAN à un formulaire du site.
+- **La commission est figée sur la demande** (`rental_requests.platform_fee_in_cents`, Q-13), calculée
+  par `RentalRequest.request()` depuis `PLATFORM_FEE_PERCENT` (15, décidé le 24/09/2026 ; `main.ts` refuse
+  un taux hors de [0, 100[). Les demandes d'avant ont reçu 15 % par la migration. Changer le taux ne
+  touche que les demandes suivantes.
+- **L'argent est libéré au premier de deux événements** (`releaseAtOf`) : l'arrivée confirmée par le
+  conducteur (`POST /rental-request/:id/arrival`, pas avant le premier instant loué), ou le premier
+  instant + `PAYOUT_RELEASE_DELAY_IN_HOURS` (24). Seul l'argent `CAPTURED` est dû : une annulation
+  remboursée n'est jamais virée ; une annulation tardive dont l'argent est gardé l'est, à la date prévue.
+- **Un virement au plus par demande** : clé primaire `owner_transfers.rental_request_id` et clé
+  d'idempotence Stripe `transfer-<demande>`. Un arrêt entre le virement et son écriture est rattrapé au
+  passage suivant, qui rejoue la même clé.
+- **Le virement est adossé au paiement** (`source_transaction` = la charge du PaymentIntent) : il part
+  quand cet argent est disponible, jamais sur le solde de la plateforme.
+- **Un loueur sans compte prêt attend** (`AWAITING_ACCOUNT`) ; son compte est relu chez Stripe à chaque
+  passage et à chaque `GET /payout`, sans webhook Connect. Ajouter l'écoute d'`account.updated` le
+  jour où la relecture coûte trop d'appels.
+- **Trou connu : un remboursement après virement.** L'annulation par l'exploitant (`back-office`) ne
+  vérifie pas le début de la location ; si elle rembourse une demande déjà virée, la plateforme rend
+  l'argent au conducteur sans reprendre le virement du loueur (`transfers.createReversal`). À traiter
+  avec les litiges (gel avant libération, D-22).
 
 ## L'inscription plus sûre (SPEC-007)
 

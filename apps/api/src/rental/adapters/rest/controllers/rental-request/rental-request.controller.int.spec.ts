@@ -1,6 +1,8 @@
+import { Either } from 'effect/index';
 import * as request from 'supertest';
 
 import { createControllerTestApp } from '../../../../../shared/test/http/createControllerTestApp';
+import { ArrivalNotYetPossibleError } from '../../../../domain/usecases/confirm-arrival/errors/ArrivalNotYetPossibleError';
 import {
   A_CHECKOUT_URL,
   A_REQUEST_ID,
@@ -228,5 +230,95 @@ describe('RentalRequestController @SPEC-005', () => {
       .post(`/rental-request/${A_REQUEST_ID}/cancellation`)
       .set('Authorization', 'Bearer token-of-lea');
     expect(started.status).toEqual(409);
+  });
+
+  describe('GET /rental-request', () => {
+    it('hands the renter her access instructions and the owner deadline as the use case presents them', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      sut.listRenterRentalRequests.willResolve(
+        Either.right([
+          {
+            id: A_REQUEST_ID,
+            listingId: '3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c',
+            address: '12 rue Barla, 06300 Nice',
+            box: '12',
+            ownerId: MARC_ACCOUNT_ID,
+            renterId: LEA_ACCOUNT_ID,
+            fromDay: '2026-10-10',
+            toDay: '2026-10-12',
+            priceInCents: 4500,
+            status: 'CONFIRMED',
+            money: 'CAPTURED',
+            requestedAt: new Date('2026-10-01T07:00:00.000Z'),
+            confirmedAt: new Date('2026-10-01T09:00:00.000Z'),
+            startsAt: new Date('2026-10-09T22:00:00.000Z'),
+            freeCancellationUntil: new Date('2026-10-08T22:00:00.000Z'),
+            accessInstructions: 'Portail 4821B, deuxième sous-sol.',
+            answerBy: null,
+            ownerShareInCents: null,
+            arrivedAt: null,
+          },
+        ]),
+      );
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .get('/rental-request')
+        .set('Authorization', 'Bearer token');
+
+      expect(response.status).toEqual(200);
+      expect(response.body[0]).toMatchObject({
+        accessInstructions: 'Portail 4821B, deuxième sous-sol.',
+        answerBy: null,
+      });
+      expect(response.body[0]).not.toHaveProperty('ownerId');
+      expect(sut.listRenterRentalRequests.lastCall?.renterId).toEqual(
+        LEA_ACCOUNT_ID,
+      );
+    });
+  });
+
+  describe('POST /rental-request/:id/arrival', () => {
+    it('records the arrival of the signed-in renter', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      sut.confirmArrival.willResolve(Either.right(undefined));
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/arrival`)
+        .set('Authorization', 'Bearer token');
+
+      expect(response.status).toEqual(204);
+      expect(sut.confirmArrival.lastCall).toMatchObject({
+        requestId: A_REQUEST_ID,
+        renterId: LEA_ACCOUNT_ID,
+      });
+    });
+
+    it('answers 409 before the rental starts', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      sut.confirmArrival.willResolve(
+        Either.left(new ArrivalNotYetPossibleError()),
+      );
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/arrival`)
+        .set('Authorization', 'Bearer token');
+
+      expect(response.status).toEqual(409);
+    });
+
+    it('answers a malformed identifier as an unknown request, without asking the use case', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post('/rental-request/pas-un-uuid/arrival')
+        .set('Authorization', 'Bearer token');
+
+      expect(response.status).toEqual(404);
+      expect(sut.confirmArrival.calls).toHaveLength(0);
+    });
   });
 });

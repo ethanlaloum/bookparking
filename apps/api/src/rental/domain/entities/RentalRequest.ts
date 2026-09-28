@@ -47,7 +47,16 @@ interface Props {
   requestedAt: Date;
   idempotencyKey?: string | null;
   freeCancellationUntil?: Date | null;
+  // La commission de la plateforme, figée à la demande (Q-13) : un taux
+  // changé plus tard ne la déplace pas. `null` quand aucun taux n'est donné.
+  platformFeeInCents?: number | null;
 }
+
+// Au centime le plus proche : 15 % de 19,99 € font 3,00 €, pas 2,9985 €.
+export const platformFeeOf = (
+  priceInCents: number,
+  platformFeePercent: number,
+): number => Math.round((priceInCents * platformFeePercent) / 100);
 
 export class RentalRequest {
   private constructor(private readonly props: Props) {}
@@ -69,6 +78,7 @@ export class RentalRequest {
     requestedAt: Date;
     idempotencyKey?: string | null;
     freeCancellationHours?: number;
+    platformFeePercent?: number;
   }): Either.Either<
     RentalRequest,
     | InvalidRequestedPeriodError
@@ -106,6 +116,10 @@ export class RentalRequest {
           parisPeriodOfDays(params.days),
           params.freeCancellationHours,
         ),
+        platformFeeInCents:
+          params.platformFeePercent === undefined
+            ? null
+            : platformFeeOf(price.amountInCents, params.platformFeePercent),
       }),
     );
   }

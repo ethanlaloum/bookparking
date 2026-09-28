@@ -74,4 +74,67 @@ describe('RecordPaymentEvent @SPEC-004', () => {
     });
     await sut.thenTheOwnerSees([]);
   });
+
+  describe('notifications', () => {
+    it('tells the owner a request has arrived once Stripe reports the hold', async () => {
+      const sut = createRecordPaymentEventSUT();
+      const requestId = await sut.givenLeaRequestAwaitingPayment();
+
+      await sut.whenStripeReportsTheHold({
+        requestId,
+        paymentId: 'pi_lea',
+        at: '2026-10-01T07:05:00.000Z',
+      });
+
+      sut.thenNotificationsAre([
+        {
+          kind: 'RENTAL_REQUEST_RECEIVED',
+          recipientId: 'account-marc',
+          requestId,
+        },
+      ]);
+      sut.thenNotificationCreatedAt('2026-10-01T07:05:00.000Z');
+    });
+
+    it('tells the owner once when Stripe reports the hold twice', async () => {
+      const sut = createRecordPaymentEventSUT();
+      const requestId = await sut.givenLeaRequestAwaitingPayment();
+      await sut.whenStripeReportsTheHold({
+        requestId,
+        paymentId: 'pi_lea',
+        at: '2026-10-01T07:05:00.000Z',
+      });
+
+      await sut.whenStripeReportsTheHold({
+        requestId,
+        paymentId: 'pi_lea',
+        at: '2026-10-01T07:40:00.000Z',
+      });
+
+      sut.thenNotificationCreatedAt('2026-10-01T07:05:00.000Z');
+    });
+
+    it('tells nobody about a hold that arrives after the request was abandoned', async () => {
+      const sut = createRecordPaymentEventSUT();
+      const requestId = await sut.givenLeaRequestAwaitingPayment();
+      await sut.givenRequestAbandoned(requestId);
+
+      await sut.whenStripeReportsTheHold({
+        requestId,
+        paymentId: 'pi_lea',
+        at: '2026-10-01T09:03:00.000Z',
+      });
+
+      sut.thenNotificationsAre([]);
+    });
+
+    it('tells nobody when the payment page expires', async () => {
+      const sut = createRecordPaymentEventSUT();
+      const requestId = await sut.givenLeaRequestAwaitingPayment();
+
+      await sut.whenStripeReportsThePagePastItsLife(requestId);
+
+      sut.thenNotificationsAre([]);
+    });
+  });
 });

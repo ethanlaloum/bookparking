@@ -64,6 +64,11 @@ export interface AdminRentalRequestView {
   confirmedAt: Date | null;
 }
 
+export interface CancelledRentalParties {
+  renterId: string;
+  ownerId: string;
+}
+
 export interface BackOfficeRepository {
   isAdmin(accountId: string, trx?: GenericTransaction): Promise<boolean>;
   countsOverview(trx?: GenericTransaction): Promise<OverviewCounts>;
@@ -91,10 +96,12 @@ export interface BackOfficeRepository {
     suspendedAt: Date | null,
     trx?: GenericTransaction,
   ): Promise<boolean>;
+  // Rend les deux parties de la demande annulée, pour qu'elles en soient
+  // prévenues ; `null` quand il n'y avait rien à annuler.
   cancelRentalRequest(
     requestId: string,
     trx?: GenericTransaction,
-  ): Promise<boolean>;
+  ): Promise<CancelledRentalParties | null>;
   recordAction(action: AdminAction, trx?: GenericTransaction): Promise<void>;
   findRecentActions(
     limit: number,

@@ -528,6 +528,186 @@ export interface paths {
         patch: operations["chooseAvatar"];
         trace?: never;
     };
+    "/notification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire ses notifications
+         * @description Rend les trente notifications les plus récentes du compte porté par le jeton, et le nombre de ses notifications non lues. La route ne prend aucun identifiant : un compte ne lit que les siennes. L'adresse, le box et les jours sont lus sur l'annonce et la demande au moment de la lecture.
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer ses notifications comme lues
+         * @description Marque comme lues toutes les notifications non lues du compte porté par le jeton. Une notification déjà lue garde l'instant de sa première lecture : rejouer la requête ne change rien.
+         */
+        post: operations["markNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/push-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enregistrer son téléphone
+         * @description Rattache le téléphone au compte porté par le jeton, pour qu'il reçoive ses notifications en push. Un téléphone déjà enregistré par un autre compte passe à celui-ci : il n'appartient qu'au dernier compte connecté. L'app l'appelle à chaque session ouverte ; la rejouer ne change rien.
+         */
+        post: operations["registerPushDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/push-device/removal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Oublier un téléphone
+         * @description Le téléphone cesse de recevoir des push. Sans authentification : l'app l'appelle en se déconnectant, quand la session est peut-être déjà effacée — et qui connaît le jeton peut déjà pousser vers ce téléphone par Expo. Répond 204 que le jeton soit connu ou non.
+         */
+        post: operations["forgetPushDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer une notification comme lue
+         * @description Marque comme lue une seule notification du compte porté par le jeton — celle d'une réservation confirmée, une fois fêtée à l'écran. Un identifiant mal formé, inconnu ou appartenant à un autre compte répond 204 comme les autres et ne marque rien : la route ne dit jamais qu'une notification existe.
+         */
+        post: operations["markNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire ses versements
+         * @description L'état du compte Stripe du loueur porté par le jeton, et chaque location payée sur ses places : retenue, libérée ou virée. Un compte pas encore validé est relu chez Stripe à chaque lecture.
+         */
+        get: operations["readPayouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payout/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Saisir ses coordonnées bancaires chez Stripe
+         * @description Crée au premier appel le compte Stripe Connect Express du loueur, puis rend un lien vers les pages de Stripe où il saisit son identité et son IBAN. Au retour, Stripe renvoie vers `/compte?onglet=versements`.
+         */
+        post: operations["startPayoutOnboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payout/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ouvrir son espace Stripe
+         * @description Rend un lien de connexion à l'espace Stripe Express du loueur : son IBAN, ses virements vers sa banque.
+         */
+        post: operations["openPayoutDashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/arrival": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmer son arrivée
+         * @description Le conducteur d'une réservation confirmée dit qu'il est arrivé, à partir du premier instant de la location : l'argent est libéré vers le loueur (D-22). Rejouée, la requête ne change rien.
+         */
+        post: operations["confirmArrival"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -716,6 +896,20 @@ export interface components {
              * @description L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité.
              */
             freeCancellationUntil: string | null;
+            /**
+             * Format: date-time
+             * @description Tant que la demande attend le loueur (`PENDING`) : l'instant où elle expirera sans réponse, 48 heures (réglables) après l'empreinte, ou après la demande pour celles d'avant l'encaissement. `null` sinon.
+             */
+            answerBy: string | null;
+            /** @description Les consignes d'accès du loueur (digicode, étage, repères). Rendues au seul conducteur d'une réservation `CONFIRMED`, jusqu'à la fin du dernier jour loué ; `null` partout ailleurs, y compris pour le loueur dans `GET /rental-request/received`. */
+            accessInstructions: string | null;
+            /** @description Pour le seul loueur (`GET /rental-request/received`) : le prix moins la commission figée au moment de la demande. `null` pour le conducteur. */
+            ownerShareInCents: number | null;
+            /**
+             * Format: date-time
+             * @description L'instant où le conducteur a confirmé son arrivée (`POST /rental-request/{id}/arrival`), qui libère l'argent vers le loueur.
+             */
+            arrivedAt: string | null;
         };
         /** @description Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention. */
         Overview: {
@@ -848,6 +1042,97 @@ export interface components {
         Avatar: "SIGNAL" | "MARKING" | "RIVIERA" | "ASPHALT" | "CHECKERED";
         ChooseAvatarRequest: {
             avatar: components["schemas"]["Avatar"];
+        };
+        /**
+         * @description Le moment notifié. Reçue, restée sans réponse et annulée par le conducteur vont au loueur ; acceptée, refusée, expirée, annulée par le loueur et paiement refusé vont au conducteur ; annulée par Bookparking va aux deux. Le virement parti vers son compte Stripe va au loueur.
+         * @enum {string}
+         */
+        NotificationKind: "RENTAL_REQUEST_RECEIVED" | "RENTAL_REQUEST_ACCEPTED" | "RENTAL_REQUEST_DECLINED" | "RENTAL_REQUEST_EXPIRED" | "RENTAL_REQUEST_UNANSWERED" | "RENTAL_CANCELLED_BY_RENTER" | "RENTAL_CANCELLED_BY_OWNER" | "RENTAL_CANCELLED_BY_OPERATOR" | "RENTAL_PAYMENT_FAILED" | "RENTAL_PAYOUT_SENT";
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["NotificationKind"];
+            /**
+             * @description Le rôle du destinataire sur la demande : loueur ou conducteur. Décide où le site l'emmène.
+             * @enum {string}
+             */
+            audience: "OWNER" | "RENTER";
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description `null` tant que la cloche n'a pas été ouverte.
+             */
+            readAt: string | null;
+            /**
+             * Format: uuid
+             * @description La demande de location concernée.
+             */
+            requestId: string;
+            address: string;
+            box: string;
+            /**
+             * Format: date
+             * @description Premier jour loué, calendrier de Paris.
+             */
+            fromDay: string;
+            /**
+             * Format: date
+             * @description Dernier jour loué, inclus.
+             */
+            toDay: string;
+        };
+        NotificationList: {
+            /** @description Toutes les notifications non lues du compte, y compris au-delà des trente rendues. */
+            unreadCount: number;
+            /** @description Les trente plus récentes, de la plus récente à la plus ancienne. */
+            items: components["schemas"]["Notification"][];
+        };
+        PushDeviceRequest: {
+            /** @description Le jeton de push Expo du téléphone, tel que le rend `getExpoPushTokenAsync`. */
+            token: string;
+        };
+        PayoutLine: {
+            /** Format: uuid */
+            requestId: string;
+            address: string;
+            box: string;
+            /** Format: date */
+            fromDay: string;
+            /** Format: date */
+            toDay: string;
+            /** @description Ce que le conducteur a payé. */
+            priceInCents: number;
+            /** @description Ce que le loueur reçoit : le prix moins la commission figée à la demande. */
+            amountInCents: number;
+            /**
+             * @description HELD : retenu jusqu'à l'arrivée du conducteur ou 24 h après le début. AWAITING_ACCOUNT : libéré, en attente des coordonnées bancaires. SENDING : libéré, viré au prochain passage. SENT : viré.
+             * @enum {string}
+             */
+            status: "HELD" | "AWAITING_ACCOUNT" | "SENDING" | "SENT";
+            /** Format: date-time */
+            releaseAt: string;
+            /** Format: date-time */
+            transferredAt: string | null;
+        };
+        PayoutSummary: {
+            /**
+             * @description MISSING : aucune coordonnée bancaire. INCOMPLETE : inscription Stripe commencée ou en vérification. READY : Stripe accepte les virements.
+             * @enum {string}
+             */
+            accountStatus: "MISSING" | "INCOMPLETE" | "READY";
+            /** @description La commission en vigueur pour les nouvelles demandes. */
+            feePercent: number;
+            upcomingInCents: number;
+            sentInCents: number;
+            payouts: components["schemas"]["PayoutLine"][];
+        };
+        StripeLink: {
+            /**
+             * Format: uri
+             * @description Une page de Stripe, valable quelques minutes.
+             */
+            url: string;
         };
     };
     responses: {
@@ -1901,6 +2186,268 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Le jeton désigne un compte qui n'existe plus. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les notifications du compte. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    markNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notifications marquées comme lues. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    registerPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description Téléphone enregistré. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Jeton absent, ou qui n'est pas un jeton de push Expo. La valeur soumise n'est jamais recopiée. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    forgetPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description Téléphone oublié, ou inconnu. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Jeton absent, ou qui n'est pas un jeton de push Expo. La valeur soumise n'est jamais recopiée. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readPayouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les versements du compte. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startPayoutOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le lien vers Stripe. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeLink"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    openPayoutDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le lien vers Stripe. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeLink"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Stripe n'a pas encore validé le compte. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmArrival: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Arrivée enregistrée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inconnue, mal nommée ou d'un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Réservation pas encore confirmée, ou location pas encore commencée. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

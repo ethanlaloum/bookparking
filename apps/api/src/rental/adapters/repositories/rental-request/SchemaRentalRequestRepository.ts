@@ -29,6 +29,8 @@ export interface SchemaRentalRequestRepository {
   idempotency_key: string | null;
   checkout_url: string | null;
   free_cancellation_until: Date | string | null;
+  platform_fee_in_cents: number | null;
+  arrived_at: Date | string | null;
   cancelled_at: Date | string | null;
   cancelled_by: string | null;
   created_at: Date | string;

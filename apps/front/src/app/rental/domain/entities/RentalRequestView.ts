@@ -19,19 +19,27 @@ export const isConfirmed = (request: RentalRequestView): boolean =>
  * la grille actuelle mentirait sur toute place dont les tarifs ont changé
  * depuis.
  */
+// Ce que le loueur touche, commission déduite : l'api le rend avec les
+// demandes reçues (`ownerShareInCents`). Le prix payé ne sert qu'à défaut.
+const earnedOf = (request: RentalRequestView): number =>
+  request.ownerShareInCents ?? request.priceInCents;
+
 export const confirmedRevenueInCents = (
   requests: readonly RentalRequestView[],
 ): number =>
-  requests
-    .filter(isConfirmed)
-    .reduce((total, request) => total + request.priceInCents, 0);
+  requests.filter(isConfirmed).reduce((total, request) => total + earnedOf(request), 0);
 
 export const pendingRevenueInCents = (
   requests: readonly RentalRequestView[],
 ): number =>
-  requests
-    .filter(isPending)
-    .reduce((total, request) => total + request.priceInCents, 0);
+  requests.filter(isPending).reduce((total, request) => total + earnedOf(request), 0);
+
+// Le conducteur confirme son arrivée à partir du premier instant loué, une
+// fois : c'est ce qui libère l'argent vers le loueur (D-22 côté api).
+export const canConfirmArrival = (request: RentalRequestView, now: Date): boolean =>
+  request.status === 'CONFIRMED' &&
+  request.arrivedAt === null &&
+  now.getTime() >= new Date(request.startsAt).getTime();
 
 export const countByStatus = (
   requests: readonly RentalRequestView[],

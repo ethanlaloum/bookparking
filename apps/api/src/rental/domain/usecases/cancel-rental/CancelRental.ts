@@ -1,6 +1,9 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { Notification } from '../../../../shared/notification-outbox/domain/entities/Notification';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   CancellationOutcome,
@@ -38,6 +41,8 @@ export class CancelRental implements UseCase<
   constructor(
     private readonly rentalRepository: RentalRepository,
     private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
     private readonly freeCancellationHours: number,
   ) {}
 
@@ -66,12 +71,24 @@ export class CancelRental implements UseCase<
         freeCancellationUntil: this.freeCancellationUntilOf(summary),
       });
 
-      const cancelled = await this.rentalRepository.markCancelledBy(
-        summary.id,
-        party,
-        after.money,
-        props.cancelledAt,
-      );
+      // L'autre partie est prévenue dans la transaction de l'annulation, et
+      // par elle seule : une seconde annulation n'écrit rien, ne prévient
+      // donc personne.
+      const cancelled = await this.unitOfWork.process(async (trx) => {
+        const done = await this.rentalRepository.markCancelledBy(
+          summary.id,
+          party,
+          after.money,
+          props.cancelledAt,
+          trx,
+        );
+        if (done)
+          await this.notificationOutbox.notify(
+            CancelRental.noticeFor(summary, party, props.cancelledAt),
+            trx,
+          );
+        return done;
+      });
       if (!cancelled) return this.afterConcurrentChange(summary.id);
 
       // L'argent est rendu aussitôt quand Stripe répond ; sinon la dette reste
@@ -113,6 +130,31 @@ export class CancelRental implements UseCase<
     if (summary.ownerId === accountId && hasReachedTheOwner(summary.status))
       return 'OWNER';
     return null;
+  }
+
+  // Le loueur qui annule une demande qu'il n'a pas encore acceptée la refuse :
+  // c'est ce que le conducteur doit lire, pas l'annulation d'une réservation.
+  private static noticeFor(
+    summary: RentalRequestSummary,
+    party: CancellingParty,
+    cancelledAt: Date,
+  ): Notification {
+    if (party === 'RENTER')
+      return Notification.about({
+        kind: 'RENTAL_CANCELLED_BY_RENTER',
+        recipientId: summary.ownerId,
+        rentalRequestId: summary.id,
+        createdAt: cancelledAt,
+      });
+    return Notification.about({
+      kind:
+        summary.status === 'PENDING'
+          ? 'RENTAL_REQUEST_DECLINED'
+          : 'RENTAL_CANCELLED_BY_OWNER',
+      recipientId: summary.renterId,
+      rentalRequestId: summary.id,
+      createdAt: cancelledAt,
+    });
   }
 
   // Une demande faite avant cette règle, sans échéance écrite, reçoit celle du

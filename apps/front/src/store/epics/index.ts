@@ -6,6 +6,8 @@ import { authEpics } from './authEpics';
 import { backOfficeEpics } from './backOfficeEpics';
 import { consentEpics } from './consentEpics';
 import { listingEpics } from './listingEpics';
+import { notificationEpics } from './notificationEpics';
+import { payoutEpics } from './payoutEpics';
 import { rentalEpics } from './rentalEpics';
 
 export const rootEpic: AppEpic = combineEpics(
@@ -15,4 +17,6 @@ export const rootEpic: AppEpic = combineEpics(
   ...rentalEpics,
   ...backOfficeEpics,
   ...consentEpics,
+  ...notificationEpics,
+  ...payoutEpics,
 );

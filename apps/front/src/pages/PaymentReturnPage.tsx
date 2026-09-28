@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { moneyLabelOf } from '../app/rental/domain/entities/RentalRequestView';
 import { abandonRentalRequestRequested } from '../app/rental/domain/use-cases/abandon-rental-request/abandonRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
+import { AwaitingOwner } from '../components/AwaitingOwner';
 import { Notice } from '../components/Notice';
+import { accountHrefOf } from '../lib/accountTabs';
 import { ParkingMark } from '../components/ParkingMark';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Card } from '../components/ui/card';
@@ -21,6 +22,9 @@ import { useAppDispatch, useAppSelector } from '../store/redux';
 
 const POLL_EVERY_MILLISECONDS = 2000;
 const MAXIMUM_POLLS = 30;
+// Une fois l'empreinte posée, la page attend le loueur sans le presser : une
+// relecture toutes les vingt secondes suffit à faire avancer les étapes.
+const WAIT_FOR_OWNER_EVERY_MILLISECONDS = 20_000;
 
 /**
  * Là où Stripe renvoie le conducteur. Le retour du navigateur ne vaut pas
@@ -45,6 +49,7 @@ export const PaymentReturnPage = () => {
 
   const request = mine.find((candidate) => candidate.id === requestId) ?? null;
   const awaiting = request === null || request.status === 'AWAITING_PAYMENT';
+  const withTheOwner = request?.status === 'PENDING';
 
   useEffect(() => {
     if (requestId === '') return;
@@ -67,14 +72,23 @@ export const PaymentReturnPage = () => {
     return () => clearTimeout(timer);
   }, [abandoning, abandonFailed, awaiting, dispatch, polls]);
 
+  useEffect(() => {
+    if (!withTheOwner) return;
+    const timer = setInterval(
+      () => dispatch(listMyRentalRequestsRequested()),
+      WAIT_FOR_OWNER_EVERY_MILLISECONDS,
+    );
+    return () => clearInterval(timer);
+  }, [dispatch, withTheOwner]);
+
   const heading =
     abandoning && !abandonFailed
       ? t('rental:payment.abandoning')
       : awaiting
         ? t('rental:payment.verifying')
-        : t('rental:payment.sent');
-
-  const money = request === null ? null : moneyLabelOf(request);
+        : request?.status === 'CONFIRMED'
+          ? t('common:celebration.title')
+          : t('rental:payment.sent');
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
@@ -101,18 +115,13 @@ export const PaymentReturnPage = () => {
               {t('rental:payment.verifyingBody')}
             </p>
           )
-        ) : (
-          <>
-            <p className="font-medium text-fg" role="status">
-              {money !== null && t(`account:money.${money.key}`, { amount: money.amount })}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-fg-muted">
-              {t('rental:payment.sentBody')}
-            </p>
-          </>
-        )}
+        ) : request !== null ? (
+          <div role="status">
+            <AwaitingOwner request={request} />
+          </div>
+        ) : null}
 
-        <Link to="/compte" className={`${buttonVariants({ variant: 'outline' })} mt-6`}>
+        <Link to={accountHrefOf('mine')} className={`${buttonVariants({ variant: 'outline' })} mt-6`}>
           {t('rental:payment.toMyRequests')}
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>

@@ -241,6 +241,33 @@ describe('RequestRental @SPEC-002', () => {
 
       sut.thenPendingRequestsExpired(1);
     });
+
+    it('tells the renter and the owner of the request it expires', async () => {
+      const sut = arrange();
+      const lapsed = await sut.givenRequestWithoutPaymentAt(
+        'Léa T.',
+        FIRST_REQUEST_AT,
+      );
+
+      await sut.whenRequestedAtInstantBy(
+        'Karim B.',
+        ONE_MILLISECOND_PAST_FORTY_EIGHT_HOURS,
+        { from: '2026-12-01', to: '2026-12-02' },
+      );
+
+      sut.thenNotificationsAre([
+        {
+          kind: 'RENTAL_REQUEST_EXPIRED',
+          recipientId: 'account-lea',
+          requestId: lapsed,
+        },
+        {
+          kind: 'RENTAL_REQUEST_UNANSWERED',
+          recipientId: 'account-Marc D.',
+          requestId: lapsed,
+        },
+      ]);
+    });
   });
 });
 
@@ -451,5 +478,27 @@ describe('RequestRental, never blocked by one own unpaid request @SPEC-004', () 
     sut.thenTheRequestIs(first, 'ABANDONED');
     sut.thenItsPaymentPageWasClosed(first);
     sut.thenTheRequestIs(second, 'AWAITING_PAYMENT');
+  });
+});
+
+describe('RequestRental — platform fee', () => {
+  it('freezes the fifteen per cent commission on the request, to the nearest cent', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+      pricing: { day: 1333, week: null, month: null },
+    });
+
+    await sut.whenRequestedBy('Léa T.', {
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+      from: '2026-10-10',
+      to: '2026-10-12',
+      requestedAt: '2026-10-01',
+    });
+
+    // 3 jours × 13,33 € = 39,99 € ; 15 % = 5,9985 €, soit 6,00 €.
+    sut.thenPlatformFeeInCentsIs(600);
   });
 });

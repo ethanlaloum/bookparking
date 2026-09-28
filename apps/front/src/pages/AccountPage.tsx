@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Clock3,
   Euro,
+  MapPinCheck,
   LogOut,
   Moon,
   ShieldCheck,
@@ -11,7 +12,7 @@ import {
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import {
   changePasswordRequested,
@@ -20,7 +21,13 @@ import {
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
 import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
-import { moneyLabelOf, rentedNightCount } from '../app/rental/domain/entities/RentalRequestView';
+import { readPayoutsRequested } from '../app/payout/domain/use-cases/read-payouts/readPayoutsEpic';
+import {
+  canConfirmArrival,
+  moneyLabelOf,
+  rentedNightCount,
+} from '../app/rental/domain/entities/RentalRequestView';
+import { confirmArrivalRequested } from '../app/rental/domain/use-cases/confirm-arrival/confirmArrivalEpic';
 import { cancellationTermsOf } from '../app/rental/domain/entities/RentalCancellation';
 import type { RentalRequestView } from '../app/rental/domain/entities/RentalRequestView';
 import { cancelRentalRequested } from '../app/rental/domain/use-cases/cancel-rental/cancelRentalEpic';
@@ -39,6 +46,7 @@ import { Loader } from '../components/Loader';
 import { MetricTile } from '../components/MetricTile';
 import { Notice } from '../components/Notice';
 import { OwnerListingRow } from '../components/OwnerListingRow';
+import { PayoutsPanel } from '../components/PayoutsPanel';
 import { RentalRequestRow } from '../components/RentalRequestRow';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
@@ -47,8 +55,15 @@ import { Field } from '../components/ui/field';
 import { Input } from '../components/ui/input';
 import { Skeleton } from '../components/ui/skeleton';
 import { Spinner } from '../components/ui/spinner';
+import { ACCOUNT_TAB_PARAM, accountTabOfSlug } from '../lib/accountTabs';
 import { cn } from '../lib/cn';
-import { formatCents, formatDay } from '../lib/format';
+import { formatCents, formatCentsPrecisely, formatDay } from '../lib/format';
+import {
+  selectMoneyWaitsForBankDetails,
+  selectPayoutSummary,
+  selectPayoutsError,
+  selectPayoutsLoading,
+} from '../selectors/payout/payoutSelectors';
 import {
   selectChangePasswordError,
   selectChangePasswordLoading,
@@ -84,7 +99,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { changePasswordSchema, type ChangePasswordValues } from './changePasswordSchema';
 
-const PERSONAL_TABS = ['overview', 'places', 'received', 'mine', 'settings'] as const;
+const PERSONAL_TABS = ['overview', 'places', 'received', 'mine', 'payouts', 'settings'] as const;
 
 // Les quatre onglets d'administration ne sont montés que pour un compte dont
 // `GET /admin/access` a répondu 204 — et leur code n'est téléchargé qu'à ce
@@ -122,7 +137,18 @@ const TAB_CLASS =
 export const AccountPage = () => {
   const { t } = useTranslation(['account', 'common', 'listing', 'admin']);
   const dispatch = useAppDispatch();
-  const [tab, setTab] = useState<Tab>('overview');
+  // Une notification, ou le lien d'un e-mail, ouvre l'onglet qu'elle concerne.
+  const [searchParams] = useSearchParams();
+  const requestedTab = accountTabOfSlug(searchParams.get(ACCOUNT_TAB_PARAM));
+  const [tab, setTab] = useState<Tab>(requestedTab ?? 'overview');
+  const [followedTab, setFollowedTab] = useState(requestedTab);
+  // Déjà sur le compte, suivre une autre notification change l'adresse sans
+  // remonter la page : l'onglet suit l'adresse pendant le rendu, jamais dans
+  // un effet.
+  if (requestedTab !== followedTab) {
+    setFollowedTab(requestedTab);
+    if (requestedTab !== null) setTab(requestedTab);
+  }
 
   const session = useAppSelector(selectSession);
   const avatar = useAppSelector(selectOwnAvatar);
@@ -180,6 +206,11 @@ export const AccountPage = () => {
     );
   };
 
+  const payoutSummary = useAppSelector(selectPayoutSummary);
+  const payoutsLoading = useAppSelector(selectPayoutsLoading);
+  const payoutsError = useAppSelector(selectPayoutsError);
+  const moneyWaits = useAppSelector(selectMoneyWaitsForBankDetails);
+
   const passwordLoading = useAppSelector(selectChangePasswordLoading);
   const passwordError = useAppSelector(selectChangePasswordError);
   const passwordSuccess = useAppSelector(selectChangePasswordSuccess);
@@ -197,7 +228,17 @@ export const AccountPage = () => {
     dispatch(listOwnerListingsRequested());
     dispatch(listReceivedRentalRequestsRequested());
     dispatch(listMyRentalRequestsRequested());
+    dispatch(readPayoutsRequested());
   }, [dispatch]);
+
+  // Suivre une notification relit la liste qu'elle concerne : la page déjà
+  // ouverte montrerait sinon la demande d'avant son acceptation.
+  useEffect(() => {
+    if (requestedTab === 'received') dispatch(listReceivedRentalRequestsRequested());
+    if (requestedTab === 'mine') dispatch(listMyRentalRequestsRequested());
+    // Au retour des pages de Stripe (`?onglet=versements&stripe=retour`).
+    if (requestedTab === 'payouts') dispatch(readPayoutsRequested());
+  }, [dispatch, requestedTab]);
 
   useEffect(() => {
     if (passwordSuccess) form.reset();
@@ -391,6 +432,14 @@ export const AccountPage = () => {
           <Notice tone="info" className="mb-4">
             {t('account:received.hint')}
           </Notice>
+          {moneyWaits && (
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-warn/30 bg-warn-bg px-4 py-3 sm:flex-row sm:items-center">
+              <p className="flex-1 text-sm font-medium text-warn">{t('account:payouts.waiting')}</p>
+              <Button size="sm" variant="outline" onClick={() => setTab('payouts')}>
+                {t('account:payouts.waitingAction')}
+              </Button>
+            </div>
+          )}
           {confirmError !== null && (
             <Notice tone="error" title={t('common:error.title')} className="mb-4">
               {confirmError}
@@ -407,6 +456,15 @@ export const AccountPage = () => {
                   <RentalRequestRow
                     key={request.id}
                     request={request}
+                    perspective="owner"
+                    moneyLabel={
+                      request.ownerShareInCents === null
+                        ? undefined
+                        : t('account:payouts.receive', {
+                            amount: formatCentsPrecisely(request.ownerShareInCents),
+                            price: formatCentsPrecisely(request.priceInCents),
+                          })
+                    }
                     action={
                       <div className="flex flex-wrap items-center gap-2">
                         {cancelButtonFor(request, 'owner')}
@@ -454,13 +512,46 @@ export const AccountPage = () => {
                       key={request.id}
                       request={request}
                       moneyLabel={t(`account:money.${money.key}`, { amount: money.amount })}
-                      action={cancelButtonFor(request, 'renter') ?? undefined}
+                      action={
+                        <div className="flex flex-wrap items-center gap-2">
+                          {canConfirmArrival(request, now) && (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                dispatch(confirmArrivalRequested({ requestId: request.id }))
+                              }
+                            >
+                              <MapPinCheck className="size-4" aria-hidden="true" />
+                              {t('account:arrival.action')}
+                            </Button>
+                          )}
+                          {request.arrivedAt !== null && (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ok">
+                              <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                              {t('account:arrival.done')}
+                            </span>
+                          )}
+                          {cancelButtonFor(request, 'renter')}
+                        </div>
+                      }
                     />
                   );
                 })}
               </ul>
             </Card>
           )}
+        </section>
+      )}
+
+      {tab === 'payouts' && (
+        <section className="mt-8">
+          {payoutsLoading && <Skeleton className="h-48" />}
+          {payoutsError !== null && payoutSummary === null && (
+            <Notice tone="error" title={t('common:error.title')}>
+              {payoutsError}
+            </Notice>
+          )}
+          {payoutSummary !== null && <PayoutsPanel summary={payoutSummary} />}
         </section>
       )}
 

@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-// Les e-mails que l'api sait rédiger. Un moment clé de plus ajoute son type
-// ici, dans `outgoing_emails_kind_check` et dans `composeEmail` — les trois
-// ensemble, sans quoi l'insertion ou la rédaction échoue.
-export type OutgoingEmailKind = 'WELCOME';
+import { NotificationKind } from '../../../notification-outbox/domain/entities/Notification';
+
+// Les e-mails que l'api sait rédiger : la bienvenue, et un par type de
+// notification. Un moment clé de plus ajoute son type ici, dans
+// `outgoing_emails_kind_check` et dans `composeEmail` — les trois ensemble,
+// sans quoi l'insertion ou la rédaction échoue.
+export type OutgoingEmailKind = 'WELCOME' | NotificationKind;
 
 export type OutgoingEmailStatus = 'PENDING' | 'SENT' | 'FAILED';
 
@@ -38,6 +41,25 @@ export class OutgoingEmail {
     return new OutgoingEmail({
       id: randomUUID(),
       kind: 'WELCOME',
+      recipient: params.recipient,
+      status: 'PENDING',
+      attempts: 0,
+      queuedAt: params.queuedAt,
+      sentAt: null,
+      failedAt: null,
+    });
+  }
+
+  // L'e-mail d'une notification ne dit ni l'adresse de la place ni les dates :
+  // il renvoie au site, où la cloche les montre à qui est connecté.
+  public static aboutNotification(params: {
+    kind: NotificationKind;
+    recipient: string;
+    queuedAt: Date;
+  }): OutgoingEmail {
+    return new OutgoingEmail({
+      id: randomUUID(),
+      kind: params.kind,
       recipient: params.recipient,
       status: 'PENDING',
       attempts: 0,

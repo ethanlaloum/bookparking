@@ -153,3 +153,90 @@ describe('CancelRental @SPEC-005', () => {
     sut.thenRefusedWith(result, RentalRequestNotFoundError);
   });
 });
+
+describe('CancelRental — notifications', () => {
+  it('tells the owner when the renter cancels', async () => {
+    const sut = createCancelRentalSUT();
+    const id = await sut.givenLeaRentalConfirmed();
+
+    await sut.whenCancelledBy(sut.lea, id, FIVE_DAYS_BEFORE);
+
+    sut.thenNotificationsAre([
+      {
+        kind: 'RENTAL_CANCELLED_BY_RENTER',
+        recipientId: sut.marc,
+        requestId: id,
+      },
+    ]);
+    sut.thenNotificationsWereCreatedAt([FIVE_DAYS_BEFORE]);
+  });
+
+  it('tells the owner when the renter withdraws a request still awaiting him', async () => {
+    const sut = createCancelRentalSUT();
+    const id = await sut.givenLeaHoldPlaced();
+
+    await sut.whenCancelledBy(sut.lea, id, FIVE_DAYS_BEFORE);
+
+    sut.thenNotificationsAre([
+      {
+        kind: 'RENTAL_CANCELLED_BY_RENTER',
+        recipientId: sut.marc,
+        requestId: id,
+      },
+    ]);
+  });
+
+  it('tells the renter her request was declined when the owner cancels it before accepting', async () => {
+    const sut = createCancelRentalSUT();
+    const id = await sut.givenLeaHoldPlaced();
+
+    await sut.whenCancelledBy(sut.marc, id, FIVE_DAYS_BEFORE);
+
+    sut.thenNotificationsAre([
+      { kind: 'RENTAL_REQUEST_DECLINED', recipientId: sut.lea, requestId: id },
+    ]);
+  });
+
+  it('tells the renter her booking was cancelled when the owner cancels it after accepting', async () => {
+    const sut = createCancelRentalSUT();
+    const id = await sut.givenLeaRentalConfirmed();
+
+    await sut.whenCancelledBy(sut.marc, id, FIVE_DAYS_BEFORE);
+
+    sut.thenNotificationsAre([
+      {
+        kind: 'RENTAL_CANCELLED_BY_OWNER',
+        recipientId: sut.lea,
+        requestId: id,
+      },
+    ]);
+  });
+
+  it('tells once when cancelled twice', async () => {
+    const sut = createCancelRentalSUT();
+    const id = await sut.givenLeaRentalConfirmed();
+    await sut.whenCancelledBy(sut.lea, id, FIVE_DAYS_BEFORE);
+
+    await sut.whenCancelledBy(sut.lea, id, FIVE_DAYS_BEFORE);
+
+    sut.thenNotificationsAre([
+      {
+        kind: 'RENTAL_CANCELLED_BY_RENTER',
+        recipientId: sut.marc,
+        requestId: id,
+      },
+    ]);
+  });
+
+  it('tells nobody when the cancellation is refused', async () => {
+    const sut = createCancelRentalSUT();
+    const started = await sut.givenLeaRentalConfirmed();
+    const unpaid = await sut.givenLeaRequestAwaitingPayment();
+
+    await sut.whenCancelledBy(sut.lea, started, ONCE_STARTED);
+    await sut.whenCancelledBy(sut.lea, unpaid, FIVE_DAYS_BEFORE);
+    await sut.whenCancelledBy(sut.paul, started, FIVE_DAYS_BEFORE);
+
+    sut.thenNotificationsAre([]);
+  });
+});

@@ -1,13 +1,17 @@
 import { useTranslation } from 'react-i18next';
 
+import { BookingCelebration } from './components/BookingCelebration';
 import { ConsentManager } from './components/ConsentManager';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { useScrollToTopOnNavigation } from './hooks/useScrollToTopOnNavigation';
 import { Routes } from './routes/Routes';
+import { selectIsAuthenticated } from './selectors/auth/authSelectors';
+import { useAppSelector } from './store/redux';
 
 export const App = () => {
   const { t } = useTranslation('common');
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
   useScrollToTopOnNavigation();
 
   return (
@@ -24,6 +28,7 @@ export const App = () => {
       </main>
       <Footer />
       <ConsentManager />
+      {isAuthenticated && <BookingCelebration />}
     </div>
   );
 };

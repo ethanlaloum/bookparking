@@ -143,3 +143,54 @@ describe('SweepRentalRequests @SPEC-004', () => {
     sut.thenRefundsAre([requestId]);
   });
 });
+
+describe('SweepRentalRequests — notifications', () => {
+  it('tells the renter her request expired and the owner he let it lapse', async () => {
+    const sut = createSweepRentalRequestsSUT();
+    const requestId = await sut.givenHoldPlacedAt('2026-10-01T07:05:00.000Z');
+
+    const result = await sut.whenSweepingAt('2026-10-03T07:05:00.000Z');
+
+    sut.thenReportIs(result, {
+      abandoned: 0,
+      expired: 1,
+      settled: 1,
+      stillOwed: 0,
+    });
+    sut.thenNotificationsAre([
+      { kind: 'RENTAL_REQUEST_EXPIRED', recipientId: 'account-lea', requestId },
+      {
+        kind: 'RENTAL_REQUEST_UNANSWERED',
+        recipientId: 'account-marc',
+        requestId,
+      },
+    ]);
+    sut.thenNotificationsWereCreatedAt([
+      '2026-10-03T07:05:00.000Z',
+      '2026-10-03T07:05:00.000Z',
+    ]);
+  });
+
+  it('tells once when two sweeps pass over the same lapsed request', async () => {
+    const sut = createSweepRentalRequestsSUT();
+    await sut.givenHoldPlacedAt('2026-10-01T07:05:00.000Z');
+    await sut.whenSweepingAt('2026-10-03T07:05:00.000Z');
+
+    await sut.whenSweepingAt('2026-10-03T07:10:00.000Z');
+
+    sut.thenNotificationsWereCreatedAt([
+      '2026-10-03T07:05:00.000Z',
+      '2026-10-03T07:05:00.000Z',
+    ]);
+  });
+
+  it('tells nobody about a request still within its delay, nor about an unpaid one it abandons', async () => {
+    const sut = createSweepRentalRequestsSUT();
+    await sut.givenHoldPlacedAt('2026-10-01T07:05:00.000Z');
+    await sut.givenLeaRequestAwaitingPaymentSince('2026-10-01T07:00:00.000Z');
+
+    await sut.whenSweepingAt('2026-10-03T07:04:00.000Z');
+
+    sut.thenNotificationsAre([]);
+  });
+});

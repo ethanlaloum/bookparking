@@ -3,6 +3,8 @@ import type { AuthState } from '../app/auth/store/AuthSlice';
 import type { BackOfficeState } from '../app/back-office/store/BackOfficeSlice';
 import type { ConsentState } from '../app/consent/store/ConsentSlice';
 import type { ListingState } from '../app/listing/store/ListingSlice';
+import type { NotificationState } from '../app/notification/store/NotificationSlice';
+import type { PayoutState } from '../app/payout/store/PayoutSlice';
 import type { RentalState } from '../app/rental/store/RentalSlice';
 
 export interface CoreState {
@@ -11,6 +13,8 @@ export interface CoreState {
   backOffice: BackOfficeState;
   consent: ConsentState;
   listing: ListingState;
+  notification: NotificationState;
+  payout: PayoutState;
   rental: RentalState;
 }
 

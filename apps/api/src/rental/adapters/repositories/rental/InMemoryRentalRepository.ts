@@ -11,6 +11,7 @@ import { CancellingParty } from '../../../domain/entities/RentalCancellation';
 import {
   AbandonedUnpaidRequest,
   IdempotentRentalRequest,
+  LapsedRentalRequest,
   RentalRepository,
   RentalRequestSummary,
   RentalRequestView,
@@ -24,11 +25,19 @@ export class InMemoryRentalRepository implements RentalRepository {
   public confirmedRequestIds = new Set<string>();
   public expiredRequestIds = new Set<string>();
   public confirmations: { requestId: string; confirmedAt: Date }[] = [];
+  // Une demande dont l'écriture de confirmation ne trouve plus la ligne en
+  // attente, comme le `WHERE status = 'PENDING'` du vrai dépôt.
+  public confirmRequestRacesWith = new Set<string>();
   // Le double n'a pas de jointure : l'adresse, le box et le propriétaire qu'un
   // vrai SELECT lirait sur `listings` sont déposés ici par le test.
   public placeByRequestId = new Map<
     string,
-    { listingId: string; address: string; box: string }
+    {
+      listingId: string;
+      address: string;
+      box: string;
+      accessInstructions?: string;
+    }
   >();
   // Une demande que le test pousse directement dans `rentalRequestList`, sans
   // passer par `createRequest`, n'a pas d'entrée ici : elle se lit comme une
@@ -41,6 +50,7 @@ export class InMemoryRentalRepository implements RentalRepository {
   public refundIdById = new Map<string, string>();
   public checkoutUrlById = new Map<string, string>();
   public idempotencyKeyById = new Map<string, string>();
+  public arrivedAtById = new Map<string, Date>();
   public cancellationById = new Map<
     string,
     { party: CancellingParty; cancelledAt: Date }
@@ -129,12 +139,14 @@ export class InMemoryRentalRepository implements RentalRepository {
   public async confirmRequest(
     requestId: string,
     confirmedAt: Date,
-  ): Promise<void> {
-    if (this.statusOf(requestId) !== 'PENDING') return;
+  ): Promise<boolean> {
+    if (this.confirmRequestRacesWith.has(requestId)) return false;
+    if (this.statusOf(requestId) !== 'PENDING') return false;
     this.setStatus(requestId, 'CONFIRMED');
     if (this.moneyOf(requestId) === 'AUTHORIZED')
       this.moneyById.set(requestId, 'CAPTURED');
     this.confirmations.push({ requestId, confirmedAt });
+    return true;
   }
 
   public async findAllByRenter(renterId: string): Promise<RentalRequestView[]> {
@@ -163,6 +175,11 @@ export class InMemoryRentalRepository implements RentalRepository {
         money: this.moneyOf(request.id),
         requestedAt: state.requestedAt,
         startsAt: state.period.from,
+        endsAt: state.period.to,
+        holdPlacedAt: this.holdPlacedAtById.get(request.id) ?? null,
+        accessInstructions: place?.accessInstructions ?? '',
+        platformFeeInCents: state.platformFeeInCents ?? null,
+        arrivedAt: this.arrivedAtById.get(request.id) ?? null,
         freeCancellationUntil: state.freeCancellationUntil ?? null,
         confirmedAt:
           this.confirmations.find(
@@ -172,17 +189,27 @@ export class InMemoryRentalRepository implements RentalRepository {
     });
   }
 
-  public async expireRequestsPendingSince(deadline: Date): Promise<number> {
-    let expired = 0;
+  public async expireRequestsPendingSince(
+    deadline: Date,
+  ): Promise<LapsedRentalRequest[]> {
+    const expired: LapsedRentalRequest[] = [];
     for (const request of this.rentalRequestList) {
       if (this.statusOf(request.id) !== 'PENDING') continue;
       if (this.moneyOf(request.id) !== 'NONE') continue;
       if (request.toState().requestedAt.getTime() >= deadline.getTime())
         continue;
       this.setStatus(request.id, 'EXPIRED');
-      expired += 1;
+      expired.push(this.lapsed(request));
     }
     return expired;
+  }
+
+  private lapsed(request: RentalRequest): LapsedRentalRequest {
+    return {
+      requestId: request.id,
+      renterId: request.toState().renterId,
+      ownerId: this.ownerIdByRequestId.get(request.id) ?? '',
+    };
   }
 
   public async attachPaymentPage(
@@ -260,6 +287,16 @@ export class InMemoryRentalRepository implements RentalRepository {
     return true;
   }
 
+  public async markArrived(
+    requestId: string,
+    arrivedAt: Date,
+  ): Promise<boolean> {
+    if (this.statusOf(requestId) !== 'CONFIRMED') return false;
+    if (this.arrivedAtById.has(requestId)) return false;
+    this.arrivedAtById.set(requestId, arrivedAt);
+    return true;
+  }
+
   public async markAbandoned(requestId: string): Promise<boolean> {
     if (this.statusOf(requestId) !== 'AWAITING_PAYMENT') return false;
     this.setStatus(requestId, 'ABANDONED');
@@ -297,8 +334,10 @@ export class InMemoryRentalRepository implements RentalRepository {
     return abandoned;
   }
 
-  public async expireHoldsPlacedSince(deadline: Date): Promise<number> {
-    let expired = 0;
+  public async expireHoldsPlacedSince(
+    deadline: Date,
+  ): Promise<LapsedRentalRequest[]> {
+    const expired: LapsedRentalRequest[] = [];
     for (const request of this.rentalRequestList) {
       if (this.statusOf(request.id) !== 'PENDING') continue;
       if (this.moneyOf(request.id) !== 'AUTHORIZED') continue;
@@ -306,7 +345,7 @@ export class InMemoryRentalRepository implements RentalRepository {
       if (!placedAt || placedAt.getTime() > deadline.getTime()) continue;
       this.setStatus(request.id, 'EXPIRED');
       this.moneyById.set(request.id, 'RELEASE_DUE');
-      expired += 1;
+      expired.push(this.lapsed(request));
     }
     return expired;
   }

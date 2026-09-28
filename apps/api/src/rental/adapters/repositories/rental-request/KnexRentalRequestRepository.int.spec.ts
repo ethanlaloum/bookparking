@@ -276,6 +276,33 @@ describe('KnexRentalRequestRepository @SPEC-004', () => {
     });
   });
 
+  it('reads the access instructions, the hold time and the last rented instant into the views', async () => {
+    const sut = createKnexRentalRequestRepositorySUT();
+    await sut.givenActiveListing({ owner: 'Marc D.', ...BARLA });
+    const lea = await sut.whenRequestingWithoutPaying(
+      { renter: 'Léa T.', ...BARLA, ...LEA_DAYS },
+      LEA_ASKS_AT,
+    );
+    if (Either.isLeft(lea)) throw new Error('arrange failed');
+    const id = lea.right.rentalRequest.id;
+    await sut
+      .repository()
+      .markHoldPlaced(id, 'pi_lea', new Date('2026-10-01T07:05:00.000Z'));
+
+    const [view] = await sut.repository().findAllByRenter('account-lea');
+
+    expect({
+      holdPlacedAt: view?.holdPlacedAt,
+      endsAt: view?.endsAt,
+      accessInstructions: view?.accessInstructions,
+    }).toEqual({
+      holdPlacedAt: new Date('2026-10-01T07:05:00.000Z'),
+      endsAt: new Date(`${LEA_DAYS.to}T21:59:59.999Z`),
+      accessInstructions:
+        'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
+    });
+  });
+
   it('writes the expiry and the release owed on the same row, in one statement @EX-004-35', async () => {
     const sut = createKnexRentalRequestRepositorySUT();
     await sut.givenActiveListing({ owner: 'Marc D.', ...BARLA });
@@ -293,7 +320,9 @@ describe('KnexRentalRequestRepository @SPEC-004', () => {
       .repository()
       .expireHoldsPlacedSince(new Date('2026-10-01T07:05:00.000Z'));
 
-    expect(expired).toEqual(1);
+    expect(expired).toEqual([
+      { requestId: id, renterId: 'account-lea', ownerId: 'account-marc' },
+    ]);
     await sut.thenStoredMoneyRowIs(id, {
       status: 'EXPIRED',
       money: 'RELEASE_DUE',

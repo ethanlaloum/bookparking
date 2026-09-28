@@ -48,7 +48,16 @@ export interface RentalRequestView {
   requestedAt: Date;
   confirmedAt: Date | null;
   startsAt: Date;
+  // Le dernier instant loué, heure de Paris, et l'instant de l'empreinte :
+  // ce qui borne les consignes et l'échéance de réponse.
+  endsAt: Date;
+  holdPlacedAt: Date | null;
   freeCancellationUntil: Date | null;
+  // `listings.access_description`, lue telle quelle : c'est le cas d'usage
+  // qui décide qui la voit (`presentRentalRequest`).
+  accessInstructions: string;
+  platformFeeInCents: number | null;
+  arrivedAt: Date | null;
 }
 
 // Ce qu'une demande déjà créée sous un identifiant d'intention permet de
@@ -57,6 +66,14 @@ export interface RentalRequestView {
 export interface IdempotentRentalRequest {
   rentalRequest: RentalRequest;
   checkoutUrl: string | null;
+}
+
+// Une demande que l'expiration vient d'écrire, et ses deux parties : le
+// conducteur et le loueur en sont prévenus dans la même transaction.
+export interface LapsedRentalRequest {
+  requestId: string;
+  renterId: string;
+  ownerId: string;
 }
 
 export interface AbandonedUnpaidRequest {
@@ -77,17 +94,18 @@ export interface RentalRepository {
     requestId: string,
     trx?: GenericTransaction,
   ): Promise<RentalRequestSummary | null>;
+  // Rend `false` quand la demande n'était plus en attente au moment d'écrire.
   confirmRequest(
     requestId: string,
     confirmedAt: Date,
     trx?: GenericTransaction,
-  ): Promise<void>;
-  // Rend le nombre de demandes expirées, pour que l'appelant puisse le
-  // journaliser ou l'affirmer dans un test.
+  ): Promise<boolean>;
+  // Rend les demandes que cet appel a expirées, et elles seules : une demande
+  // déjà expirée n'y revient pas, ni ses parties n'en sont prévenues deux fois.
   expireRequestsPendingSince(
     deadline: Date,
     trx?: GenericTransaction,
-  ): Promise<number>;
+  ): Promise<LapsedRentalRequest[]>;
   findAllByRenter(
     renterId: string,
     trx?: GenericTransaction,
@@ -140,6 +158,13 @@ export interface RentalRepository {
     trx?: GenericTransaction,
   ): Promise<boolean>;
   markAbandoned(requestId: string, trx?: GenericTransaction): Promise<boolean>;
+  // Filtre sur `CONFIRMED` et `arrived_at IS NULL` : l'arrivée ne s'écrit
+  // qu'une fois, et jamais sur une réservation annulée entre-temps.
+  markArrived(
+    requestId: string,
+    arrivedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
   oweReleaseOfLateHold(
     requestId: string,
     paymentId: string,
@@ -156,7 +181,7 @@ export interface RentalRepository {
   expireHoldsPlacedSince(
     deadline: Date,
     trx?: GenericTransaction,
-  ): Promise<number>;
+  ): Promise<LapsedRentalRequest[]>;
   findMoneyOwed(trx?: GenericTransaction): Promise<MoneyOwed[]>;
   markReleased(requestId: string, trx?: GenericTransaction): Promise<boolean>;
   markRefunded(

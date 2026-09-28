@@ -15,7 +15,27 @@ import { ReadOverview } from './back-office/domain/usecases/read-overview/ReadOv
 import { SuspendAccount } from './back-office/domain/usecases/suspend-account/SuspendAccount';
 import { UnpublishAnyListing } from './back-office/domain/usecases/unpublish-any-listing/UnpublishAnyListing';
 import { KnexListingRepository } from './listing/adapters/repositories/listing/KnexListingRepository';
+import { PayoutSweepScheduler } from './payout/adapters/cron/PayoutSweepScheduler';
+import { KnexPayoutRepository } from './payout/adapters/repositories/payout/KnexPayoutRepository';
+import { PayoutController } from './payout/adapters/rest/controllers/payout/payout.controller';
+import { StripePayoutProvider } from './payout/adapters/services/stripe-connect/StripePayoutProvider';
+import { OpenPayoutDashboard } from './payout/domain/usecases/open-payout-dashboard/OpenPayoutDashboard';
+import { ReadPayouts } from './payout/domain/usecases/read-payouts/ReadPayouts';
+import { SendDuePayouts } from './payout/domain/usecases/send-due-payouts/SendDuePayouts';
+import { StartPayoutOnboarding } from './payout/domain/usecases/start-payout-onboarding/StartPayoutOnboarding';
 import { EmailSweepScheduler } from './notification/adapters/cron/EmailSweepScheduler';
+import { PushSweepScheduler } from './notification/adapters/cron/PushSweepScheduler';
+import { KnexPushDeviceRepository } from './notification/adapters/repositories/push-device/KnexPushDeviceRepository';
+import { KnexPushQueue } from './notification/adapters/repositories/push-queue/KnexPushQueue';
+import { ExpoPushSender } from './notification/adapters/services/expo-push/ExpoPushSender';
+import { ForgetPushDevice } from './notification/domain/usecases/forget-push-device/ForgetPushDevice';
+import { RegisterPushDevice } from './notification/domain/usecases/register-push-device/RegisterPushDevice';
+import { SendPendingPushes } from './notification/domain/usecases/send-pending-pushes/SendPendingPushes';
+import { KnexNotificationInbox } from './notification/adapters/repositories/notification-inbox/KnexNotificationInbox';
+import { NotificationController } from './notification/adapters/rest/controllers/notification/notification.controller';
+import { ListNotifications } from './notification/domain/usecases/list-notifications/ListNotifications';
+import { MarkNotificationRead } from './notification/domain/usecases/mark-notification-read/MarkNotificationRead';
+import { MarkNotificationsRead } from './notification/domain/usecases/mark-notifications-read/MarkNotificationsRead';
 import { ResendEmailSender } from './notification/adapters/services/resend/ResendEmailSender';
 import { SendQueuedEmails } from './notification/domain/usecases/send-queued-emails/SendQueuedEmails';
 import { InMemoryPhotoStorage } from './listing/adapters/services/photo-storage/InMemoryPhotoStorage';
@@ -39,6 +59,7 @@ import {
 import { StripeWebhookReader } from './rental/adapters/services/stripe-webhook/StripeWebhookReader';
 import { AbandonRentalRequest } from './rental/domain/usecases/abandon-rental-request/AbandonRentalRequest';
 import { CancelRental } from './rental/domain/usecases/cancel-rental/CancelRental';
+import { ConfirmArrival } from './rental/domain/usecases/confirm-arrival/ConfirmArrival';
 import { ConfirmRentalRequest } from './rental/domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { ListOwnerRentalRequests } from './rental/domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from './rental/domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
@@ -46,6 +67,7 @@ import { RecordPaymentEvent } from './rental/domain/usecases/record-payment-even
 import { RequestRental } from './rental/domain/usecases/request-rental/RequestRental';
 import { SweepRentalRequests } from './rental/domain/usecases/sweep-rental-requests/SweepRentalRequests';
 import { KnexEmailOutbox } from './shared/email-outbox/adapters/repositories/KnexEmailOutbox';
+import { KnexNotificationOutbox } from './shared/notification-outbox/adapters/repositories/KnexNotificationOutbox';
 import { KnexUnitOfWork } from './shared/unit-of-work/KnexUnitOfWork';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
@@ -63,6 +85,7 @@ import { RegisterAccount } from './user-management/domain/usecases/register-acco
 import { SignIn } from './user-management/domain/usecases/sign-in/SignIn';
 
 const DATABASE_CONNECTION = 'DATABASE_CONNECTION';
+const PAYOUT_PROVIDER = 'PayoutProvider';
 const STRIPE_CLIENT = 'STRIPE_CLIENT';
 const PAYMENT_GATEWAY = 'PaymentGateway';
 const HUMAN_PROOF = 'HumanProof';
@@ -72,6 +95,14 @@ type DatabaseConnection = ReturnType<typeof knex>;
 const typedAs = <T>(connection: DatabaseConnection): T =>
   connection as unknown as T;
 
+// Chaque moment clé d'une demande prévient dans sa propre transaction : la
+// notification et son e-mail partent avec l'écriture qui les motive, ou pas.
+const notificationOutboxOn = (connection: DatabaseConnection) =>
+  new KnexNotificationOutbox(
+    connection,
+    new KnexEmailOutbox(typedAs(connection)),
+  );
+
 @Module({
   controllers: [
     AccountController,
@@ -80,6 +111,8 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
     RentalRequestController,
     PaymentWebhookController,
     BackOfficeController,
+    NotificationController,
+    PayoutController,
   ],
   providers: [
     { provide: DATABASE_CONNECTION, useFactory: () => knex(buildKnexConfig()) },
@@ -224,6 +257,67 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       inject: [STRIPE_CLIENT],
     },
     {
+      provide: PAYOUT_PROVIDER,
+      useFactory: (stripe: StripeClient) =>
+        new StripePayoutProvider(stripe, environment.frontBaseUrl()),
+      inject: [STRIPE_CLIENT],
+    },
+    {
+      provide: ReadPayouts,
+      useFactory: (
+        connection: DatabaseConnection,
+        provider: StripePayoutProvider,
+      ) =>
+        new ReadPayouts(
+          new KnexPayoutRepository(connection),
+          provider,
+          environment.payoutReleaseDelayInHours(),
+          environment.platformFeePercent(),
+        ),
+      inject: [DATABASE_CONNECTION, PAYOUT_PROVIDER],
+    },
+    {
+      provide: StartPayoutOnboarding,
+      useFactory: (
+        connection: DatabaseConnection,
+        provider: StripePayoutProvider,
+      ) =>
+        new StartPayoutOnboarding(
+          new KnexPayoutRepository(connection),
+          provider,
+        ),
+      inject: [DATABASE_CONNECTION, PAYOUT_PROVIDER],
+    },
+    {
+      provide: OpenPayoutDashboard,
+      useFactory: (
+        connection: DatabaseConnection,
+        provider: StripePayoutProvider,
+      ) =>
+        new OpenPayoutDashboard(new KnexPayoutRepository(connection), provider),
+      inject: [DATABASE_CONNECTION, PAYOUT_PROVIDER],
+    },
+    {
+      // D-22 : l'argent libéré part vers le loueur au plus un balayage plus tard.
+      provide: PayoutSweepScheduler,
+      useFactory: (
+        connection: DatabaseConnection,
+        provider: StripePayoutProvider,
+      ) =>
+        new PayoutSweepScheduler(
+          new SendDuePayouts(
+            new KnexPayoutRepository(connection),
+            provider,
+            notificationOutboxOn(connection),
+            new KnexUnitOfWork(connection),
+            environment.payoutReleaseDelayInHours(),
+            environment.platformFeePercent(),
+          ),
+          environment.payoutSweepIntervalInSeconds() * 1000,
+        ),
+      inject: [DATABASE_CONNECTION, PAYOUT_PROVIDER],
+    },
+    {
       provide: StripeWebhookReader,
       useFactory: (stripe: StripeClient) =>
         new StripeWebhookReader(stripe, environment.stripeWebhookSecret()),
@@ -239,8 +333,11 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
           new KnexPublishedListingReader(typedAs(connection)),
           new KnexRentalRequestRepository(typedAs(connection)),
           paymentGateway,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
           environment.rentalRequestExpiryInHours(),
           environment.freeCancellationHoursBeforeStart(),
+          environment.platformFeePercent(),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
     },
@@ -253,6 +350,8 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
         new CancelRental(
           new KnexRentalRequestRepository(typedAs(connection)),
           paymentGateway,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
           environment.freeCancellationHoursBeforeStart(),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
@@ -266,8 +365,18 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
         new ConfirmRentalRequest(
           new KnexRentalRequestRepository(typedAs(connection)),
           paymentGateway,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
+    },
+    {
+      provide: ConfirmArrival,
+      useFactory: (connection: DatabaseConnection) =>
+        new ConfirmArrival(
+          new KnexRentalRequestRepository(typedAs(connection)),
+        ),
+      inject: [DATABASE_CONNECTION],
     },
     {
       provide: AbandonRentalRequest,
@@ -290,6 +399,8 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
         new RecordPaymentEvent(
           new KnexRentalRequestRepository(typedAs(connection)),
           paymentGateway,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
     },
@@ -302,6 +413,8 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
         new SweepRentalRequests(
           new KnexRentalRequestRepository(typedAs(connection)),
           paymentGateway,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
           environment.rentalRequestExpiryInHours(),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
@@ -320,6 +433,7 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       useFactory: (connection: DatabaseConnection) =>
         new ListRenterRentalRequests(
           new KnexRentalRequestRepository(typedAs(connection)),
+          environment.rentalRequestExpiryInHours(),
         ),
       inject: [DATABASE_CONNECTION],
     },
@@ -328,6 +442,7 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
       useFactory: (connection: DatabaseConnection) =>
         new ListOwnerRentalRequests(
           new KnexRentalRequestRepository(typedAs(connection)),
+          environment.rentalRequestExpiryInHours(),
         ),
       inject: [DATABASE_CONNECTION],
     },
@@ -384,9 +499,59 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
     },
     {
       provide: CancelRentalRequest,
-      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
-        new CancelRentalRequest(backOfficeRepository),
-      inject: ['BackOfficeRepository'],
+      useFactory: (
+        backOfficeRepository: KnexBackOfficeRepository,
+        connection: DatabaseConnection,
+      ) =>
+        new CancelRentalRequest(
+          backOfficeRepository,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
+        ),
+      inject: ['BackOfficeRepository', DATABASE_CONNECTION],
+    },
+    {
+      provide: ListNotifications,
+      useFactory: (connection: DatabaseConnection) =>
+        new ListNotifications(new KnexNotificationInbox(connection)),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: RegisterPushDevice,
+      useFactory: (connection: DatabaseConnection) =>
+        new RegisterPushDevice(new KnexPushDeviceRepository(connection)),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ForgetPushDevice,
+      useFactory: (connection: DatabaseConnection) =>
+        new ForgetPushDevice(new KnexPushDeviceRepository(connection)),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: PushSweepScheduler,
+      useFactory: (connection: DatabaseConnection) =>
+        new PushSweepScheduler(
+          new SendPendingPushes(
+            new KnexPushQueue(connection),
+            new KnexPushDeviceRepository(connection),
+            new ExpoPushSender(environment.expoAccessToken()),
+          ),
+          environment.pushSweepIntervalInSeconds() * 1000,
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: MarkNotificationRead,
+      useFactory: (connection: DatabaseConnection) =>
+        new MarkNotificationRead(new KnexNotificationInbox(connection)),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: MarkNotificationsRead,
+      useFactory: (connection: DatabaseConnection) =>
+        new MarkNotificationsRead(new KnexNotificationInbox(connection)),
+      inject: [DATABASE_CONNECTION],
     },
   ],
 })

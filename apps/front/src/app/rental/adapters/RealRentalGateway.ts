@@ -44,6 +44,12 @@ export class BookparkingRxRentalGateway implements RentalGateway {
       .pipe(map((response: HttpResponse<RentalRequestView[]>) => response.data));
   }
 
+  confirmArrival(requestId: string): Observable<void> {
+    return this.httpClient
+      .post<void>(`/rental-request/${encodeURIComponent(requestId)}/arrival`)
+      .pipe(map(() => undefined));
+  }
+
   confirm(requestId: string): Observable<void> {
     return this.httpClient
       .post<void>(`/rental-request/${encodeURIComponent(requestId)}/confirmation`)

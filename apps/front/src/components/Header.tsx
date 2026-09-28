@@ -11,6 +11,7 @@ import { selectIsAuthenticated } from '../selectors/auth/authSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { Avatar } from './Avatar';
 import { BrandLink } from './BrandLink';
+import { NotificationBell } from './NotificationBell';
 import { buttonVariants } from './ui/buttonVariants';
 
 export const Header = () => {
@@ -28,11 +29,14 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-xl backdrop-saturate-150">
       <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-2 px-4 sm:gap-3 sm:px-6">
-        <BrandLink className="text-fg" />
+        {/* Sous 19,4 rem, la marque garde son logo et lâche son nom : sinon, avec
+            une police agrandie, les quatre icônes font défiler la page de côté. */}
+        <BrandLink className="text-fg max-[19.4rem]:[&>span]:sr-only" />
 
         <nav aria-label={t('common:nav.browse')} className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1.5">
           {/* Sur grand écran seulement : sur un téléphone, l'en-tête ne tient que
-              trois boutons, et l'app se trouve par l'accueil et le pied de page. */}
+              quatre icônes resserrées (recherche, publier, cloche, compte), et
+              l'app se trouve par l'accueil et le pied de page. */}
           <NavLink
             to="/application"
             className={({ isActive }) =>
@@ -55,7 +59,7 @@ export const Header = () => {
             className={({ isActive }) =>
               cn(
                 buttonVariants({ variant: 'ghost', size: 'sm' }),
-                'px-2.5 sm:px-3.5',
+                'px-2 sm:px-3.5',
                 isActive && 'bg-bg-sunken font-semibold text-fg',
               )
             }
@@ -69,11 +73,12 @@ export const Header = () => {
               <Link
                 to="/publier"
                 aria-label={t('common:nav.publish')}
-                className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'px-2.5 sm:px-3.5')}
+                className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'px-2 sm:px-3.5')}
               >
                 <Plus className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">{t('common:nav.publish')}</span>
               </Link>
+              <NotificationBell />
               <Link
                 to="/compte"
                 aria-label={t('common:nav.account')}

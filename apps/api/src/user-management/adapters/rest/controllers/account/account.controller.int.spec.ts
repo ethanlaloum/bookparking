@@ -1,6 +1,9 @@
+import { Either } from 'effect/index';
 import * as request from 'supertest';
 
 import { createControllerTestApp } from '../../../../../shared/test/http/createControllerTestApp';
+import { AccountStillCommittedError } from '../../../../domain/usecases/delete-account/errors/AccountStillCommittedError';
+import { InvalidCredentialsError } from '../../../../domain/usecases/sign-in/errors/InvalidCredentialsError';
 import { createAccountControllerSUT } from './account.controller.sut';
 
 const MARC_EMAIL = 'marc.d@example.com';
@@ -392,5 +395,76 @@ describe('AccountController — avatar and own account', () => {
 
     expect(response.status).toEqual(401);
     sut.thenNoAvatarWasChosen();
+  });
+
+  describe('DELETE /account', () => {
+    it('deletes the signed-in account with its password', async () => {
+      sut.givenSignedInAs(LEA);
+      sut.givenDeletionAnswers(Either.right(undefined));
+
+      const response = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: 'Promenade06!' });
+
+      expect(response.status).toEqual(204);
+      expect(response.body).toEqual({});
+      sut.thenDeletionWasAskedFor(LEA.id, 'Promenade06!');
+    });
+
+    it('responds 403 to a wrong password', async () => {
+      sut.givenSignedInAs(LEA);
+      sut.givenDeletionAnswers(Either.left(new InvalidCredentialsError()));
+
+      const response = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: 'Mauvais2026!' });
+
+      expect(response.status).toEqual(403);
+      expect(response.body.message).toEqual(
+        'Adresse e-mail ou mot de passe incorrect',
+      );
+    });
+
+    it('responds 409 while a request, a rental or a payout is ongoing', async () => {
+      sut.givenSignedInAs(LEA);
+      sut.givenDeletionAnswers(Either.left(new AccountStillCommittedError()));
+
+      const response = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: 'Promenade06!' });
+
+      expect(response.status).toEqual(409);
+      expect(response.body.message).toEqual(
+        "Une demande, une réservation ou un versement est encore en cours sur votre compte : vous pourrez le supprimer une fois qu'ils seront terminés",
+      );
+    });
+
+    it('refuses a deletion without a password', async () => {
+      sut.givenSignedInAs(LEA);
+
+      const empty = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: '' });
+      const missing = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({});
+
+      expect([empty.status, missing.status]).toEqual([400, 400]);
+      sut.thenNoDeletionWasAsked();
+    });
+
+    it('deletes nothing without a token', async () => {
+      const response = await http()
+        .delete('/account')
+        .send({ password: 'Promenade06!' });
+
+      expect(response.status).toEqual(401);
+      sut.thenNoDeletionWasAsked();
+    });
   });
 });

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpException,
@@ -18,6 +19,7 @@ import { InvalidCredentialsError } from '../../../../domain/usecases/sign-in/err
 import { WeakPasswordError } from '../../../../domain/errors/WeakPasswordError';
 import { ChooseAvatarSchema } from '../../dtos/AvatarSchema';
 import { ChangePasswordSchema } from '../../dtos/ChangePasswordSchema';
+import { DeleteAccountSchema } from '../../dtos/DeleteAccountSchema';
 import { TokenRequest } from '../../dtos/TokenRequest';
 
 import { controllerErrorHandler } from '../../../../../shared/error/controllerErrorHandler';
@@ -26,6 +28,8 @@ import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
 import { HumanChallenge } from '../../../../domain/ports/HumanProof';
 import { IssueHumanChallenge } from '../../../../domain/usecases/issue-human-challenge/IssueHumanChallenge';
 import { ChooseAvatar } from '../../../../domain/usecases/choose-avatar/ChooseAvatar';
+import { DeleteAccount } from '../../../../domain/usecases/delete-account/DeleteAccount';
+import { AccountStillCommittedError } from '../../../../domain/usecases/delete-account/errors/AccountStillCommittedError';
 import { ReadOwnAccount } from '../../../../domain/usecases/read-own-account/ReadOwnAccount';
 import { AccountNotFoundError } from '../../../../domain/errors/AccountNotFoundError';
 import { RegisterAccount } from '../../../../domain/usecases/register-account/RegisterAccount';
@@ -45,7 +49,53 @@ export class AccountController {
     private readonly issueHumanChallengeUseCase: IssueHumanChallenge,
     private readonly readOwnAccountUseCase: ReadOwnAccount,
     private readonly chooseAvatarUseCase: ChooseAvatar,
+    private readonly deleteAccountUseCase: DeleteAccount,
   ) {}
+
+  // Le compte du jeton, et le mot de passe redemandé dans le corps — un
+  // `DELETE` avec corps, comme la levée d'une suspension. Rejouée, la
+  // suppression trouve un jeton sans compte : 401, rien d'autre ne bouge.
+  @Delete()
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public async deleteAccount(
+    @Req() req: TokenRequest,
+    @Body() body: unknown,
+  ): Promise<void> {
+    try {
+      const decode = Schema.decodeUnknownEither(DeleteAccountSchema)(body);
+
+      if (Either.isLeft(decode))
+        throw new HttpException(
+          parseSchemaError(decode.left),
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const result = await this.deleteAccountUseCase.execute({
+        accountId: req.user.id,
+        password: decode.right.password,
+        at: new Date(),
+      });
+
+      if (Either.isLeft(result)) {
+        const error = result.left;
+        if (error instanceof InvalidCredentialsError)
+          throw new HttpException(error.message, HttpStatus.FORBIDDEN);
+        if (error instanceof AccountStillCommittedError)
+          throw new HttpException(error.message, HttpStatus.CONFLICT);
+        throw new HttpException(
+          'La suppression du compte a échoué',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'AccountController',
+        method: 'deleteAccount',
+        userId: req.user.id,
+      });
+    }
+  }
 
   // Changer de pilote, depuis « Réglages ». Le compte est celui du jeton.
   @Patch('avatar')

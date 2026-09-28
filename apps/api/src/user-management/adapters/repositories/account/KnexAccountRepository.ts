@@ -103,6 +103,18 @@ export class KnexAccountRepository implements AccountRepository {
     await query;
   }
 
+  // `password_resets` et `back_office_admins` suivent par `ON DELETE CASCADE`.
+  public async delete(
+    accountId: string,
+    trx?: GenericTransaction,
+  ): Promise<void> {
+    const query = this.connection(this.tableName)
+      .where({ id: accountId })
+      .delete();
+    if (trx) query.transacting(trx);
+    await query;
+  }
+
   private static toEntity(row: SchemaAccountRepository): Account {
     return Account.fromState({
       id: row.id,

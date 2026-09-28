@@ -658,6 +658,34 @@ remplace le mot de passe. Contexte `user-management` : `RequestPasswordReset`, `
 - **La rédaction d'un e-mail ne doit jamais lever** : l'e-mail resterait premier de la file et bloquerait tous
   les autres. Sans jeton, celui de réinitialisation renvoie vers `/mot-de-passe-oublie`.
 
+## La suppression d'un compte
+
+`DELETE /account` (jeton, mot de passe redemandé dans le corps) supprime la ligne `accounts` ; `password_resets`
+et `back_office_admins` suivent par `ON DELETE CASCADE`. Contexte `user-management` : `DeleteAccount`, et le port
+`AccountFootprint` pour tout ce que le compte a laissé dans les autres contextes.
+
+- **`SlidingAccessTokenVerifier` lit le compte à chaque requête gardée.** Un jeton est signé et sans état : sans
+  cette lecture, l'iPhone resté connecté publierait encore au nom d'un compte effacé. C'est une requête par clé
+  primaire de plus sur chaque route gardée. Un compte **suspendu**, lui, garde ses jetons : seule `SignIn` le
+  refuse, et le verifier ne regarde pas `suspended_at`.
+- **Refusée en `409` tant que le compte engage quelqu'un** (`KnexAccountFootprint.hasOngoingCommitments`) : une
+  demande `PENDING` (conducteur ou loueur), une réservation `CONFIRMED` dont `period_to` n'est pas passé, ou, côté
+  loueur, de l'argent `CAPTURED` sans ligne `owner_transfers`. Ce dernier est le « dû » de
+  `KnexPayoutRepository.findDuePayouts` sans la condition de libération : les deux requêtes doivent bouger
+  ensemble. C'est un écart assumé à D-07 du brainstorm comptes (« ne jamais refuser »), tranché avant l'argent :
+  supprimer un loueur avec un versement dû laisserait l'argent en tête de `findDuePayouts` pour toujours.
+- **Ce que `erase` fait, dans la transaction de la suppression :** les demandes `AWAITING_PAYMENT` du compte, et
+  celles d'autres conducteurs sur ses places, passent `ABANDONED` (une page Stripe payée plus tard voit son
+  empreinte levée par `RecordPaymentEvent`) ; ses annonces `ACTIVE` passent `UNPUBLISHED` (ADR-003) ; ses
+  `notifications`, `push_devices`, `outgoing_emails` (par adresse) et `payout_accounts` sont supprimés. Les
+  `rental_requests` et `owner_transfers` restent : `renter_id` et `owner_id` n'y désignent plus personne.
+- **`KnexAccountFootprint` copie des noms de tables et de statuts d'autres contextes**, comme le back-office. Une
+  table ou un statut renommé ailleurs ne casse pas la compilation : c'est `KnexAccountFootprint.int.spec.ts` qui
+  le verra. Une nouvelle table qui porte un identifiant de compte ou une adresse doit y être ajoutée.
+- **La vérification précède l'effacement dans la même transaction, sans verrou** : une empreinte posée entre les
+  deux laisse une demande `PENDING` sur une annonce dépubliée, que l'expiration à 48 heures rend.
+- **Pas d'`Idempotency-Key`** : rejouée, la suppression trouve un jeton sans compte et répond `401`.
+
 ## Frozen versions — do not bump without reading the reason
 
 | App | Paquet | Pin | Pourquoi — ce qui casse |

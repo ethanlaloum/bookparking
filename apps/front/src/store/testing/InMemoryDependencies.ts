@@ -331,6 +331,8 @@ export class InMemoryAccountGateway implements AccountGateway {
   public passwordResetRequestRejection: string | null = null;
   public readonly passwordResets: ResetPasswordPayload[] = [];
   public passwordResetRejection: string | null = null;
+  public readonly accountDeletions: string[] = [];
+  public accountDeletionRejection: string | null = null;
 
   getHumanChallenge(): Observable<HumanChallenge> {
     this.challengesServed += 1;
@@ -367,6 +369,13 @@ export class InMemoryAccountGateway implements AccountGateway {
   resetPassword(payload: ResetPasswordPayload): Observable<void> {
     this.passwordResets.push(payload);
     return this.passwordResetRejection === null ? of(undefined) : fail(this.passwordResetRejection);
+  }
+
+  deleteAccount(password: string): Observable<void> {
+    this.accountDeletions.push(password);
+    return this.accountDeletionRejection === null
+      ? of(undefined)
+      : fail(this.accountDeletionRejection);
   }
 }
 

@@ -78,7 +78,7 @@ répondent une liste vide, `404`, puis `409`.
 
 ## Les routes
 
-39 routes. « Jeton » : `Authorization: Bearer <token>`, rendu par `POST /session`. « Admin » : jeton
+40 routes. « Jeton » : `Authorization: Bearer <token>`, rendu par `POST /session`. « Admin » : jeton
 **et** compte inscrit dans `back_office_admins`. Le détail de chaque route (corps, réponses, erreurs)
 est dans `docs/api/openapi.json`.
 
@@ -94,6 +94,7 @@ est dans `docs/api/openapi.json`.
 | `GET /account` | jeton | Lire son propre compte |
 | `PATCH /account/avatar` | jeton | Changer d'avatar |
 | `POST /account/password` | jeton | Changer son mot de passe |
+| `DELETE /account` | jeton | Supprimer son compte (mot de passe redemandé ; `409` tant qu'une demande, une réservation ou un versement est en cours) |
 
 ### Annonces
 

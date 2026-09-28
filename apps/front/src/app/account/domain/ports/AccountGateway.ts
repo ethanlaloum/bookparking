@@ -30,4 +30,5 @@ export interface AccountGateway {
   chooseAvatar(avatar: Avatar): Observable<void>;
   requestPasswordReset(email: string): Observable<void>;
   resetPassword(payload: ResetPasswordPayload): Observable<void>;
+  deleteAccount(password: string): Observable<void>;
 }

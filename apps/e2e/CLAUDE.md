@@ -73,7 +73,7 @@ Rien n'est simulé entre eux. `page.route()` n'apparaît nulle part sous
   `/test-data` : `ApiClient` passe donc par les routes publiques réelles
   (`POST /account`, `POST /session`, `POST /listing`). La loi tient — par l'api,
   jamais par la base — et la suite resterait exécutable contre un environnement
-  déployé. La contrepartie : aucune route ne supprime un compte, donc le
+  déployé. La contrepartie : `DELETE /account` est un sujet de parcours, pas un outil, donc le
   nettoyage se limite aux annonces, dépubliées en ordre inverse. Les comptes
   restent, sans effet : chaque email est unique et la base est éphémère.
 

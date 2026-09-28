@@ -225,3 +225,28 @@ Content-Type: application/json
 {
   "email": "{{inscription.request.body.$.email}}"
 }
+
+### 27 · Supprimer son compte · attendu 204
+# Le mot de passe est redemandé : c'est celui choisi au 24. Les annonces sont dépubliées, la
+# réservation annulée au 18 reste, sans lien avec personne. Refusé en 409 tant qu'une demande
+# attend le loueur, qu'une réservation n'est pas finie, ou qu'un versement est encore dû.
+DELETE {{baseUrl}}/account
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "password": "Barla2027#"
+}
+
+### 28 · Le jeton ne vaut plus rien · attendu 401
+GET {{baseUrl}}/account
+Authorization: Bearer {{token}}
+
+### 29 · Le compte n'existe plus · attendu 401
+POST {{baseUrl}}/session
+Content-Type: application/json
+
+{
+  "email": "{{inscription.request.body.$.email}}",
+  "password": "Barla2027#"
+}

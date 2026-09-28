@@ -84,4 +84,19 @@ describe('KnexAccountRepository @SPEC-002', () => {
     await sut.thenAvatarIsWrittenFor(LEA_EMAIL, 'CHECKERED');
     await sut.thenAvatarIsWrittenFor(MARC_EMAIL, 'RIVIERA');
   });
+
+  it('deletes one account and its password reset links', async () => {
+    const sut = createKnexAccountRepositorySUT();
+    await sut.whenWritingAccountFor(MARC_EMAIL);
+    await sut.whenWritingAccountFor(LEA_EMAIL);
+    await sut.givenPasswordResetFor(MARC_EMAIL);
+    await sut.givenPasswordResetFor(LEA_EMAIL);
+
+    await sut.whenDeletingAccountOf(MARC_EMAIL);
+
+    await sut.thenStoredRowsAre({
+      accounts: [LEA_EMAIL],
+      passwordResets: [`hash-of-${LEA_EMAIL}`],
+    });
+  });
 });

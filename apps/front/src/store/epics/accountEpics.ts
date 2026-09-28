@@ -1,3 +1,4 @@
+import { deleteAccountEpic } from '../../app/account/domain/use-cases/delete-account/deleteAccountEpic';
 import { chooseNewPasswordEpic } from '../../app/account/domain/use-cases/choose-new-password/chooseNewPasswordEpic';
 import { requestPasswordResetEpic } from '../../app/account/domain/use-cases/request-password-reset/requestPasswordResetEpic';
 import { changePasswordEpic } from '../../app/account/domain/use-cases/change-password/changePasswordEpic';
@@ -14,4 +15,5 @@ export const accountEpics = [
   chooseAvatarEpic,
   requestPasswordResetEpic,
   chooseNewPasswordEpic,
+  deleteAccountEpic,
 ];

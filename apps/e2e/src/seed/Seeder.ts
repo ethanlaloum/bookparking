@@ -42,10 +42,10 @@ export const uniqueBox = (label: string): string =>
   `${label}-${randomUUID().slice(0, 6)}`;
 
 /**
- * Aucun endpoint ne supprime un compte, et il n'existe pas de table
- * d'artefacts : le nettoyage se limite donc aux annonces, depubliees dans
- * l'ordre inverse. Les comptes restent, ce qui est sans effet — chaque email
- * est unique, et la base locale est ephemere.
+ * Il n'existe pas de table d'artefacts : le nettoyage se limite aux annonces,
+ * depubliees dans l'ordre inverse. Les comptes restent — `DELETE /account` est
+ * le sujet d'un parcours, pas un outil de nettoyage — ce qui est sans effet :
+ * chaque email est unique, et la base locale est ephemere.
  */
 export class Seeder {
   private readonly listings: SeededListing[] = [];

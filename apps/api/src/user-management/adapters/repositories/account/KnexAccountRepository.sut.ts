@@ -115,6 +115,41 @@ export const createKnexAccountRepositorySUT = () => {
       expect(found?.avatar).toEqual(avatar);
     },
 
+    async givenPasswordResetFor(email: string) {
+      const account = await context.accountRepository.findByEmail(email);
+      if (account === null) throw new Error(`no account for ${email}`);
+      await context.testDbConnection('password_resets').insert({
+        token_hash: `hash-of-${email}`,
+        account_id: account.id,
+        requested_at: new Date('2026-10-01T07:00:00.000Z'),
+        expires_at: new Date('2026-10-01T08:00:00.000Z'),
+      });
+    },
+
+    async whenDeletingAccountOf(email: string) {
+      const account = await context.accountRepository.findByEmail(email);
+      if (account === null) throw new Error(`no account for ${email}`);
+      await context.accountRepository.delete(account.id);
+    },
+
+    async thenStoredRowsAre(expected: {
+      accounts: string[];
+      passwordResets: string[];
+    }) {
+      const accounts = (await context
+        .testDbConnection('accounts')
+        .orderBy('email')
+        .select('email')) as { email: string }[];
+      const passwordResets = (await context
+        .testDbConnection('password_resets')
+        .orderBy('token_hash')
+        .select('token_hash')) as { token_hash: string }[];
+      expect({
+        accounts: accounts.map((row) => row.email),
+        passwordResets: passwordResets.map((row) => row.token_hash),
+      }).toEqual(expected);
+    },
+
     async thenAccountsTableHasOneRowFor(email: string) {
       const rows = await context
         .testDbConnection<SchemaAccountRepository>('accounts')

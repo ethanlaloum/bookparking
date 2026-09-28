@@ -99,6 +99,13 @@ change côté api casse la compilation du front plutôt que sa production.
   finir ni dans l'historique ni dans un journal du serveur. L'écran dit « si un compte existe » : l'api répond
   pareil pour une adresse inconnue. L'app iPhone ouvre la même page du site.
 
+- **Supprimer son compte déconnecte, puis mène à `/compte-supprime`, pas à `/connexion`.** `deleteAccountEpic`
+  émet `logoutRequested` après le succès ; `AccountSlice.deleteAccount` survit exprès à `logoutSucceeded`, jusqu'au
+  `signInSucceeded` suivant, parce que c'est lui que lit `RequireAuth` pour choisir sa redirection — et l'app iPhone
+  pour remplacer sa porte d'entrée par « Votre compte est supprimé ». `AccountDeletedPage` le remet à zéro en
+  partant. La FAQ et `PrivacyPage` citent les trois refus de l'api (demande sans réponse, réservation en cours ou
+  à venir, versement dû) : ils changent avec `KnexAccountFootprint`.
+
 - **L'inscription a besoin d'une preuve anti-robot, calculée par `humanProofEpic`** dès que l'écran s'ouvre,
   et redemandée après chaque inscription refusée : l'api dépense la preuve à chaque essai. Le SHA-256 vient de
   `@noble/hashes`, pas de `crypto.subtle`, absent de l'app iPhone. « Créer mon compte » reste désactivé tant que

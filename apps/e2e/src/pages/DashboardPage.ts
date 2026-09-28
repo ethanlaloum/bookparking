@@ -87,6 +87,27 @@ export class DashboardPage {
     await expect(this.cancellationDialog()).toHaveCount(0);
   }
 
+  private deletionDialog(): Locator {
+    return this.page.getByRole('dialog', { name: 'Supprimer votre compte ?' });
+  }
+
+  async deleteAccount(password: string): Promise<void> {
+    await this.page.getByRole('button', { name: 'Supprimer mon compte' }).click();
+    await expect(this.deletionDialog()).toBeVisible();
+    await this.deletionDialog().getByLabel('Mot de passe').fill(password);
+    await this.deletionDialog().getByRole('button', { name: 'Supprimer définitivement' }).click();
+  }
+
+  async expectDeletionRefused(message: string): Promise<void> {
+    await expect(this.deletionDialog().getByRole('alert')).toContainText(message);
+  }
+
+  async expectAccountDeleted(): Promise<void> {
+    await expect(
+      this.page.getByRole('heading', { level: 1, name: 'Votre compte est supprimé' }),
+    ).toBeVisible();
+  }
+
   async expectNoRequests(): Promise<void> {
     await expect(
       this.page.getByText("Personne n'a encore demandé l'une de vos places."),

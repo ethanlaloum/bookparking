@@ -441,3 +441,46 @@ Content-Type: application/json
         client.assert(response.status === 204, "attendu 204, reçu " + response.status);
     });
 %}
+
+### 27 · Supprimer son compte · attendu 204
+# Le mot de passe est redemandé : c'est celui choisi au 24. Les annonces sont dépubliées, la
+# réservation annulée au 18 reste, sans lien avec personne. Refusé en 409 tant qu'une demande
+# attend le loueur, qu'une réservation n'est pas finie, ou qu'un versement est encore dû.
+DELETE {{baseUrl}}/account
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "password": "Barla2027#"
+}
+
+> {%
+    client.test("le compte est supprimé", function() {
+        client.assert(response.status === 204, "attendu 204, reçu " + response.status);
+    });
+%}
+
+### 28 · Le jeton ne vaut plus rien · attendu 401
+GET {{baseUrl}}/account
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("le jeton du compte supprimé est refusé", function() {
+        client.assert(response.status === 401, "attendu 401, reçu " + response.status);
+    });
+%}
+
+### 29 · Le compte n'existe plus · attendu 401
+POST {{baseUrl}}/session
+Content-Type: application/json
+
+{
+  "email": "{{accountEmail}}",
+  "password": "Barla2027#"
+}
+
+> {%
+    client.test("la connexion est refusée", function() {
+        client.assert(response.status === 401, "attendu 401, reçu " + response.status);
+    });
+%}

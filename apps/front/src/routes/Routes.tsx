@@ -52,6 +52,9 @@ const TermsPage = lazy(async () => ({
 const MobileAppPage = lazy(async () => ({
   default: (await import('../pages/MobileAppPage')).MobileAppPage,
 }));
+const AccountDeletedPage = lazy(async () => ({
+  default: (await import('../pages/AccountDeletedPage')).AccountDeletedPage,
+}));
 const NotFoundPage = lazy(async () => ({
   default: (await import('../pages/NotFoundPage')).NotFoundPage,
 }));
@@ -66,6 +69,7 @@ export const Routes = () => (
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
       <Route path="/mot-de-passe/nouveau" element={<NewPasswordPage />} />
+      <Route path="/compte-supprime" element={<AccountDeletedPage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/application" element={<MobileAppPage />} />
       <Route path="/mentions-legales" element={<LegalNoticePage />} />

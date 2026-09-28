@@ -53,7 +53,7 @@ const PROCESSINGS: Processing[] = [
     data: 'Notifications : le moment prévenu (demande reçue, acceptée, annulée…), la demande concernée, l’heure de lecture ; l’identifiant de push de votre iPhone, si vous avez autorisé les notifications',
     purpose: 'Vous prévenir des moments de vos demandes, dans l’app, par e-mail et en push',
     basis: 'Exécution du contrat ; pour le push, l’autorisation donnée à votre iPhone',
-    retention: 'Les notifications, comme la demande qu’elles concernent ; l’identifiant de push, jusqu’à la déconnexion ou la désinstallation de l’app',
+    retention: 'Les notifications, comme la demande qu’elles concernent ; l’identifiant de push, jusqu’à la déconnexion, la désinstallation de l’app ou la suppression du compte',
   },
   {
     data: 'Adresse IP des tentatives de connexion échouées',
@@ -85,7 +85,7 @@ export const PrivacyPage = () => {
   const dispatch = useAppDispatch();
 
   return (
-    <LegalPage title="Données personnelles" updatedOn="23 septembre 2026" draft>
+    <LegalPage title="Données personnelles" updatedOn="28 septembre 2026" draft>
       <LegalSection title="Qui traite vos données">
         <p>
           Le responsable du traitement est <ToComplete>nom ou raison sociale, adresse</ToComplete>.
@@ -187,8 +187,16 @@ export const PrivacyPage = () => {
           une réponse vous est faite dans un délai d’un mois.
         </p>
         <p>
-          La suppression de votre compte se demande de la même façon ; elle n’est pas encore
-          proposée depuis le site.
+          Vous pouvez aussi supprimer votre compte vous-même, depuis l’onglet « Réglages » de « Mon
+          compte », sur le site ou dans l’app, en confirmant avec votre mot de passe. Sont effacés
+          aussitôt : votre adresse e-mail, l’empreinte de votre mot de passe, votre avatar, vos
+          notifications, l’identifiant de push de votre iPhone, les e-mails qui vous étaient
+          adressés, vos liens de réinitialisation et le rattachement à votre compte de versement.
+          Vos annonces sont dépubliées, puis suivent la durée indiquée plus haut ; vos demandes et
+          réservations passées restent, sans lien avec vous, pour les durées indiquées plus haut.
+          La suppression n’est possible qu’une fois qu’aucune demande n’attend de réponse,
+          qu’aucune réservation n’est en cours ou à venir, et qu’aucun versement ne vous est
+          encore dû.
         </p>
         <p>
           Vous pouvez aussi adresser une réclamation à la CNIL :{' '}

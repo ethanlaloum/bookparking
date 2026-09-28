@@ -51,4 +51,8 @@ export class BookparkingRxAccountGateway implements AccountGateway {
       .post<void>('/account/password-reset/confirmation', payload)
       .pipe(map(() => undefined));
   }
+
+  deleteAccount(password: string): Observable<void> {
+    return this.httpClient.delete<void>('/account', { password }).pipe(map(() => undefined));
+  }
 }

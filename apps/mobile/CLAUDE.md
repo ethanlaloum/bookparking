@@ -63,6 +63,10 @@ Pour le push, il faut l'app compilée par EAS, qui porte la clé Apple du projet
 
 ## Things that will bite you
 
+- **La suppression du compte se fait dans l'app, dans Compte › Réglages** (carte dépliée, mot de passe
+  redemandé), pas par un lien vers le site : l'App Store l'exige de toute app qui permet de créer un compte
+  (règle 5.1.1(v)). Ne pas la remplacer par une page web.
+
 - **`metro.config.js` résout les paquets importés depuis `apps/front/src` comme s'ils l'étaient
   depuis `apps/mobile`.** pnpm installe deux copies de `@reduxjs/toolkit` (le front est en
   React 19.3, le mobile en 19.2 : les pairs diffèrent, donc les dossiers du store aussi). Sans

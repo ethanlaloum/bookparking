@@ -83,7 +83,7 @@
     },
     "deleteAccount": {
       "question": "Comment supprimer mon compte ?",
-      "answer": "La suppression se demande par écrit, comme l’explique la page <privacy>Données personnelles</privacy> : elle n’est pas encore proposée depuis le site."
+      "answer": "Dans « Mon compte », onglet « Réglages », choisissez « Supprimer mon compte » et confirmez avec votre mot de passe ; l’app iPhone le propose au même endroit. Vos annonces sont retirées du site et vos données personnelles effacées ; vos réservations passées restent, sans lien avec vous. C’est possible dès qu’aucune demande n’attend de réponse, qu’aucune réservation n’est en cours ou à venir, et qu’aucun versement ne vous est encore dû. Le détail est sur la page <privacy>Données personnelles</privacy>."
     },
     "contact": {
       "question": "Comment vous contacter ?",

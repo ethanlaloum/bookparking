@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CircleCheck, Clock3, Euro, LogOut, Moon, Plus, ShieldCheck, SquareParking } from 'lucide-react-native';
+import { CircleCheck, Clock3, Euro, LogOut, Moon, Plus, ShieldCheck, SquareParking, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
@@ -14,6 +14,10 @@ import {
   chooseAvatarRequested,
   resetChooseAvatarState,
 } from '@front/app/account/domain/use-cases/choose-avatar/chooseAvatarEpic';
+import {
+  deleteAccountRequested,
+  resetDeleteAccountState,
+} from '@front/app/account/domain/use-cases/delete-account/deleteAccountEpic';
 import { logoutRequested } from '@front/app/auth/domain/use-cases/sign-out/signOutEpic';
 import { confirmAdminAccessRequested } from '@front/app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '@front/app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
@@ -32,6 +36,9 @@ import {
   selectChangePasswordError,
   selectChangePasswordLoading,
   selectChangePasswordSuccess,
+  selectAccountDeleted,
+  selectDeleteAccountError,
+  selectDeleteAccountLoading,
   selectChooseAvatarError,
   selectChooseAvatarLoading,
   selectChooseAvatarSuccess,
@@ -106,6 +113,7 @@ export default function AccountScreen() {
   }
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const accountDeleted = useAppSelector(selectAccountDeleted);
   const session = useAppSelector(selectSession);
   const avatar = useAppSelector(selectOwnAvatar);
   const ownEmail = useAppSelector(selectOwnEmail);
@@ -145,7 +153,12 @@ export default function AccountScreen() {
     }, [isAuthenticated, refresh]),
   );
 
-  if (!isAuthenticated) return <SignInGate title={t('mobile:gate.accountTitle')} body={t('mobile:gate.accountBody')} />;
+  if (!isAuthenticated)
+    return accountDeleted ? (
+      <SignInGate title={t('account:deletion.doneTitle')} body={t('account:deletion.done')} />
+    ) : (
+      <SignInGate title={t('mobile:gate.accountTitle')} body={t('mobile:gate.accountBody')} />
+    );
 
   const confirmedNights = receivedRaw
     .filter((request) => request.status === 'CONFIRMED')
@@ -458,9 +471,94 @@ const Settings = ({ isAdmin }: { isAdmin: boolean }) => {
         <Button loading={loading} label={t('account:password.submit')} onPress={submit} style={{ alignSelf: 'flex-start' }} />
       </Card>
 
+      <DeleteAccount />
+
       {/* L'étiquette ambre du site, pour le seul compte que `GET /admin/access` reconnaît. */}
       {isAdmin && <AdminNote label={t('mobile:account.admin')} />}
     </View>
+  );
+};
+
+// La fenêtre du site, dépliée dans la carte : même mot de passe redemandé,
+// même refus de l'api affiché tel quel. Une fois le compte supprimé, l'onglet
+// retombe sur la porte d'entrée, qui le dit.
+const DeleteAccount = () => {
+  const { t } = useTranslation(['account', 'common']);
+  const dispatch = useAppDispatch();
+  const deleting = useAppSelector(selectDeleteAccountLoading);
+  const error = useAppSelector(selectDeleteAccountError);
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState('');
+  const [missing, setMissing] = useState<string | undefined>(undefined);
+
+  const toggle = (open: boolean): void => {
+    dispatch(resetDeleteAccountState());
+    setPassword('');
+    setMissing(undefined);
+    setConfirming(open);
+  };
+
+  const submit = (): void => {
+    if (password === '') {
+      setMissing(t('account:validation.deletePassword'));
+      return;
+    }
+    setMissing(undefined);
+    dispatch(deleteAccountRequested({ password }));
+  };
+
+  return (
+    <Card style={{ gap: 12 }}>
+      <Display size={20}>{t('account:deletion.title')}</Display>
+      <Text size={14} tone="muted">
+        {t('account:deletion.intro')}
+      </Text>
+      <Text size={14} tone="muted">
+        {t('account:deletion.blocked')}
+      </Text>
+      {confirming ? (
+        <View style={{ gap: 14, marginTop: 4 }}>
+          <Text size={14}>{t('account:deletion.dialogBody')}</Text>
+          {error !== null && (
+            <Notice tone="error" title={t('common:error.title')}>
+              {error}
+            </Notice>
+          )}
+          <Field
+            label={t('account:deletion.password')}
+            value={password}
+            onChangeText={setPassword}
+            error={missing}
+            secureTextEntry
+            autoComplete="current-password"
+            textContentType="password"
+          />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            <Button
+              variant="danger"
+              loading={deleting}
+              label={t('account:deletion.confirm')}
+              onPress={submit}
+            />
+            <Button
+              variant="ghost"
+              disabled={deleting}
+              label={t('account:deletion.keep')}
+              onPress={() => toggle(false)}
+            />
+          </View>
+        </View>
+      ) : (
+        <Button
+          variant="danger"
+          size="sm"
+          icon={Trash2}
+          label={t('account:deletion.action')}
+          onPress={() => toggle(true)}
+          style={{ alignSelf: 'flex-start' }}
+        />
+      )}
+    </Card>
   );
 };
 

@@ -83,7 +83,7 @@
     },
     "deleteAccount": {
       "question": "How do I delete my account?",
-      "answer": "Deletion is requested in writing, as explained on the <privacy>personal data</privacy> page: it is not yet available from the site."
+      "answer": "In “My account”, “Settings” tab, choose “Delete my account” and confirm with your password; the iPhone app offers it in the same place. Your listings are taken off the site and your personal data is erased; your past bookings remain, with no link to you. It is possible as soon as no request is awaiting an answer, no booking is ongoing or upcoming, and no payout is still owed to you. The details are on the <privacy>personal data</privacy> page."
     },
     "contact": {
       "question": "How do I contact you?",

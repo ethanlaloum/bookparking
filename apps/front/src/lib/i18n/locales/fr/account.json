@@ -16,7 +16,8 @@
   },
   "validation": {
     "current": "Saisissez votre mot de passe actuel.",
-    "next": "Le nouveau mot de passe doit contenir au moins 8 caractères."
+    "next": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+    "deletePassword": "Saisissez votre mot de passe pour confirmer."
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -161,5 +162,20 @@
   "arrival": {
     "action": "Je suis arrivé",
     "done": "Arrivée confirmée"
+  },
+  "deletion": {
+    "title": "Supprimer mon compte",
+    "intro": "Vos annonces sont retirées du site ; votre adresse e-mail, votre mot de passe et vos notifications sont effacés. Vos réservations passées restent, sans lien avec vous. C’est définitif.",
+    "blocked": "Possible seulement quand aucune demande n’attend de réponse, qu’aucune réservation n’est en cours ou à venir, et qu’aucun versement ne vous est encore dû.",
+    "action": "Supprimer mon compte",
+    "dialogTitle": "Supprimer votre compte ?",
+    "dialogBody": "Le compte ne pourra pas être rétabli. Saisissez votre mot de passe pour confirmer.",
+    "password": "Mot de passe",
+    "keep": "Garder mon compte",
+    "confirm": "Supprimer définitivement",
+    "doneTitle": "Votre compte est supprimé",
+    "done": "Vos annonces ne sont plus en ligne et vos données personnelles sont effacées. Merci d’avoir utilisé bookparking.",
+    "home": "Revenir à l’accueil",
+    "privacy": "Ce que bookparking conserve, et combien de temps"
   }
 }

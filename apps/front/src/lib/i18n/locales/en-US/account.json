@@ -16,7 +16,8 @@
   },
   "validation": {
     "current": "Enter your current password.",
-    "next": "The new password must be at least 8 characters."
+    "next": "The new password must be at least 8 characters.",
+    "deletePassword": "Enter your password to confirm."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -161,5 +162,20 @@
   "arrival": {
     "action": "I have arrived",
     "done": "Arrival confirmed"
+  },
+  "deletion": {
+    "title": "Delete my account",
+    "intro": "Your listings are taken off the site; your email address, your password and your notifications are erased. Your past bookings remain, with no link to you. This is permanent.",
+    "blocked": "Only possible once no request is awaiting an answer, no booking is ongoing or upcoming, and no payout is still owed to you.",
+    "action": "Delete my account",
+    "dialogTitle": "Delete your account?",
+    "dialogBody": "The account cannot be restored. Enter your password to confirm.",
+    "password": "Password",
+    "keep": "Keep my account",
+    "confirm": "Delete permanently",
+    "doneTitle": "Your account is deleted",
+    "done": "Your listings are no longer online and your personal data is erased. Thank you for using bookparking.",
+    "home": "Back to home",
+    "privacy": "What bookparking keeps, and for how long"
   }
 }

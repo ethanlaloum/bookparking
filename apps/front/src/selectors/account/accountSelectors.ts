@@ -47,6 +47,17 @@ export const selectChangePasswordError = (state: AppState): string | null =>
 export const selectChangePasswordSuccess = (state: AppState): boolean =>
   state.core.account.changePassword.state === 'succeeded';
 
+export const selectDeleteAccountLoading = (state: AppState): boolean =>
+  state.core.account.deleteAccount.state === 'pending';
+
+export const selectDeleteAccountError = (state: AppState): string | null =>
+  state.core.account.deleteAccount.state === 'failed'
+    ? (state.core.account.deleteAccount.errorCode ?? null)
+    : null;
+
+export const selectAccountDeleted = (state: AppState): boolean =>
+  state.core.account.deleteAccount.state === 'succeeded';
+
 export const selectHumanProof = (state: AppState): HumanProof | null => state.core.account.proof;
 
 export const selectHumanProofPending = (state: AppState): boolean =>

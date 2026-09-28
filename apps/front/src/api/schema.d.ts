@@ -22,7 +22,11 @@ export interface paths {
          * @description Crée un compte à partir d'une adresse e-mail, d'un mot de passe assez robuste et d'une preuve anti-robot (`GET /account/human-challenge`). Route publique.
          */
         post: operations["registerAccount"];
-        delete?: never;
+        /**
+         * Supprimer son compte
+         * @description Supprime le compte porté par le jeton ; le mot de passe est redemandé. Ses annonces actives sont dépubliées, ses demandes encore impayées abandonnées, et ses notifications, téléphones, e-mails et compte de versement effacés ; ses locations passées restent, sans lien avec une personne. Refusée tant qu'une demande attend la réponse du loueur, qu'une réservation n'est pas terminée, ou qu'un versement est encore dû au loueur. Rejouée, elle trouve un jeton dont le compte n'existe plus : 401.
+         */
+        delete: operations["deleteAccount"];
         options?: never;
         head?: never;
         patch?: never;
@@ -785,6 +789,9 @@ export interface components {
             currentPassword: string;
             newPassword: string;
         };
+        DeleteAccountRequest: {
+            password: string;
+        };
         SignInRequest: {
             /** Format: email */
             email: string;
@@ -1287,6 +1294,57 @@ export interface operations {
                 };
             };
             /** @description Adresse e-mail déjà utilisée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    deleteAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Compte supprimé. Aucun corps de réponse ; le jeton ne vaut plus rien. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps de requête invalide, ou mot de passe vide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Mot de passe incorrect. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Une demande, une réservation ou un versement retient encore le compte. */
             409: {
                 headers: {
                     [name: string]: unknown;

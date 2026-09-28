@@ -18,4 +18,5 @@ export interface AccountRepository {
     avatar: Avatar,
     trx?: GenericTransaction,
   ): Promise<void>;
+  delete(accountId: string, trx?: GenericTransaction): Promise<void>;
 }

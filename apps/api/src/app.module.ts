@@ -70,6 +70,7 @@ import { KnexEmailOutbox } from './shared/email-outbox/adapters/repositories/Kne
 import { KnexNotificationOutbox } from './shared/notification-outbox/adapters/repositories/KnexNotificationOutbox';
 import { KnexUnitOfWork } from './shared/unit-of-work/KnexUnitOfWork';
 import { KnexAccountRepository } from './user-management/adapters/repositories/account/KnexAccountRepository';
+import { KnexAccountFootprint } from './user-management/adapters/repositories/account-footprint/KnexAccountFootprint';
 import { AccountController } from './user-management/adapters/rest/controllers/account/account.controller';
 import { PasswordResetController } from './user-management/adapters/rest/controllers/password-reset/password-reset.controller';
 import { KnexPasswordResetRepository } from './user-management/adapters/repositories/password-reset/KnexPasswordResetRepository';
@@ -82,6 +83,7 @@ import { TimerDelay } from './user-management/adapters/services/delay/TimerDelay
 import { ScryptPasswordHasher } from './user-management/adapters/services/password-hasher/ScryptPasswordHasher';
 import { InMemorySignInFailureLog } from './user-management/adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { ChangePassword } from './user-management/domain/usecases/change-password/ChangePassword';
+import { DeleteAccount } from './user-management/domain/usecases/delete-account/DeleteAccount';
 import { IssueHumanChallenge } from './user-management/domain/usecases/issue-human-challenge/IssueHumanChallenge';
 import { ChooseAvatar } from './user-management/domain/usecases/choose-avatar/ChooseAvatar';
 import { ReadOwnAccount } from './user-management/domain/usecases/read-own-account/ReadOwnAccount';
@@ -123,8 +125,12 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
     { provide: DATABASE_CONNECTION, useFactory: () => knex(buildKnexConfig()) },
     {
       provide: 'AccessTokenVerifier',
-      useFactory: () =>
-        new SlidingAccessTokenVerifier(environment.accessTokenSecret()),
+      useFactory: (connection: DatabaseConnection) =>
+        new SlidingAccessTokenVerifier(
+          environment.accessTokenSecret(),
+          new KnexAccountRepository(typedAs(connection)),
+        ),
+      inject: [DATABASE_CONNECTION],
     },
     {
       // SPEC-007 : une seule instance, parce qu'elle garde en mémoire les
@@ -229,6 +235,17 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
         new ChangePassword(
           new KnexAccountRepository(typedAs(connection)),
           new ScryptPasswordHasher(),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: DeleteAccount,
+      useFactory: (connection: DatabaseConnection) =>
+        new DeleteAccount(
+          new KnexAccountRepository(typedAs(connection)),
+          new KnexAccountFootprint(connection),
+          new ScryptPasswordHasher(),
+          new KnexUnitOfWork(connection),
         ),
       inject: [DATABASE_CONNECTION],
     },

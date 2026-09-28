@@ -52,4 +52,11 @@ export class InMemoryAccountRepository implements AccountRepository {
       stored.id === accountId ? stored.chooseAvatar(avatar) : stored,
     );
   }
+
+  public async delete(accountId: string): Promise<void> {
+    if (this.failing) throw new Error('accounts repository is unreachable');
+    this.accountList = this.accountList.filter(
+      (stored) => stored.id !== accountId,
+    );
+  }
 }

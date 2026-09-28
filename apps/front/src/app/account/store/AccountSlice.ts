@@ -1,5 +1,6 @@
 import { createReducer } from '@reduxjs/toolkit';
 
+import { signInSucceeded } from '../../auth/domain/use-cases/sign-in/signInEpic';
 import { logoutSucceeded } from '../../auth/domain/use-cases/sign-out/signOutEpic';
 import { initialCommonState, type CommonState } from '../../../store/CommonState';
 import {
@@ -45,6 +46,12 @@ import {
   chooseNewPasswordSucceeded,
   resetChooseNewPasswordState,
 } from '../domain/use-cases/choose-new-password/chooseNewPasswordEpic';
+import {
+  deleteAccountFailed,
+  deleteAccountRequested,
+  deleteAccountSucceeded,
+  resetDeleteAccountState,
+} from '../domain/use-cases/delete-account/deleteAccountEpic';
 
 export interface AccountState {
   account: Account | null;
@@ -61,6 +68,10 @@ export interface AccountState {
   requestPasswordReset: CommonState;
   passwordResetSentTo: string | null;
   chooseNewPassword: CommonState;
+  // Survit à la déconnexion qui suit la suppression, jusqu'à la connexion
+  // suivante : c'est lui qui mène le site à « Compte supprimé » plutôt qu'à la
+  // connexion, et qui fait dire à l'app iPhone que le compte n'est plus.
+  deleteAccount: CommonState;
 }
 
 const initialState: AccountState = {
@@ -76,6 +87,7 @@ const initialState: AccountState = {
   requestPasswordReset: initialCommonState,
   passwordResetSentTo: null,
   chooseNewPassword: initialCommonState,
+  deleteAccount: initialCommonState,
 };
 
 export const accountReducer = createReducer(initialState, (builder) => {
@@ -181,5 +193,20 @@ export const accountReducer = createReducer(initialState, (builder) => {
     .addCase(resetChooseNewPasswordState, (state) => {
       state.chooseNewPassword = initialCommonState;
     })
-    .addCase(logoutSucceeded, () => initialState);
+    .addCase(deleteAccountRequested, (state) => {
+      state.deleteAccount = { state: 'pending' };
+    })
+    .addCase(deleteAccountSucceeded, (state) => {
+      state.deleteAccount = { state: 'succeeded' };
+    })
+    .addCase(deleteAccountFailed, (state, action) => {
+      state.deleteAccount = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(resetDeleteAccountState, (state) => {
+      state.deleteAccount = initialCommonState;
+    })
+    .addCase(signInSucceeded, (state) => {
+      state.deleteAccount = initialCommonState;
+    })
+    .addCase(logoutSucceeded, (state) => ({ ...initialState, deleteAccount: state.deleteAccount }));
 });

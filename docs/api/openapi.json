@@ -219,6 +219,96 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "deleteAccount",
+        "summary": "Supprimer son compte",
+        "description": "Supprime le compte porté par le jeton ; le mot de passe est redemandé. Ses annonces actives sont dépubliées, ses demandes encore impayées abandonnées, et ses notifications, téléphones, e-mails et compte de versement effacés ; ses locations passées restent, sans lien avec une personne. Refusée tant qu'une demande attend la réponse du loueur, qu'une réservation n'est pas terminée, ou qu'un versement est encore dû au loueur. Rejouée, elle trouve un jeton dont le compte n'existe plus : 401.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "password": "motdepasse123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Compte supprimé. Aucun corps de réponse ; le jeton ne vaut plus rien."
+          },
+          "400": {
+            "description": "Corps de requête invalide, ou mot de passe vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "motDePasseVide": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Saisissez votre mot de passe pour supprimer votre compte"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Mot de passe incorrect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "mauvaisMotDePasse": {
+                    "value": {
+                      "statusCode": 403,
+                      "message": "Adresse e-mail ou mot de passe incorrect"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Une demande, une réservation ou un versement retient encore le compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "encoreEngage": {
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Une demande, une réservation ou un versement est encore en cours sur votre compte : vous pourrez le supprimer une fois qu'ils seront terminés"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
       }
     },
     "/account/human-challenge": {
@@ -2308,6 +2398,19 @@
           "newPassword": {
             "type": "string",
             "minLength": 8
+          }
+        }
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1
           }
         }
       },

@@ -8,6 +8,7 @@ import {
   Moon,
   ShieldCheck,
   SquareParking,
+  Trash2,
 } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -18,6 +19,10 @@ import {
   changePasswordRequested,
   resetChangePasswordState,
 } from '../app/account/domain/use-cases/change-password/changePasswordEpic';
+import {
+  deleteAccountRequested,
+  resetDeleteAccountState,
+} from '../app/account/domain/use-cases/delete-account/deleteAccountEpic';
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
 import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
@@ -41,6 +46,7 @@ import {
 import { Avatar } from '../components/Avatar';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { CancelRentalDialog, type CancelRentalTarget } from '../components/CancelRentalDialog';
+import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
 import { MetricTile } from '../components/MetricTile';
@@ -71,6 +77,8 @@ import {
   selectChooseAvatarError,
   selectChooseAvatarLoading,
   selectChooseAvatarSuccess,
+  selectDeleteAccountError,
+  selectDeleteAccountLoading,
   selectOwnAvatar,
   selectOwnEmail,
 } from '../selectors/account/accountSelectors';
@@ -214,6 +222,14 @@ export const AccountPage = () => {
   const passwordLoading = useAppSelector(selectChangePasswordLoading);
   const passwordError = useAppSelector(selectChangePasswordError);
   const passwordSuccess = useAppSelector(selectChangePasswordSuccess);
+
+  const [deletionOpen, setDeletionOpen] = useState(false);
+  const deleting = useAppSelector(selectDeleteAccountLoading);
+  const deletionError = useAppSelector(selectDeleteAccountError);
+  const toggleDeletion = (open: boolean) => {
+    dispatch(resetDeleteAccountState());
+    setDeletionOpen(open);
+  };
 
   const form = useForm<ChangePasswordValues>({
     resolver: zodResolver(changePasswordSchema),
@@ -663,8 +679,34 @@ export const AccountPage = () => {
               </Button>
             </form>
           </Card>
+
+          <Card className="border-danger/30 p-6 sm:p-7 lg:col-span-2">
+            <h2 className="font-display text-xl font-bold text-fg">
+              {t('account:deletion.title')}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-fg-muted">{t('account:deletion.intro')}</p>
+            <p className="mt-2 max-w-2xl text-sm text-fg-muted">
+              {t('account:deletion.blocked')}
+            </p>
+            <Button
+              variant="danger"
+              size="sm"
+              className="mt-4"
+              onClick={() => toggleDeletion(true)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              {t('account:deletion.action')}
+            </Button>
+          </Card>
         </section>
       )}
+      <DeleteAccountDialog
+        open={deletionOpen}
+        pending={deleting}
+        error={deletionError}
+        onConfirm={(password) => dispatch(deleteAccountRequested({ password }))}
+        onClose={() => toggleDeletion(false)}
+      />
       <CancelRentalDialog
         target={openCancelTarget}
         pending={cancelling}

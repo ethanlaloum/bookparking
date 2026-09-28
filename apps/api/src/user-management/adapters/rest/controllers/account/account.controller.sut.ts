@@ -9,6 +9,10 @@ import { HumanChallenge } from '../../../../domain/ports/HumanProof';
 import { ChangePassword } from '../../../../domain/usecases/change-password/ChangePassword';
 import { IssueHumanChallenge } from '../../../../domain/usecases/issue-human-challenge/IssueHumanChallenge';
 import { ChooseAvatar } from '../../../../domain/usecases/choose-avatar/ChooseAvatar';
+import {
+  DeleteAccount,
+  DeleteAccountError,
+} from '../../../../domain/usecases/delete-account/DeleteAccount';
 import { ReadOwnAccount } from '../../../../domain/usecases/read-own-account/ReadOwnAccount';
 import { RegisterAccount } from '../../../../domain/usecases/register-account/RegisterAccount';
 import { EmailAlreadyUsedError } from '../../../../domain/usecases/register-account/errors/EmailAlreadyUsedError';
@@ -38,6 +42,10 @@ export const createAccountControllerSUT = () => {
     { accountId: string; avatar: Avatar },
     Either.Either<void, UnknownError>
   >();
+  const deleteAccount = new UseCaseDouble<
+    { accountId: string; password: string; at: Date },
+    Either.Either<void, DeleteAccountError>
+  >();
   const authState: TestAuthState = { user: null };
 
   const metadata: ModuleMetadata = {
@@ -48,6 +56,7 @@ export const createAccountControllerSUT = () => {
       { provide: IssueHumanChallenge, useValue: issueHumanChallenge },
       { provide: ReadOwnAccount, useValue: readOwnAccount },
       { provide: ChooseAvatar, useValue: chooseAvatar },
+      { provide: DeleteAccount, useValue: deleteAccount },
     ],
   };
 
@@ -124,6 +133,23 @@ export const createAccountControllerSUT = () => {
     thenNoAccountWasRegistered() {
       expect(registerAccount.calls).toHaveLength(0);
     },
+    givenDeletionAnswers(result: Either.Either<void, DeleteAccountError>) {
+      deleteAccount.willResolve(result);
+    },
+
+    thenDeletionWasAskedFor(accountId: string, password: string) {
+      expect(
+        deleteAccount.calls.map((call) => ({
+          accountId: call.accountId,
+          password: call.password,
+        })),
+      ).toEqual([{ accountId, password }]);
+    },
+
+    thenNoDeletionWasAsked() {
+      expect(deleteAccount.calls).toHaveLength(0);
+    },
+
     thenNoPasswordWasChanged() {
       expect(changePassword.calls).toHaveLength(0);
     },

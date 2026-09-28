@@ -364,3 +364,11 @@ Content-Type: application/json
   "token": "lien-invente",
   "newPassword": 12345678
 }
+
+### 36 · Supprimer son compte sans jeton · attendu 401
+DELETE {{baseUrl}}/account
+Content-Type: application/json
+
+{
+  "password": "Barla2026!"
+}

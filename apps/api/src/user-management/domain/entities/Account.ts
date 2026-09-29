@@ -8,6 +8,7 @@ interface Props {
   email: string;
   passwordHash: string;
   registeredAt: Date;
+  suspendedAt: Date | null;
 }
 
 export class Account {
@@ -34,7 +35,14 @@ export class Account {
       ...params,
       email: normalizeEmail(params.email),
       id: randomUUID(),
+      suspendedAt: null,
     });
+  }
+
+  // Une suspension qui n'empêche pas de se connecter n'est qu'une mention :
+  // c'est `SignIn` qui la fait respecter, en consultant ce prédicat.
+  public isSuspended(): boolean {
+    return this.props.suspendedAt !== null;
   }
 
   public get id(): string {

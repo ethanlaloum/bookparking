@@ -3,6 +3,16 @@ import knex from 'knex';
 
 import { buildKnexConfig } from './infra/knexfile';
 import { environment } from './infra/config/environment';
+import { KnexBackOfficeRepository } from './back-office/adapters/repositories/back-office/KnexBackOfficeRepository';
+import { BackOfficeController } from './back-office/adapters/rest/controllers/back-office/back-office.controller';
+import { CancelRentalRequest } from './back-office/domain/usecases/cancel-rental-request/CancelRentalRequest';
+import { LiftAccountSuspension } from './back-office/domain/usecases/lift-account-suspension/LiftAccountSuspension';
+import { ListAccounts } from './back-office/domain/usecases/list-accounts/ListAccounts';
+import { ListAllListings } from './back-office/domain/usecases/list-listings/ListAllListings';
+import { ListAllRentalRequests } from './back-office/domain/usecases/list-rental-requests/ListAllRentalRequests';
+import { ReadOverview } from './back-office/domain/usecases/read-overview/ReadOverview';
+import { SuspendAccount } from './back-office/domain/usecases/suspend-account/SuspendAccount';
+import { UnpublishAnyListing } from './back-office/domain/usecases/unpublish-any-listing/UnpublishAnyListing';
 import { KnexListingRepository } from './listing/adapters/repositories/listing/KnexListingRepository';
 import { InMemoryPhotoStorage } from './listing/adapters/services/photo-storage/InMemoryPhotoStorage';
 import { ListingController } from './listing/adapters/rest/controllers/listing/listing.controller';
@@ -43,6 +53,7 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
     SessionController,
     ListingController,
     RentalRequestController,
+    BackOfficeController,
   ],
   providers: [
     { provide: DATABASE_CONNECTION, useFactory: () => knex(buildKnexConfig()) },
@@ -157,6 +168,63 @@ const typedAs = <T>(connection: DatabaseConnection): T =>
           new KnexRentalRequestRepository(typedAs(connection)),
         ),
       inject: [DATABASE_CONNECTION],
+    },
+    {
+      // Un seul jeton pour le dépôt du back-office : le garde et les huit cas
+      // d'usage lisent la même instance, donc la même vérité sur qui est
+      // administrateur.
+      provide: 'BackOfficeRepository',
+      useFactory: (connection: DatabaseConnection) =>
+        new KnexBackOfficeRepository(connection),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ReadOverview,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new ReadOverview(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: ListAccounts,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new ListAccounts(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: ListAllListings,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new ListAllListings(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: ListAllRentalRequests,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new ListAllRentalRequests(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: UnpublishAnyListing,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new UnpublishAnyListing(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: SuspendAccount,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new SuspendAccount(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: LiftAccountSuspension,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new LiftAccountSuspension(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: CancelRentalRequest,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new CancelRentalRequest(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
     },
   ],
 })

@@ -82,4 +82,33 @@ describe('SignIn @SPEC-002', () => {
     sut.thenResultIsRight(success);
     sut.thenLastAttemptWasDelayedBy(0);
   });
+
+  it('refuses a suspended account with the very refusal an unknown address gets', async () => {
+    const sut = createSignInSUT();
+    await sut.givenSuspendedAccountFor(MARC_EMAIL, MARC_PASSWORD);
+
+    const suspended = await sut.whenSigningIn({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+    });
+    const unknown = await sut.whenSigningIn({
+      email: UNKNOWN_EMAIL,
+      password: MARC_PASSWORD,
+    });
+
+    sut.thenResultIsLeftWithError(suspended, InvalidCredentialsError);
+    sut.thenResultIsLeftWithError(unknown, InvalidCredentialsError);
+  });
+
+  it('refuses a suspended account even with the right password', async () => {
+    const sut = createSignInSUT();
+    await sut.givenSuspendedAccountFor(MARC_EMAIL, MARC_PASSWORD);
+
+    const result = await sut.whenSigningIn({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+    });
+
+    sut.thenResultIsLeftWithError(result, InvalidCredentialsError);
+  });
 });

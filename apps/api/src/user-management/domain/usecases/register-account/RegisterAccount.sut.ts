@@ -145,6 +145,7 @@ export const createRegisterAccountSUT = () => {
         'passwordHash',
         'registeredAt',
         'id',
+        'suspendedAt',
       ]);
     },
 

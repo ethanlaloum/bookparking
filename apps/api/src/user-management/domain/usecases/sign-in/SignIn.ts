@@ -79,6 +79,14 @@ export class SignIn implements UseCase<
         return Either.left(new InvalidCredentialsError());
       }
 
+      // Un compte suspendu se refuse *après* la vérification du mot de passe, et
+      // avec le même refus : répondre plus tôt, ou différemment, apprendrait à
+      // un inconnu qu'une adresse existe et qu'elle est sanctionnée.
+      if (account.isSuspended()) {
+        this.failureLog.record(attempt);
+        return Either.left(new InvalidCredentialsError());
+      }
+
       this.failureLog.forget(attempt.accountKey);
       return Either.right(
         issueAccessToken(account.id, props.at, this.accessTokenSecret),

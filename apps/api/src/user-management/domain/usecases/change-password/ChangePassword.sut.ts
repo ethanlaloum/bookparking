@@ -2,9 +2,13 @@ import { Either } from 'effect/index';
 
 import { InMemoryAccountRepository } from '../../../adapters/repositories/account/InMemoryAccountRepository';
 import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
+import { InMemorySignInFailureLog } from '../../../adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { slidingAccessToken } from '../../services/slidingAccessToken';
 import { RegisterAccount } from '../register-account/RegisterAccount';
-import { ACCESS_TOKEN_SECRET_FOR_TEST } from '../sign-in/SignIn.sut';
+import {
+  ACCESS_TOKEN_SECRET_FOR_TEST,
+  ORIGIN_FOR_TEST,
+} from '../sign-in/SignIn.sut';
 import { SignIn } from '../sign-in/SignIn';
 import { ChangePassword } from './ChangePassword';
 
@@ -19,6 +23,8 @@ export const createChangePasswordSUT = () => {
     accountRepository,
     passwordHasher,
     ACCESS_TOKEN_SECRET_FOR_TEST,
+    new InMemorySignInFailureLog(),
+    { wait: () => Promise.resolve() },
   );
   const changePassword = new ChangePassword(accountRepository, passwordHasher);
 
@@ -39,7 +45,12 @@ export const createChangePasswordSUT = () => {
     },
 
     async givenTokenIssuedAt(email: string, password: string, at: Date) {
-      const signedIn = await context.signIn.execute({ email, password, at });
+      const signedIn = await context.signIn.execute({
+        email,
+        password,
+        originKey: ORIGIN_FOR_TEST,
+        at,
+      });
       if (Either.isLeft(signedIn))
         throw new Error('failed to arrange an issued token');
       return signedIn.right.token;
@@ -74,6 +85,7 @@ export const createChangePasswordSUT = () => {
       const attempt = await context.signIn.execute({
         email,
         password,
+        originKey: ORIGIN_FOR_TEST,
         at: new Date('2026-10-02T08:00:00.000Z'),
       });
       expect(Either.isRight(attempt)).toEqual(true);
@@ -83,6 +95,7 @@ export const createChangePasswordSUT = () => {
       const attempt = await context.signIn.execute({
         email,
         password,
+        originKey: ORIGIN_FOR_TEST,
         at: new Date('2026-10-02T08:00:00.000Z'),
       });
       expect(Either.isLeft(attempt)).toEqual(true);

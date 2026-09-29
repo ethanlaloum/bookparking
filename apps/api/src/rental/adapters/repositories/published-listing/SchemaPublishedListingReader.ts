@@ -8,6 +8,7 @@ export const ACTIVE_LISTING_STATUS = 'ACTIVE';
 
 export interface SchemaPublishedListingReader {
   id: string;
+  owner_id: string;
   address: string;
   box: string;
   place_key: string;

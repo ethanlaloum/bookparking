@@ -4,7 +4,10 @@ import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTrans
 import { ConfirmedRental } from '../../../domain/entities/ConfirmedRental';
 import { placeKeyOf, RentalPlace } from '../../../domain/entities/RentalPlace';
 import { RentalRequest } from '../../../domain/entities/RentalRequest';
-import { RentalRepository } from '../../../domain/ports/RentalRepository';
+import {
+  RentalRepository,
+  RentalRequestSummary,
+} from '../../../domain/ports/RentalRepository';
 import { DatesAlreadyRentedError } from '../../../domain/usecases/request-rental/errors/DatesAlreadyRentedError';
 import { ListingNotPublishedError } from '../../../domain/usecases/request-rental/errors/ListingNotPublishedError';
 import {
@@ -89,6 +92,7 @@ export class KnexRentalRequestRepository implements RentalRepository {
 
     try {
       await transaction<SchemaRentalRequestRepository>(this.tableName).insert({
+        id: state.id,
         listing_id: activeListing.id,
         renter_id: state.renterId,
         place_key: placeKey,
@@ -106,6 +110,83 @@ export class KnexRentalRequestRepository implements RentalRepository {
       }
       throw error;
     }
+  }
+
+  // The owner is read by joining listings: the rental context reads that table
+  // — it copies its name, it never imports a class from listing/. A request
+  // whose listing row is gone reads as no request at all, which is what the
+  // ON DELETE CASCADE already makes true.
+  public async findRequestSummary(
+    requestId: string,
+    trx?: GenericTransaction,
+  ): Promise<RentalRequestSummary | null> {
+    const query = this.connection(this.tableName)
+      .join(
+        LISTINGS_TABLE,
+        `${this.tableName}.listing_id`,
+        `${LISTINGS_TABLE}.id`,
+      )
+      .where(`${this.tableName}.id`, requestId)
+      .first(
+        `${this.tableName}.id as id`,
+        `${this.tableName}.renter_id as renter_id`,
+        `${this.tableName}.status as status`,
+        `${LISTINGS_TABLE}.owner_id as owner_id`,
+      );
+    if (trx) query.transacting(trx);
+
+    const row = (await query) as
+      | { id: string; renter_id: string; status: string; owner_id: string }
+      | undefined;
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      ownerId: row.owner_id,
+      renterId: row.renter_id,
+      isConfirmed: row.status === RentalRequestStatus.CONFIRMED,
+      isExpired: row.status === RentalRequestStatus.EXPIRED,
+    };
+  }
+
+  // The update keys on status = PENDING, so two confirmations racing on the
+  // same request write once: the second matches no row. The use-case already
+  // returns early on an isConfirmed summary, but that read is stale by the time
+  // this runs, and only this filter makes the write itself idempotent.
+  public async confirmRequest(
+    requestId: string,
+    confirmedAt: Date,
+    trx?: GenericTransaction,
+  ): Promise<void> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .where({ id: requestId, status: RentalRequestStatus.PENDING })
+      .update({
+        status: RentalRequestStatus.CONFIRMED,
+        confirmed_at: confirmedAt,
+        updated_at: new Date(),
+      });
+    if (trx) query.transacting(trx);
+    await query;
+  }
+
+  // Only PENDING rows expire: a confirmed rental is a booking, and re-expiring
+  // an already expired row would keep rewriting updated_at for nothing. The
+  // partial exclusion constraint added in 20260922130000 is what makes this
+  // status change actually free the place — without it the row would still
+  // collide with every overlapping request.
+  public async expireRequestsPendingSince(
+    deadline: Date,
+    trx?: GenericTransaction,
+  ): Promise<number> {
+    const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
+      .where('status', RentalRequestStatus.PENDING)
+      .andWhere('requested_at', '<', deadline)
+      .update({
+        status: RentalRequestStatus.EXPIRED,
+        updated_at: new Date(),
+      });
+    if (trx) query.transacting(trx);
+    return await query;
   }
 
   // The row stores no address and no box on purpose: copying them here would put

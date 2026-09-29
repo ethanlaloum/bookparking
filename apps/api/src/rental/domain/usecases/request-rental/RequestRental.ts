@@ -12,6 +12,8 @@ import { RentalRepository } from '../../ports/RentalRepository';
 import { DatesAlreadyRentedError } from './errors/DatesAlreadyRentedError';
 import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
 
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+
 interface Props {
   renterId: string;
   address: string;
@@ -38,6 +40,7 @@ export class RequestRental implements UseCase<
   constructor(
     private readonly publishedListingReader: PublishedListingReader,
     private readonly rentalRepository: RentalRepository,
+    private readonly requestExpiryInHours: number,
   ) {}
 
   public async execute(
@@ -74,6 +77,18 @@ export class RequestRental implements UseCase<
         requestedAt: props.requestedAt,
       });
       if (Either.isLeft(rentalRequest)) return Either.left(rentalRequest.left);
+
+      // Les demandes périmées sont retirées du chemin avant toute lecture de
+      // disponibilité : c'est le seul déclencheur de l'expiration, et donc ce
+      // qui dégèle une place qu'un loueur n'a jamais confirmée. Une demande
+      // périmée que personne ne bouscule reste PENDING en base jusqu'à la
+      // prochaine demande sur n'importe quelle place.
+      await this.rentalRepository.expireRequestsPendingSince(
+        new Date(
+          props.requestedAt.getTime() -
+            this.requestExpiryInHours * MILLISECONDS_PER_HOUR,
+        ),
+      );
 
       const confirmedRentals =
         await this.rentalRepository.findConfirmedByPlace(place);

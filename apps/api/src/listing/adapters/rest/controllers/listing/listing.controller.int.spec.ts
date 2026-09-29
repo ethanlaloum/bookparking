@@ -233,4 +233,165 @@ describe('ListingController @SPEC-001', () => {
       expect(response.body).toEqual([]);
     });
   });
+  describe('DELETE /listing/:id', () => {
+    it('refuses an unpublication from a visitor with no account', async () => {
+      const response = await http().delete(`/listing/${LISTING_ID}`);
+
+      expect(response.status).toEqual(401);
+      sut.thenNothingWasUnpublished();
+    });
+
+    it('unpublishes the place the identifier resolves to', async () => {
+      sut.givenActiveListing({
+        id: LISTING_ID,
+        address: COMPLETE_LISTING_BODY.address,
+        box: COMPLETE_LISTING_BODY.box,
+      });
+      sut.givenUnpublicationSucceeds();
+
+      const response = await http()
+        .delete(`/listing/${LISTING_ID}`)
+        .set('Authorization', 'Bearer token-of-marc');
+
+      expect(response.status).toEqual(204);
+      sut.thenListingWasUnpublishedFor({
+        address: COMPLETE_LISTING_BODY.address,
+        box: COMPLETE_LISTING_BODY.box,
+      });
+    });
+
+    it('answers 204 for a listing that is already unpublished', async () => {
+      sut.givenNoListing();
+
+      const response = await http()
+        .delete(`/listing/${LISTING_ID}`)
+        .set('Authorization', 'Bearer token-of-marc');
+
+      expect(response.status).toEqual(204);
+      sut.thenNothingWasUnpublished();
+    });
+
+    it('answers 204 for a malformed identifier, never 500', async () => {
+      const response = await http()
+        .delete('/listing/pas-un-identifiant')
+        .set('Authorization', 'Bearer token-of-marc');
+
+      expect(response.status).toEqual(204);
+      sut.thenNothingWasUnpublished();
+    });
+
+    it('answers 403 for a listing owned by someone else', async () => {
+      sut.givenActiveListing({
+        id: LISTING_ID,
+        address: COMPLETE_LISTING_BODY.address,
+        box: COMPLETE_LISTING_BODY.box,
+      });
+      sut.givenListingBelongsToSomeoneElse();
+
+      const response = await http()
+        .delete(`/listing/${LISTING_ID}`)
+        .set('Authorization', 'Bearer token-of-marc');
+
+      expect(response.status).toEqual(403);
+    });
+  });
+
+  describe('PATCH /listing/:id/pricing', () => {
+    const NEW_PRICING = { dayInCents: 1500, weekInCents: 7000 };
+
+    it('refuses a pricing change from a visitor with no account', async () => {
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .send(NEW_PRICING);
+
+      expect(response.status).toEqual(401);
+      sut.thenNoPricingWasUpdated();
+    });
+
+    it('turns an omitted tier into null, never into zero', async () => {
+      const { listing } = sut.givenActiveListing({
+        id: LISTING_ID,
+        address: COMPLETE_LISTING_BODY.address,
+        box: COMPLETE_LISTING_BODY.box,
+      });
+      sut.givenPricingUpdateSucceeds(listing);
+
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .set('Authorization', 'Bearer token-of-marc')
+        .send(NEW_PRICING);
+
+      expect(response.status).toEqual(200);
+      sut.thenPricingWasUpdatedTo({
+        dayInCents: 1500,
+        weekInCents: 7000,
+        monthInCents: null,
+      });
+    });
+
+    it('refuses a price that is not a whole number of cents', async () => {
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .set('Authorization', 'Bearer token-of-marc')
+        .send({ dayInCents: 12.5 });
+
+      expect(response.status).toEqual(400);
+      sut.thenNoPricingWasUpdated();
+    });
+
+    it('keeps a mistyped price out of the validation response', async () => {
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .set('Authorization', 'Bearer token-of-marc')
+        .send({ dayInCents: 'mille-deux-cents' });
+
+      expect(response.status).toEqual(400);
+      expect(JSON.stringify(response.body)).not.toContain('mille-deux-cents');
+      sut.thenNoPricingWasUpdated();
+    });
+
+    it('answers 400 for a pricing grid with no tier at all', async () => {
+      sut.givenActiveListing({
+        id: LISTING_ID,
+        address: COMPLETE_LISTING_BODY.address,
+        box: COMPLETE_LISTING_BODY.box,
+      });
+      sut.givenPricingIsIncomplete();
+
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .set('Authorization', 'Bearer token-of-marc')
+        .send({});
+
+      expect(response.status).toEqual(400);
+    });
+
+    it('answers 404 when no active listing carries that identifier', async () => {
+      sut.givenNoListing();
+
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .set('Authorization', 'Bearer token-of-marc')
+        .send(NEW_PRICING);
+
+      expect(response.status).toEqual(404);
+      sut.thenNoPricingWasUpdated();
+    });
+
+    it('answers 403 for a listing owned by someone else', async () => {
+      sut.givenActiveListing({
+        id: LISTING_ID,
+        address: COMPLETE_LISTING_BODY.address,
+        box: COMPLETE_LISTING_BODY.box,
+      });
+      sut.givenListingBelongsToSomeoneElse();
+
+      const response = await http()
+        .patch(`/listing/${LISTING_ID}/pricing`)
+        .set('Authorization', 'Bearer token-of-marc')
+        .send(NEW_PRICING);
+
+      expect(response.status).toEqual(403);
+    });
+  });
 });

@@ -3,7 +3,9 @@ import { Either } from 'effect/index';
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { InMemoryAccountRepository } from '../../../adapters/repositories/account/InMemoryAccountRepository';
 import { ScryptPasswordHasher } from '../../../adapters/services/password-hasher/ScryptPasswordHasher';
+import { InMemorySignInFailureLog } from '../../../adapters/services/sign-in-failure-log/InMemorySignInFailureLog';
 import { Account } from '../../entities/Account';
+import { Delay } from '../../ports/Delay';
 import { InvalidCredentialsError } from './errors/InvalidCredentialsError';
 import { SignIn } from './SignIn';
 
@@ -15,6 +17,7 @@ interface SignInResult {
 interface SignInInput {
   email: string;
   password: string;
+  originKey: string;
   at: Date;
 }
 
@@ -23,14 +26,32 @@ type SignInEither = Either.Either<
   InvalidCredentialsError | UnknownError
 >;
 
+class RecordingDelay implements Delay {
+  public readonly waits: number[] = [];
+
+  public wait(milliseconds: number): Promise<void> {
+    this.waits.push(milliseconds);
+    return Promise.resolve();
+  }
+}
+
 export const ACCESS_TOKEN_SECRET_FOR_TEST =
   'secret-de-test-suffisamment-long-pour-signer';
+
+export const ORIGIN_FOR_TEST = '203.0.113.7';
 
 export const createSignInSUT = () => {
   const accountRepository = new InMemoryAccountRepository();
   const passwordHasher = new ScryptPasswordHasher();
+  const failureLog = new InMemorySignInFailureLog();
+  const delay = new RecordingDelay();
 
-  const outboundPorts = { accountRepository, passwordHasher };
+  const outboundPorts = {
+    accountRepository,
+    passwordHasher,
+    failureLog,
+    delay,
+  };
 
   const testConstants = {
     registeredAtForTest: new Date('2026-09-01T07:00:00.000Z'),
@@ -41,11 +62,15 @@ export const createSignInSUT = () => {
     outboundPorts.accountRepository,
     outboundPorts.passwordHasher,
     ACCESS_TOKEN_SECRET_FOR_TEST,
+    outboundPorts.failureLog,
+    outboundPorts.delay,
   );
 
   const context = {
     accountRepository,
     passwordHasher,
+    failureLog,
+    delay,
     outboundPorts,
     signIn,
     testConstants,
@@ -71,6 +96,7 @@ export const createSignInSUT = () => {
       const defaults: SignInInput = {
         email: '',
         password: '',
+        originKey: ORIGIN_FOR_TEST,
         at: context.testConstants.atForTest,
       };
 
@@ -110,6 +136,17 @@ export const createSignInSUT = () => {
       expect(
         context.signInResults.every((result) => Either.isLeft(result)),
       ).toEqual(true);
+    },
+
+    thenLastAttemptWasDelayedBy(milliseconds: number) {
+      expect(context.delay.waits.length).toBeGreaterThan(0);
+      expect(context.delay.waits[context.delay.waits.length - 1]).toEqual(
+        milliseconds,
+      );
+    },
+
+    thenNoAttemptWasDelayed() {
+      expect(context.delay.waits.every((wait) => wait === 0)).toEqual(true);
     },
 
     thenBothRefusalsAreIndistinguishable(

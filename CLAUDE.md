@@ -32,9 +32,13 @@ emprunte au front ses composants et son hexagone de session par `@front/*` — v
 
 - **Railway : trois services Docker, jamais Railpack à la racine.** Railpack ne trouve aucune commande
   de démarrage dans le `package.json` racine, et installerait Expo et Playwright. Chaque service garde
-  la racine du dépôt comme répertoire (pnpm a besoin du lockfile) et pointe son fichier de config :
-  `/apps/api/railway.json` (migrations en `preDeployCommand`), `/apps/front/railway.json` et
-  `/apps/bo/railway.json` (Caddy sert le build et relaie `/api` vers `$API_INTERNAL_URL` sur le
+  la racine du dépôt comme répertoire (pnpm a besoin du lockfile) et son Dockerfile :
+  `apps/api/Dockerfile` (migrations en `preDeployCommand`), `apps/front/Dockerfile` et
+  `apps/bo/Dockerfile` (Caddy sert le build et relaie `/api` vers `$API_INTERNAL_URL` sur le
   réseau privé — l'api n'a pas de CORS, et le back-office est une autre origine que le site).
+  Railway refuse désormais de pointer un `railway.json` (Config as Code déprécié) : les
+  `apps/*/railway.json` ne sont plus lus, leurs réglages sont recopiés à la main sur chaque
+  service — les modifier ne change rien au déploiement. La sonde de l'api est `/listing` :
+  Railway n'accepte pas de tiret dans un chemin de healthcheck.
   `.dockerignore` tient `.env` et `.env.stripe.local` hors des images : ne pas l'alléger.
 

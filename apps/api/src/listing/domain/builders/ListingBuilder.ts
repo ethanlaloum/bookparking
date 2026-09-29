@@ -5,6 +5,7 @@ import {
   ListingAvailability,
   ListingPricing,
   ListingStatus,
+  VehicleType,
 } from '../entities/Listing';
 
 export class ListingBuilder {
@@ -19,6 +20,7 @@ export class ListingBuilder {
       accessDescription:
         'portail bleu à gauche du 12, le box est au fond du premier sous-sol',
       photos: ['photo-1'],
+      acceptedVehicles: [VehicleType.VOITURE, VehicleType.MOTO],
       pricing: { dayInCents: 1200, weekInCents: 6000, monthInCents: 18000 },
       availability: {
         from: new Date('2026-10-01T00:00:00.000Z'),
@@ -84,5 +86,13 @@ export class ListingBuilder {
 
   build(): Listing {
     return this.state;
+  }
+
+  withAcceptedVehicles(acceptedVehicles: VehicleType[]): ListingBuilder {
+    this.state = Listing.fromState({
+      ...this.state.toState(),
+      acceptedVehicles,
+    });
+    return this;
   }
 }

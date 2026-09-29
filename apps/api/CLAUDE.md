@@ -331,6 +331,59 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   le domaine accepte sans faire échouer ce test-là (`RegisterAccountSchema.ts:3`).
   Toute règle observable aux deux barreaux a besoin d'un cas aux deux barreaux — voir `docs/plan/SPEC-002.md`, note T7.
 
+- **Trois routes de lecture alimentent le tableau de bord, et aucune n'a demandé de migration.**
+  `GET /listing/mine`, `GET /rental-request` et `GET /rental-request/received` lisent des colonnes
+  qui existaient déjà : `listings.owner_id`, et sur `rental_requests` le couple `listing_id`/`renter_id`
+  plus `price_in_cents`, `status` et `confirmed_at`. La donnée était là, personne ne la lisait.
+  `GET /rental-request/received` est **la seule route du dépôt qui rende l'identifiant d'une demande
+  à un client**, et donc la seule qui rende `POST /rental-request/:id/confirmation` atteignable
+  autrement que par un lien fabriqué à la main.
+
+- **`@Get('mine')` est déclarée avant `@Get(':id')` dans `listing.controller.ts` — l'ordre est la règle.**
+  Nest confronte les routes dans l'ordre de déclaration : placée après, `mine` serait décodé comme un
+  identifiant par `Schema.decodeUnknownEither(Schema.UUID)`, puis refusé en `404`. Le symptôme ne
+  ressemble pas à un problème d'ordre, il ressemble à une annonce introuvable.
+
+- **`RentalRequestView` est un modèle de lecture, pas un agrégat — et il ne rend ni `renterId` ni `ownerId`.**
+  L'adresse et le box vivent sur `listings` ; `rental_requests` n'en garde qu'une clé (AUTO-24). Les deux
+  finders les lisent par jointure, comme `findRequestSummary` lit déjà `owner_id`. Le mappeur, lui, laisse
+  les deux identifiants de compte au vestiaire : les routes sont déjà clés sur le compte appelant, donc les
+  rendre n'apprendrait rien à son destinataire légitime et désignerait un tiers à quiconque lirait la réponse.
+
+- **`GetOwnerListingResponseDto` n'expose toujours pas `accessDescription`, même à son propriétaire.**
+  Le DTO du tableau de bord ajoute `status` à ce que la lecture publique montre, et rien d'autre : AUTO-29
+  a retiré ce champ des réponses et a laissé ouverte la question de qui doit le voir. Conséquence à
+  connaître : **un propriétaire ne peut relire nulle part ses propres consignes d'accès.** C'est un manque
+  réel, pas un oubli — le combler est une story, pas un champ de plus ici.
+
+- **La jointure des deux finders ne filtre pas sur le statut de l'annonce.**
+  Une demande faite sur une place depuis dépubliée reste une demande : la masquer priverait le propriétaire
+  de l'historique qui justifie ses revenus.
+
+- **`accepted_vehicles` est un tableau, et le tableau vide se lit « non déclaré ».**
+  Jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et `Listing.accepts()`
+  rend `true` pour une place silencieuse. Une recherche par véhicule ne doit pas les faire disparaître —
+  l'absence d'information n'est pas un refus. Ne pas « corriger » ce `true` en `false`.
+
+- **Postgres refuse tout paramètre lié dans l'expression d'un `CHECK`.**
+  C'est du DDL, il n'y a pas de plan à préparer : `knex.raw` avec des `?` échoue sur
+  « bind message supplies 5 parameters, but prepared statement requires 0 ». Les valeurs de
+  `listings_accepted_vehicles_check` sont donc écrites littéralement, avec une garde qui vérifie
+  qu'elles restent des identifiants simples. La contrainte utilise `<@`, seule forme qui valide chaque
+  élément d'un tableau — un `CHECK IN (...)` ne saurait le faire.
+
+- **Un `Schema.Literal` en union fait fuiter la valeur soumise, et l'annoter n'y change rien.**
+  `ArrayFormatter` descend dans chaque membre : cinq littéraux donnent cinq messages
+  « Expected "velo", actual "tracteur" » concaténés, qui recopient l'entrée dans la 400 — constaté à
+  l'exécution pendant cette story. La forme qui marche est un **raffinement unique** :
+  `Schema.String.annotations({...}).pipe(Schema.filter(...)).annotations({...})`, annoté sur le type de
+  base *et* sur le raffinement, exactement comme le veut la règle des schémas de décodage.
+
+- **`tsconfig.build.json` exclut les specs et les `.sut.ts` : `tsc -p tsconfig.build.json` ne les typecheck pas.**
+  Ajouter un champ obligatoire à un `Props` de cas d'usage compile donc sans rien dire, et n'échoue
+  qu'à l'exécution de jest, sur des messages qui ne ressemblent pas à une erreur de type. Après tout
+  élargissement d'un `Props`, lancer la suite `unit` avant de conclure.
+
 ## Frozen versions — do not bump without reading the reason
 
 | App | Paquet | Pin | Pourquoi — ce qui casse |

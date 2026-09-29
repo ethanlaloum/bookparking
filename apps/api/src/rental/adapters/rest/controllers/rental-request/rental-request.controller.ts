@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpException,
   HttpStatus,
@@ -18,7 +19,11 @@ import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/
 import { ConfirmRentalRequest } from '../../../../domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RentalRequestExpiredError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestExpiredError';
 import { RentalRequestNotFoundError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestNotFoundError';
+import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
+import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
+import { RentalRequestMapper } from '../../../mappers/RentalRequestMapper';
+import { GetRentalRequestResponseDto } from '../../dtos/GetRentalRequestResponseDto';
 import { RequestRentalSchema } from '../../dtos/RequestRentalSchema';
 
 @Controller('rental-request')
@@ -26,7 +31,52 @@ export class RentalRequestController {
   constructor(
     private readonly requestRentalUseCase: RequestRental,
     private readonly confirmRentalRequestUseCase: ConfirmRentalRequest,
+    private readonly listRenterRentalRequestsUseCase: ListRenterRentalRequests,
+    private readonly listOwnerRentalRequestsUseCase: ListOwnerRentalRequests,
   ) {}
+
+  @Get()
+  @UseGuards(AuthGuard)
+  public async listMyRequests(
+    @Req() req: TokenRequest,
+  ): Promise<GetRentalRequestResponseDto[]> {
+    const result = await this.listRenterRentalRequestsUseCase.execute({
+      renterId: req.user.id,
+    });
+
+    if (Either.isLeft(result))
+      throw new HttpException(
+        'La liste de vos demandes est indisponible',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+
+    return result.right.map((view) =>
+      RentalRequestMapper.toGetRentalRequestDto(view),
+    );
+  }
+
+  // Déclarée avant `POST :id/confirmation` par prudence, et surtout distincte
+  // de `GET /` : les demandes reçues sont celles faites sur les places du
+  // compte, pas celles qu'il a faites.
+  @Get('received')
+  @UseGuards(AuthGuard)
+  public async listReceivedRequests(
+    @Req() req: TokenRequest,
+  ): Promise<GetRentalRequestResponseDto[]> {
+    const result = await this.listOwnerRentalRequestsUseCase.execute({
+      ownerId: req.user.id,
+    });
+
+    if (Either.isLeft(result))
+      throw new HttpException(
+        'La liste des demandes reçues est indisponible',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+
+    return result.right.map((view) =>
+      RentalRequestMapper.toGetRentalRequestDto(view),
+    );
+  }
 
   @Post()
   @UseGuards(AuthGuard)

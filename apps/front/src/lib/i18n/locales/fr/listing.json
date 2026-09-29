@@ -1,0 +1,156 @@
+{
+  "list": {
+    "title": "Places disponibles"
+  },
+  "card": {
+    "box": "Box {{box}}",
+    "from": "dès",
+    "noPrice": "Tarif sur demande",
+    "availableUntil": "Disponible jusqu’au {{date}}",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos"
+  },
+  "detail": {
+    "access": "Accès",
+    "pricing": "Grille tarifaire",
+    "availability": "Disponibilité",
+    "photos": "Photos",
+    "ownerActions": "Gérer cette annonce",
+    "ownerHint": "Ces actions n’aboutissent que si l’annonce vous appartient.",
+    "unpublish": "Dépublier",
+    "editPricing": "Modifier les tarifs",
+    "unpublished": "L’annonce a été dépubliée."
+  },
+  "pricing": {
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "none": "—",
+    "save": "Enregistrer les tarifs",
+    "saved": "Grille tarifaire mise à jour.",
+    "atLeastOne": "Renseignez au moins un tarif.",
+    "integer": "Un prix doit être un nombre entier de centimes."
+  },
+  "publish": {
+    "title": "Publier une place",
+    "subtitle": "Décrivez la place, fixez vos tarifs, choisissez la période.",
+    "step": {
+      "place": "La place",
+      "pricing": "Les tarifs",
+      "availability": "La période"
+    },
+    "submit": "Publier l’annonce",
+    "published": "Votre annonce est en ligne.",
+    "seeIt": "Voir les places"
+  },
+  "field": {
+    "address": "Adresse",
+    "addressHint": "Numéro, rue, code postal et ville.",
+    "box": "Numéro de box",
+    "accessDescription": "Consignes d’accès",
+    "accessHint": "Digicode, étage, repères. Transmis au locataire après confirmation.",
+    "photos": "Photos",
+    "photosHint": "Une référence par ligne. Au moins une.",
+    "from": "Disponible à partir du",
+    "to": "Jusqu’au"
+  },
+  "validation": {
+    "address": "L’adresse est obligatoire.",
+    "box": "Le numéro de box est obligatoire.",
+    "access": "Les consignes d’accès sont obligatoires.",
+    "photos": "Ajoutez au moins une photo.",
+    "pricing": "Renseignez au moins un tarif.",
+    "from": "Choisissez une date de début.",
+    "to": "Choisissez une date de fin.",
+    "reversed": "La fin doit suivre le début.",
+    "past": "La période est déjà passée."
+  },
+  "map": {
+    "title": "Rechercher une place",
+    "subtitle": "Toutes les places publiées à Nice, sur la carte.",
+    "nav": "Rechercher",
+    "located_one": "{{count}} place située",
+    "located_other": "{{count}} places situées",
+    "approximate_one": "{{count}} position approximative",
+    "approximate_other": "{{count}} positions approximatives",
+    "approximateHint": "L'adresse saisie n'a pas de correspondance exacte : le point est placé sur la voie la plus proche.",
+    "unplaced_one": "{{count}} place non située",
+    "unplaced_other": "{{count}} places non situées",
+    "unplacedHint": "Leur adresse n'a pu être reconnue. Elles restent visibles dans la liste.",
+    "locating": "Localisation des places…",
+    "empty": "Aucune place à situer pour le moment.",
+    "emptyLocated": "Aucune adresse n'a pu être située.",
+    "attribution": "Adresses géocodées par la Base Adresse Nationale.",
+    "openListing": "Voir l'annonce",
+    "exact": "Position exacte",
+    "approx": "Position approximative",
+    "listTab": "Liste",
+    "mapTab": "Carte"
+  },
+  "mapSearch": {
+    "label": "Rechercher une adresse à Nice",
+    "placeholder": "Commencez à taper une rue niçoise…",
+    "hint": "Au moins 3 caractères. Seules les adresses de Nice sont proposées.",
+    "clear": "Effacer l'adresse",
+    "noResult": "Aucune adresse ne correspond.",
+    "suggestions": "Suggestions d'adresses",
+    "around": "Autour de : {{address}}",
+    "nearby_one": "{{count}} place à moins d'un kilomètre",
+    "nearby_other": "{{count}} places à moins d'un kilomètre",
+    "noneNearby": "Aucune place à moins d'un kilomètre. Les plus proches sont classées d'abord.",
+    "distance": "à {{distance}}"
+  },
+  "criteria": {
+    "vehicle": "Véhicule",
+    "anyVehicle": "Tous véhicules",
+    "vehicleType": {
+      "velo": "Vélo",
+      "moto": "Moto ou scooter",
+      "voiture": "Voiture",
+      "electrique": "Voiture électrique",
+      "utilitaire": "Utilitaire"
+    },
+    "duration": "Durée",
+    "anyDuration": "Toutes durées",
+    "tier": {
+      "day": "À la journée",
+      "week": "À la semaine",
+      "month": "Au mois"
+    },
+    "search": "Rechercher",
+    "tierFiltered_one": "{{count}} place propose ce tarif.",
+    "tierFiltered_other": "{{count}} places proposent ce tarif.",
+    "noTier": "Aucune place ne propose ce tarif. Toutes restent affichées.",
+    "for": "Recherche : {{criteria}}",
+    "reset": "Réinitialiser",
+    "accepted": "Véhicules acceptés",
+    "acceptedHint": "Cochez tout ce que la place peut recevoir. « Voiture électrique » suppose une borne de recharge.",
+    "acceptedRequired": "Indiquez au moins un véhicule accepté.",
+    "notDeclared": "Véhicules acceptés non précisés",
+    "vehicleFiltered_one": "{{count}} place accepte ce véhicule.",
+    "vehicleFiltered_other": "{{count}} places acceptent ce véhicule.",
+    "noVehicle": "Aucune place n'accepte ce véhicule. Toutes restent affichées.",
+    "undeclaredKept_one": "{{count}} place n'a rien déclaré et reste affichée.",
+    "undeclaredKept_other": "{{count}} places n'ont rien déclaré et restent affichées."
+  },
+  "home": {
+    "pitch": "Cherchez une adresse à Nice, dites quel véhicule et pour combien de temps. Les places disponibles apparaissent sur la carte.",
+    "available_one": "{{count}} place disponible",
+    "available_other": "{{count}} places disponibles",
+    "seeAll": "Voir toutes les places sur la carte",
+    "argument": {
+      "local": {
+        "title": "Uniquement à Nice",
+        "body": "Chaque place est dans la ville, publiée par quelqu'un qui y habite. Pas de résultat à trois cents kilomètres."
+      },
+      "price": {
+        "title": "Le prix annoncé est le prix payé",
+        "body": "L'estimation affichée avant l'envoi est celle que le propriétaire facturera. Aucun frais n'apparaît ensuite."
+      },
+      "trust": {
+        "title": "Le propriétaire confirme",
+        "body": "Une demande n'engage rien tant qu'elle n'est pas acceptée. Sans réponse, elle expire d'elle-même."
+      }
+    }
+  }
+}

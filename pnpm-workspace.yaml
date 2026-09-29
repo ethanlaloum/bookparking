@@ -3,6 +3,7 @@ packages:
 
 allowBuilds:
   unrs-resolver: true      # jest-resolve@30 : le résolveur natif choisit ici le binaire de la plateforme
+  esbuild: true            # vite 7 : sans son binaire de plateforme, `vite build` et `vite dev` échouent
   '@parcel/watcher': false # jest-haste-map, mode watch uniquement — interdit ici, repli pur JS suffisant
   ssh2: false              # via testcontainers : le repli pur JS suffit, pas de binding crypto natif à compiler
   cpu-features: false      # shim de performance optionnel de ssh2

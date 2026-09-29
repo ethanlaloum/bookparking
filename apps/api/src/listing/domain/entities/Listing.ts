@@ -3,12 +3,30 @@ import { randomUUID } from 'node:crypto';
 import { Either } from 'effect/index';
 
 import { IncompletePricingError } from '../errors/IncompletePricingError';
+import { UnknownVehicleTypeError } from '../errors/UnknownVehicleTypeError';
 import { ListingNotOwnedError } from '../errors/ListingNotOwnedError';
 
 export enum ListingStatus {
   ACTIVE = 'ACTIVE',
   UNPUBLISHED = 'UNPUBLISHED',
 }
+
+/**
+ * Ce qu'une place accepte. `electrique` dit plus qu'un gabarit : il annonce une
+ * borne de recharge. Mêler le gabarit et l'équipement dans une seule liste est
+ * une simplification assumée — le jour où « SUV *et* borne » devra se demander,
+ * il faudra deux axes, et cette énumération se scindera.
+ */
+export enum VehicleType {
+  VELO = 'velo',
+  MOTO = 'moto',
+  VOITURE = 'voiture',
+  ELECTRIQUE = 'electrique',
+  UTILITAIRE = 'utilitaire',
+}
+
+export const isVehicleType = (value: string): value is VehicleType =>
+  (Object.values(VehicleType) as string[]).includes(value);
 
 export interface ListingPricing {
   dayInCents: number | null;
@@ -36,6 +54,7 @@ interface Props {
   box: string;
   accessDescription: string;
   photos: string[];
+  acceptedVehicles: VehicleType[];
   pricing: ListingPricing;
   availability: ListingAvailability;
   status: ListingStatus;
@@ -55,9 +74,13 @@ export class Listing {
 
   public static publish(
     params: Omit<Props, 'id' | 'status'>,
-  ): Either.Either<Listing, IncompletePricingError> {
+  ): Either.Either<Listing, IncompletePricingError | UnknownVehicleTypeError> {
     if (!Listing.offersAnyDuration(params.pricing))
       return Either.left(new IncompletePricingError());
+    // Un tableau vide reste licite : il se lit « non déclaré », et les annonces
+    // antérieures à cette notion n'ont rien à déclarer rétroactivement.
+    if (params.acceptedVehicles.some((vehicle) => !isVehicleType(vehicle)))
+      return Either.left(new UnknownVehicleTypeError());
     return Either.right(
       new Listing({
         ...params,
@@ -78,6 +101,15 @@ export class Listing {
   public static offersAnyDuration(pricing: ListingPricing): boolean {
     return [pricing.dayInCents, pricing.weekInCents, pricing.monthInCents].some(
       (priceInCents) => priceInCents !== null,
+    );
+  }
+
+  public accepts(vehicle: VehicleType): boolean {
+    // Une place qui n'a rien déclaré n'exclut personne : l'absence d'information
+    // n'est pas un refus, et la masquer ferait croire qu'elle n'existe pas.
+    return (
+      this.props.acceptedVehicles.length === 0 ||
+      this.props.acceptedVehicles.includes(vehicle)
     );
   }
 

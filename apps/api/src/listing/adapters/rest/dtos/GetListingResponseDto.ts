@@ -3,6 +3,7 @@ export interface GetListingResponseDto {
   address: string;
   box: string;
   photos: string[];
+  acceptedVehicles: string[];
   pricing: {
     dayInCents: number | null;
     weekInCents: number | null;

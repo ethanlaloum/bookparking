@@ -1,0 +1,1452 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "bookparking — API",
+    "version": "1.0.0",
+    "description": "API de bookparking : comptes, sessions, annonces de places de parking et demandes de location.\n\nToutes les erreurs sont rendues par le filtre d'exception NestJS sous la forme `{ \"statusCode\": number, \"message\": string }`. Les messages sont en français et proviennent soit du décodage `effect/Schema` (400), soit des erreurs du domaine.\n\nL'authentification se fait par un jeton d'accès porté en `Authorization: Bearer <token>`, obtenu via `POST /session`."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:{port}",
+      "description": "Environnement local",
+      "variables": {
+        "port": {
+          "default": "3000",
+          "description": "Variable d'environnement PORT (3000 par défaut)."
+        }
+      }
+    }
+  ],
+  "tags": [
+    {
+      "name": "account",
+      "description": "Inscription et mot de passe"
+    },
+    {
+      "name": "session",
+      "description": "Connexion et jeton d'accès"
+    },
+    {
+      "name": "listing",
+      "description": "Annonces de places de parking"
+    },
+    {
+      "name": "rental-request",
+      "description": "Demandes de location"
+    }
+  ],
+  "paths": {
+    "/account": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "registerAccount",
+        "summary": "Inscrire un compte",
+        "description": "Crée un compte à partir d'une adresse e-mail et d'un mot de passe. Route publique.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAccountRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "summary": "Inscription valide",
+                  "value": {
+                    "email": "alice@example.com",
+                    "password": "motdepasse123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Compte créé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterAccountResponse"
+                },
+                "examples": {
+                  "nominal": {
+                    "value": {
+                      "id": "3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c",
+                      "email": "alice@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "motDePasseTropCourt": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "password: Le mot de passe doit contenir au moins 8 caractères"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Adresse e-mail déjà utilisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "emailDejaUtilise": {
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Cette adresse e-mail est déjà utilisée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/account/password": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "operationId": "changePassword",
+        "summary": "Changer son mot de passe",
+        "description": "Change le mot de passe du compte porté par le jeton. Le mot de passe actuel est exigé.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "currentPassword": "motdepasse123",
+                    "newPassword": "nouveaumotdepasse456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Mot de passe changé. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Corps de requête invalide, ou nouveau mot de passe trop faible (moins de 8 caractères).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "motDePasseFaible": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Le mot de passe doit contenir au moins 8 caractères"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Mot de passe actuel incorrect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "mauvaisMotDePasse": {
+                    "value": {
+                      "statusCode": 403,
+                      "message": "Adresse e-mail ou mot de passe incorrect"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/session": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "signIn",
+        "summary": "Ouvrir une session",
+        "description": "Vérifie les identifiants et rend un jeton d'accès.\n\nLes essais infructueux sont ralentis : le délai dépend du couple (compte, origine IP) et croît avec les échecs récents. Une origine que la requête ne nomme pas retombe sur une clé commune. Le ralentissement n'a pas de code de statut propre — un essai ralenti répond simplement plus tard, toujours `401` s'il échoue, pour ne pas distinguer une adresse inconnue d'un mot de passe faux.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignInRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "email": "alice@example.com",
+                    "password": "motdepasse123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session ouverte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignInResponse"
+                },
+                "examples": {
+                  "nominal": {
+                    "value": {
+                      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                      "validUntil": "2026-09-22T14:30:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Corps de requête invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Identifiants incorrects. Le message est le même pour une adresse inconnue et pour un mot de passe faux.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "identifiantsIncorrects": {
+                    "value": {
+                      "statusCode": 401,
+                      "message": "Adresse e-mail ou mot de passe incorrect"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listing": {
+      "post": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "publishListing",
+        "summary": "Publier une annonce",
+        "description": "Publie une annonce pour une place — identifiée par le couple (adresse, box) — au nom du compte porté par le jeton.\n\nLa grille tarifaire doit être complète au sens du domaine : au moins un palier, et pas de palier contradictoire.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishListingRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "address": "12 rue des Lilas, 75011 Paris",
+                    "box": "B12",
+                    "accessDescription": "Digicode 4321, deuxième sous-sol, à droite de l'ascenseur.",
+                    "photos": [
+                      "https://cdn.example.com/photos/b12-1.jpg"
+                    ],
+                    "pricing": {
+                      "dayInCents": 1500,
+                      "weekInCents": 8000,
+                      "monthInCents": 25000
+                    },
+                    "availability": {
+                      "from": "2026-10-01T00:00:00.000Z",
+                      "to": "2026-12-31T00:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Annonce publiée. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Corps de requête invalide, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "photosManquantes": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "photos: Expected an array of at least 1 item(s), actual []"
+                    }
+                  },
+                  "periodePassee": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "La période de disponibilité est déjà passée"
+                    }
+                  },
+                  "grilleIncomplete": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "La grille tarifaire est incomplète"
+                    }
+                  },
+                  "vehiculeInconnu": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "Ce type de véhicule n'existe pas"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Cette place a déjà une annonce active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "dejaActive": {
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Cette place a déjà une annonce active"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Le stockage des photos a échoué.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "photosNonStockees": {
+                    "value": {
+                      "statusCode": 502,
+                      "message": "Impossible d'enregistrer les photos"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "listListings",
+        "summary": "Lister les annonces actives",
+        "description": "Rend toutes les annonces actives. Route publique, sans pagination ni filtre à ce jour.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Liste des annonces actives, éventuellement vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Listing"
+                  }
+                },
+                "examples": {
+                  "vide": {
+                    "summary": "Aucune annonce active",
+                    "value": []
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "La liste des annonces est indisponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "indisponible": {
+                    "value": {
+                      "statusCode": 500,
+                      "message": "La liste des annonces est indisponible"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listing/mine": {
+      "get": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "listOwnerListings",
+        "summary": "Lister ses propres annonces",
+        "description": "Rend les annonces du compte appelant, **quel que soit leur statut** — c'est la seule route qui montre une annonce dépubliée. Déclarée avant `/listing/{id}` côté serveur, sans quoi « mine » serait décodé comme un identifiant.",
+        "responses": {
+          "200": {
+            "description": "La liste, éventuellement vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OwnerListing"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/listing/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ListingId"
+        }
+      ],
+      "get": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "getListing",
+        "summary": "Lire une annonce",
+        "description": "Rend une annonce par son identifiant. Route publique : une annonce est lisible par tout le monde.\n\nUn identifiant mal formé répond `404`, comme un identifiant inconnu.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "L'annonce demandée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Annonce introuvable — identifiant inconnu ou mal formé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "introuvable": {
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Annonce introuvable"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "unpublishListing",
+        "summary": "Dépublier une annonce",
+        "description": "Dépublie l'annonce du compte porté par le jeton.\n\nL'opération est idempotente : un identifiant mal formé, inconnu, ou une annonce déjà dépubliée répondent tous `204`. Cette route n'est donc pas un oracle d'existence.",
+        "responses": {
+          "204": {
+            "description": "Annonce dépubliée, ou rien à dépublier. Aucun corps de réponse."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "L'annonce appartient à un autre compte. Le refus n'est pas caché derrière un `404` : `GET /listing/{id}` est public de toute façon.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "pasProprietaire": {
+                    "value": {
+                      "statusCode": 403,
+                      "message": "Cette annonce ne vous appartient pas"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/listing/{id}/pricing": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ListingId"
+        }
+      ],
+      "patch": {
+        "tags": [
+          "listing"
+        ],
+        "operationId": "updateListingPricing",
+        "summary": "Changer la grille tarifaire d'une annonce",
+        "description": "Remplace la grille tarifaire de l'annonce active. Un palier absent du corps est effacé : la grille envoyée remplace la précédente en entier.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListingPricingRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "dayInCents": 1800,
+                    "weekInCents": 9000,
+                    "monthInCents": 28000
+                  }
+                },
+                "jourSeul": {
+                  "summary": "Ne garder que le palier journalier",
+                  "value": {
+                    "dayInCents": 1800
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "L'annonce, avec sa nouvelle grille tarifaire.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Corps de requête invalide (un prix n'est pas un nombre entier de centimes), ou grille tarifaire incomplète.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "prixNonEntier": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "dayInCents: Un prix doit être un nombre entier de centimes"
+                    }
+                  },
+                  "grilleIncomplete": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "La grille tarifaire est incomplète"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "L'annonce appartient à un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "pasProprietaire": {
+                    "value": {
+                      "statusCode": 403,
+                      "message": "Cette annonce ne vous appartient pas"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Aucune annonce active pour cette place — identifiant inconnu ou mal formé compris.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "aucuneAnnonceActive": {
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Cette place n'a aucune annonce active"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-request": {
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "requestRental",
+        "summary": "Demander une location",
+        "description": "Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton.\n\nUne demande non confirmée expire au bout du délai configuré par `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestRentalRequest"
+              },
+              "examples": {
+                "nominal": {
+                  "value": {
+                    "address": "12 rue des Lilas, 75011 Paris",
+                    "box": "B12",
+                    "fromDay": "2026-10-01",
+                    "toDay": "2026-10-03"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Demande enregistrée. Aucun corps de réponse."
+          },
+          "400": {
+            "description": "Corps de requête invalide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "dateInvalide": {
+                    "value": {
+                      "statusCode": 400,
+                      "message": "fromDay: Date de début invalide"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "description": "La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ».",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "datesDejaLouees": {
+                    "value": {
+                      "statusCode": 422,
+                      "message": "Ces dates sont déjà louées"
+                    }
+                  },
+                  "aucuneAnnoncePubliee": {
+                    "value": {
+                      "statusCode": 422,
+                      "message": "Cette place n'a aucune annonce publiée"
+                    }
+                  },
+                  "aucunTarif": {
+                    "value": {
+                      "statusCode": 422,
+                      "message": "Aucun tarif ne couvre la période demandée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "listMyRentalRequests",
+        "summary": "Lister les demandes que l'on a faites",
+        "description": "Rend les demandes de location faites par le compte appelant, en tant que locataire.",
+        "responses": {
+          "200": {
+            "description": "La liste, éventuellement vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RentalRequest"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-request/received": {
+      "get": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "listReceivedRentalRequests",
+        "summary": "Lister les demandes reçues sur ses places",
+        "description": "Rend les demandes faites sur les annonces du compte appelant, en tant que propriétaire. C'est **la seule route qui rend l'identifiant d'une demande** à un client, et donc la seule qui rende `POST /rental-request/{id}/confirmation` atteignable.",
+        "responses": {
+          "200": {
+            "description": "La liste, éventuellement vide.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RentalRequest"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-request/{id}/confirmation": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Identifiant de la demande de location (UUID).",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "example": "9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c"
+        }
+      ],
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "confirmRentalRequest",
+        "summary": "Confirmer une demande de location",
+        "description": "Confirme une demande de location. Seul le propriétaire de la place peut confirmer.\n\nUn identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.",
+        "responses": {
+          "204": {
+            "description": "Demande confirmée. Aucun corps de réponse."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Demande inexistante, identifiant mal formé, ou demande appartenant à un autre compte.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "introuvable": {
+                    "value": {
+                      "statusCode": 404,
+                      "message": "Cette demande de location n'existe pas"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La demande a expiré et ne peut plus être confirmée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "expiree": {
+                    "value": {
+                      "statusCode": 409,
+                      "message": "Cette demande de location a expiré et ne peut plus être confirmée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Jeton rendu par `POST /session`, porté en `Authorization: Bearer <token>`. Un en-tête absent, mal préfixé, vide ou invalide répond `401`."
+      }
+    },
+    "parameters": {
+      "ListingId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Identifiant de l'annonce (UUID), tel que rendu par `GET /listing`.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "example": "3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c"
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Jeton d'accès absent, mal formé ou invalide.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "nonAutorise": {
+                "value": {
+                  "statusCode": 401,
+                  "message": "Unauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Erreur inattendue.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "inattendue": {
+                "value": {
+                  "statusCode": 500,
+                  "message": "Une erreur inattendue est survenue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "description": "Corps d'erreur rendu par le filtre d'exception NestJS.",
+        "required": [
+          "statusCode",
+          "message"
+        ],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "example": 400
+          },
+          "message": {
+            "type": "string",
+            "description": "Message en français. Pour une erreur de décodage (400), les échecs sont formatés `chemin: message`.",
+            "example": "Annonce introuvable"
+          }
+        }
+      },
+      "RegisterAccountRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "pattern": "^[^\\s@'\"\\\\;]+@[^\\s@]+\\.[^\\s@]+$",
+            "description": "Adresse e-mail. Les espaces, `@` surnuméraires, apostrophes, guillemets, antislashs et points-virgules sont refusés."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          }
+        }
+      },
+      "RegisterAccountResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "email"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
+          }
+        }
+      },
+      "SignInRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "SignInResponse": {
+        "type": "object",
+        "required": [
+          "token",
+          "validUntil"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Jeton d'accès à porter en `Authorization: Bearer <token>`."
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fin de validité du jeton, en ISO 8601 UTC."
+          }
+        }
+      },
+      "Pricing": {
+        "type": "object",
+        "description": "Grille tarifaire. Chaque palier est un nombre entier de centimes, ou `null` quand le palier n'existe pas.",
+        "required": [
+          "dayInCents",
+          "weekInCents",
+          "monthInCents"
+        ],
+        "properties": {
+          "dayInCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 1500
+          },
+          "weekInCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 8000
+          },
+          "monthInCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 25000
+          }
+        }
+      },
+      "Listing": {
+        "type": "object",
+        "description": "Une annonce telle qu'elle est rendue par l'API.",
+        "required": [
+          "id",
+          "address",
+          "box",
+          "photos",
+          "pricing",
+          "availability",
+          "acceptedVehicles"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string",
+            "example": "12 rue des Lilas, 75011 Paris"
+          },
+          "box": {
+            "type": "string",
+            "example": "B12"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Références des photos stockées."
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/Pricing"
+          },
+          "availability": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge."
+          }
+        }
+      },
+      "PublishListingRequest": {
+        "type": "object",
+        "required": [
+          "address",
+          "box",
+          "accessDescription",
+          "photos",
+          "pricing",
+          "availability"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string",
+            "minLength": 1
+          },
+          "box": {
+            "type": "string",
+            "minLength": 1
+          },
+          "accessDescription": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Consignes d'accès à la place, remises au locataire une fois la location confirmée."
+          },
+          "photos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "pricing": {
+            "type": "object",
+            "description": "Au moins un palier. Chaque palier présent est un entier de centimes ; un palier absent n'existe pas. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles.",
+            "additionalProperties": false,
+            "properties": {
+              "dayInCents": {
+                "type": "integer"
+              },
+              "weekInCents": {
+                "type": "integer"
+              },
+              "monthInCents": {
+                "type": "integer"
+              }
+            }
+          },
+          "availability": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. Facultatif : un client qui ne le déclare pas obtient « non déclaré » plutôt qu'un refus."
+          }
+        }
+      },
+      "UpdateListingPricingRequest": {
+        "type": "object",
+        "description": "Nouvelle grille tarifaire. Tous les paliers sont facultatifs, mais la grille résultante doit rester complète au sens du domaine ; un palier omis est effacé. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles.",
+        "additionalProperties": false,
+        "properties": {
+          "dayInCents": {
+            "type": "integer"
+          },
+          "weekInCents": {
+            "type": "integer"
+          },
+          "monthInCents": {
+            "type": "integer"
+          }
+        }
+      },
+      "RequestRentalRequest": {
+        "type": "object",
+        "required": [
+          "address",
+          "box",
+          "fromDay",
+          "toDay"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "type": "string",
+            "example": "12 rue des Lilas, 75011 Paris"
+          },
+          "box": {
+            "type": "string",
+            "example": "B12"
+          },
+          "fromDay": {
+            "type": "string",
+            "format": "date",
+            "description": "Premier jour loué, en jour calendaire `AAAA-MM-JJ`.",
+            "example": "2026-10-01"
+          },
+          "toDay": {
+            "type": "string",
+            "format": "date",
+            "description": "Dernier jour loué, en jour calendaire `AAAA-MM-JJ`. La période ne peut pas dépasser 366 jours.",
+            "example": "2026-10-03"
+          }
+        }
+      },
+      "OwnerListing": {
+        "type": "object",
+        "description": "Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut. `accessDescription` reste hors de toute réponse, y compris celle-ci.",
+        "required": [
+          "id",
+          "address",
+          "box",
+          "status",
+          "photos",
+          "pricing",
+          "availability",
+          "acceptedVehicles"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "UNPUBLISHED"
+            ],
+            "description": "Une annonce dépubliée reste visible ici, et nulle part ailleurs."
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pricing": {
+            "$ref": "#/components/schemas/Pricing"
+          },
+          "availability": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "acceptedVehicles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "velo",
+                "moto",
+                "voiture",
+                "electrique",
+                "utilitaire"
+              ]
+            },
+            "description": "Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge."
+          }
+        }
+      },
+      "RentalRequest": {
+        "type": "object",
+        "description": "Une demande de location. Ni le locataire ni le propriétaire n'y figurent : les deux routes qui la rendent sont déjà clés sur le compte appelant.",
+        "required": [
+          "id",
+          "listingId",
+          "address",
+          "box",
+          "fromDay",
+          "toDay",
+          "priceInCents",
+          "status",
+          "requestedAt",
+          "confirmedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "L'identifiant à passer à `POST /rental-request/{id}/confirmation`."
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "fromDay": {
+            "type": "string",
+            "format": "date"
+          },
+          "toDay": {
+            "type": "string",
+            "format": "date"
+          },
+          "priceInCents": {
+            "type": "integer",
+            "description": "Le montant figé au moment de la demande."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "EXPIRED"
+            ]
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

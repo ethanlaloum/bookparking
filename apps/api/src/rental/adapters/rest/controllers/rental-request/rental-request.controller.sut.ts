@@ -1,17 +1,47 @@
 import { ModuleMetadata } from '@nestjs/common';
 import { Either } from 'effect/index';
+import { ListingClosedOnRequestedDaysError } from '../../../../domain/usecases/request-rental/errors/ListingClosedOnRequestedDaysError';
 
 import { TestAuthState } from '../../../../../shared/test/http/TestAuthGuard';
 import { UseCaseDouble } from '../../../../../shared/test/http/UseCaseDouble';
 import { ConfirmRentalRequest } from '../../../../domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { RentalRequestExpiredError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestExpiredError';
-import { RentalRequestNotFoundError } from '../../../../domain/usecases/confirm-rental-request/errors/RentalRequestNotFoundError';
+import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequestNotFoundError';
+import { RentalRequest } from '../../../../domain/entities/RentalRequest';
+import { AbandonRentalRequest } from '../../../../domain/usecases/abandon-rental-request/AbandonRentalRequest';
+import { CancelRental } from '../../../../domain/usecases/cancel-rental/CancelRental';
+import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-rental/errors/RentalAlreadyStartedError';
+import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
+import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
+import { ConfirmArrival } from '../../../../domain/usecases/confirm-arrival/ConfirmArrival';
+import { AnswerRentalIssue } from '../../../../domain/usecases/answer-rental-issue/AnswerRentalIssue';
+import { ReportRentalIssue } from '../../../../domain/usecases/report-rental-issue/ReportRentalIssue';
+import { PresentedRentalRequest } from '../../../../domain/services/presentRentalRequest';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
 import { RentalRequestController } from './rental-request.controller';
 
 export const LEA_ACCOUNT_ID = 'account-lea';
 export const MARC_ACCOUNT_ID = 'account-marc';
 export const A_REQUEST_ID = 'b9a1c2d3-1111-4111-8111-111111111111';
+export const A_CHECKOUT_URL = 'https://checkout.stripe.com/c/pay/cs_test_lea';
+
+const aRequestedRental = () => {
+  const rentalRequest = RentalRequest.request({
+    renterId: LEA_ACCOUNT_ID,
+    address: '12 rue Barla, 06300 Nice',
+    box: '12',
+    days: { from: '2026-10-10', to: '2026-10-12' },
+    pricing: { dayInCents: 1500, weekInCents: null, monthInCents: null },
+    requestedAt: new Date('2026-10-01T07:00:00.000Z'),
+  });
+  if (Either.isLeft(rentalRequest))
+    throw new Error('failed to arrange a requested rental');
+  return {
+    rentalRequest: rentalRequest.right,
+    checkoutUrl: A_CHECKOUT_URL,
+    replayed: false,
+  };
+};
 
 export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
   const requestRental = new UseCaseDouble();
@@ -20,11 +50,46 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     Either.Either<void, RentalRequestExpiredError | RentalRequestNotFoundError>
   >();
 
+  const listRenterRentalRequests = new UseCaseDouble<
+    { renterId: string; now: Date },
+    Either.Either<PresentedRentalRequest[], Error>
+  >();
+  const abandonRentalRequest = new UseCaseDouble();
+  const confirmArrival = new UseCaseDouble<
+    { requestId: string; renterId: string; arrivedAt: Date },
+    Either.Either<void, Error>
+  >();
+  const reportRentalIssue = new UseCaseDouble<
+    {
+      requestId: string;
+      renterId: string;
+      reason: string;
+      message: string | null;
+      reportedAt: Date;
+    },
+    Either.Either<void, Error>
+  >();
+  const answerRentalIssue = new UseCaseDouble<
+    { requestId: string; ownerId: string; reply: string; answeredAt: Date },
+    Either.Either<void, Error>
+  >();
+  const cancelRental = new UseCaseDouble<
+    { requestId: string; accountId: string; cancelledAt: Date },
+    Either.Either<string, Error>
+  >();
+
   const metadata: ModuleMetadata = {
     controllers: [RentalRequestController],
     providers: [
       { provide: RequestRental, useValue: requestRental },
       { provide: ConfirmRentalRequest, useValue: confirmRentalRequest },
+      { provide: ListRenterRentalRequests, useValue: listRenterRentalRequests },
+      { provide: ListOwnerRentalRequests, useValue: new UseCaseDouble() },
+      { provide: AbandonRentalRequest, useValue: abandonRentalRequest },
+      { provide: CancelRental, useValue: cancelRental },
+      { provide: ConfirmArrival, useValue: confirmArrival },
+      { provide: ReportRentalIssue, useValue: reportRentalIssue },
+      { provide: AnswerRentalIssue, useValue: answerRentalIssue },
     ],
   };
 
@@ -33,6 +98,28 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     authState,
     requestRental,
     confirmRentalRequest,
+    listRenterRentalRequests,
+    confirmArrival,
+    reportRentalIssue,
+    answerRentalIssue,
+
+    givenTheCancellationRefunds() {
+      cancelRental.willResolve(Either.right('REFUNDED'));
+    },
+
+    givenTheRentalHasStarted() {
+      cancelRental.willResolve(Either.left(new RentalAlreadyStartedError()));
+    },
+
+    thenTheCancellationWasAskedBy(accountId: string, requestId: string) {
+      expect(cancelRental.calls).toEqual([
+        { requestId, accountId, cancelledAt: expect.any(Date) },
+      ]);
+    },
+
+    thenNoCancellationWasAsked() {
+      expect(cancelRental.calls).toHaveLength(0);
+    },
 
     givenConfirmationSucceeds() {
       confirmRentalRequest.willResolve(Either.right(undefined));
@@ -59,8 +146,20 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
       expect(confirmRentalRequest.lastCall?.ownerId).toEqual(accountId);
     },
 
+    givenRentalRequestRefusedBecauseClosed() {
+      requestRental.willResolve(
+        Either.left(new ListingClosedOnRequestedDaysError()),
+      );
+    },
+
     givenRentalRequestSucceeds() {
-      requestRental.willResolve(Either.right(undefined));
+      const requested = aRequestedRental();
+      requestRental.willResolve(Either.right(requested));
+      return { requestId: requested.rentalRequest.id };
+    },
+
+    thenTheUseCaseReceivedOnly(expected: Record<string, unknown>) {
+      expect(requestRental.calls).toEqual([expected]);
     },
 
     thenNoRentalRequestWasMade() {

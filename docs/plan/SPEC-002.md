@@ -1,10 +1,10 @@
 ---
 spec: SPEC-002
 statut: valide
-revision: 5
+revision: 6
 valide_le: 2026-09-20
 valide_par: JP
-derive_de: SPEC-002@40748525c4be10c63f73ed11a8347e696c3d884b
+derive_de: SPEC-002@823dd003314279e0138dabdeda08fb5aba15106a
 apps: [api]
 cas: 44
 stories: 12
@@ -74,7 +74,7 @@ requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nom
 | EX-09 | int-http | api | US-013 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an empty password |
 | EX-34 | int-http | api | US-013 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address with no at sign |
 | EX-38 | int-http | api | US-013 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an empty address |
-| EX-35 | unit | api | US-014 | `apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts` | makes the account usable without sending any email |
+| EX-35 | unit | api | US-014 | `apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts` | makes the account usable without any address verification |
 | EX-36 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address of 255 characters |
 | EX-37 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | accepts an address of 254 characters |
 | EX-40 | int-http | api | US-014 | `apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts` | refuses an address carrying a quote and a comment marker |
@@ -106,7 +106,7 @@ requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nom
 | EX-21 | unit | api | US-021 | `apps/api/src/listing/domain/usecases/publish-listing/PublishListing.unit.spec.ts` | publishes a listing for an account that never published |
 | EX-11 | int-http | api | US-021 | `apps/api/src/listing/adapters/rest/controllers/listing/listing.controller.int.spec.ts` | serves a listing to a visitor with no account |
 
-<!-- jp-way:cas {"ex":"EX-01","barreau":"unit","app":"api","story":"US-011","chemin":"apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts","titre":"creates an account for a new email address","empreinte":"5011e387"} -->
+<!-- jp-way:cas {"ex":"EX-01","barreau":"unit","app":"api","story":"US-011","chemin":"apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts","titre":"creates an account for a new email address","empreinte":"311cc273"} -->
 <!-- jp-way:cas {"ex":"EX-08","barreau":"unit","app":"api","story":"US-011","chemin":"apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts","titre":"converts a repository failure into an unknown error","empreinte":"0eff5431"} -->
 <!-- jp-way:cas {"ex":"EX-10","barreau":"unit","app":"api","story":"US-011","chemin":"apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts","titre":"accepts a long password with accents and emoji","empreinte":"aa12f003"} -->
 <!-- jp-way:cas {"ex":"EX-03","barreau":"int-repo","app":"api","story":"US-011","chemin":"apps/api/src/user-management/adapters/repositories/account/KnexAccountRepository.int.spec.ts","titre":"keeps a single account when the same address is written twice","empreinte":"a3a932d6"} -->
@@ -119,7 +119,7 @@ requête. Aucun refus n'est rejoué à l'étage du dessus — seul le chemin nom
 <!-- jp-way:cas {"ex":"EX-09","barreau":"int-http","app":"api","story":"US-013","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an empty password","empreinte":"c94a0d4b"} -->
 <!-- jp-way:cas {"ex":"EX-34","barreau":"int-http","app":"api","story":"US-013","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address with no at sign","empreinte":"e127673b"} -->
 <!-- jp-way:cas {"ex":"EX-38","barreau":"int-http","app":"api","story":"US-013","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an empty address","empreinte":"3b73fc29"} -->
-<!-- jp-way:cas {"ex":"EX-35","barreau":"unit","app":"api","story":"US-014","chemin":"apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts","titre":"makes the account usable without sending any email","empreinte":"9a7c1934"} -->
+<!-- jp-way:cas {"ex":"EX-35","barreau":"unit","app":"api","story":"US-014","chemin":"apps/api/src/user-management/domain/usecases/register-account/RegisterAccount.unit.spec.ts","titre":"makes the account usable without any address verification","empreinte":"94f248fd"} -->
 <!-- jp-way:cas {"ex":"EX-36","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address of 255 characters","empreinte":"0dcb1c44"} -->
 <!-- jp-way:cas {"ex":"EX-37","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"accepts an address of 254 characters","empreinte":"f1ed5a6d"} -->
 <!-- jp-way:cas {"ex":"EX-40","barreau":"int-http","app":"api","story":"US-014","chemin":"apps/api/src/user-management/adapters/rest/controllers/account/account.controller.int.spec.ts","titre":"refuses an address carrying a quote and a comment marker","empreinte":"60a9b317"} -->

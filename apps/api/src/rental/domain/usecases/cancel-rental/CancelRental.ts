@@ -1,0 +1,183 @@
+import { Either } from 'effect/index';
+
+import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { PlatformSettingsReader } from '../../../../shared/platform-settings/domain/ports/PlatformSettingsReader';
+import { Notification } from '../../../../shared/notification-outbox/domain/entities/Notification';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
+import { UseCase } from '../../../../shared/use-case/UseCase';
+import {
+  CancellationOutcome,
+  CancellingParty,
+  moneyAfterCancellation,
+  outcomeOfCancelledMoney,
+} from '../../entities/RentalCancellation';
+import { hasReachedTheOwner } from '../../entities/RentalMoney';
+import { RentalRequestNotFoundError } from '../../errors/RentalRequestNotFoundError';
+import { PaymentGateway } from '../../ports/PaymentGateway';
+import {
+  RentalRepository,
+  RentalRequestSummary,
+} from '../../ports/RentalRepository';
+import { settleMoneyOwed } from '../../services/settleMoneyOwed';
+import { RentalAlreadyStartedError } from './errors/RentalAlreadyStartedError';
+import { RentalNotCancellableError } from './errors/RentalNotCancellableError';
+
+interface Props {
+  requestId: string;
+  accountId: string;
+  cancelledAt: Date;
+}
+
+type Failure =
+  | RentalAlreadyStartedError
+  | RentalNotCancellableError
+  | RentalRequestNotFoundError
+  | UnknownError;
+
+export class CancelRental implements UseCase<
+  Props,
+  Promise<Either.Either<CancellationOutcome, Failure>>
+> {
+  constructor(
+    private readonly rentalRepository: RentalRepository,
+    private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
+    private readonly platformSettingsReader: PlatformSettingsReader,
+  ) {}
+
+  public async execute(
+    props: Props,
+  ): Promise<Either.Either<CancellationOutcome, Failure>> {
+    try {
+      const summary = await this.rentalRepository.findRequestSummary(
+        props.requestId,
+      );
+      const party = summary && CancelRental.partyOf(summary, props.accountId);
+      if (!summary || !party)
+        return Either.left(new RentalRequestNotFoundError());
+
+      if (summary.status === 'CANCELLED')
+        return Either.right(outcomeOfCancelledMoney(summary.money));
+      if (summary.status !== 'PENDING' && summary.status !== 'CONFIRMED')
+        return Either.left(new RentalNotCancellableError());
+      if (props.cancelledAt.getTime() >= summary.startsAt.getTime())
+        return Either.left(new RentalAlreadyStartedError());
+
+      const after = moneyAfterCancellation({
+        party,
+        money: summary.money,
+        cancelledAt: props.cancelledAt,
+        freeCancellationUntil: await this.freeCancellationUntilOf(summary),
+      });
+
+      // L'autre partie est prévenue dans la transaction de l'annulation, et
+      // par elle seule : une seconde annulation n'écrit rien, ne prévient
+      // donc personne.
+      const cancelled = await this.unitOfWork.process(async (trx) => {
+        const done = await this.rentalRepository.markCancelledBy(
+          summary.id,
+          party,
+          after.money,
+          props.cancelledAt,
+          trx,
+        );
+        if (done)
+          await this.notificationOutbox.notify(
+            CancelRental.noticeFor(summary, party, props.cancelledAt),
+            trx,
+          );
+        return done;
+      });
+      if (!cancelled) return this.afterConcurrentChange(summary.id);
+
+      // L'argent est rendu aussitôt quand Stripe répond ; sinon la dette reste
+      // écrite et le balayage la règle dans les cinq minutes.
+      if (
+        (after.money === 'RELEASE_DUE' || after.money === 'REFUND_DUE') &&
+        summary.paymentId !== null
+      )
+        await settleMoneyOwed(
+          {
+            requestId: summary.id,
+            paymentId: summary.paymentId,
+            owed: after.money,
+            status: 'CANCELLED',
+          },
+          this.rentalRepository,
+          this.paymentGateway,
+          props.cancelledAt,
+        );
+
+      return Either.right(after.outcome);
+    } catch (error: unknown) {
+      return Either.left(
+        new UnknownError(
+          error instanceof Error ? error.message : String(error),
+        ),
+      );
+    }
+  }
+
+  // Le conducteur d'abord : un compte qui louerait sa propre place annule
+  // selon les règles du conducteur, les plus strictes. Le loueur ne peut
+  // annuler qu'une demande qu'il a pu voir.
+  private static partyOf(
+    summary: RentalRequestSummary,
+    accountId: string,
+  ): CancellingParty | null {
+    if (summary.renterId === accountId) return 'RENTER';
+    if (summary.ownerId === accountId && hasReachedTheOwner(summary.status))
+      return 'OWNER';
+    return null;
+  }
+
+  // Le loueur qui annule une demande qu'il n'a pas encore acceptée la refuse :
+  // c'est ce que le conducteur doit lire, pas l'annulation d'une réservation.
+  private static noticeFor(
+    summary: RentalRequestSummary,
+    party: CancellingParty,
+    cancelledAt: Date,
+  ): Notification {
+    if (party === 'RENTER')
+      return Notification.about({
+        kind: 'RENTAL_CANCELLED_BY_RENTER',
+        recipientId: summary.ownerId,
+        rentalRequestId: summary.id,
+        createdAt: cancelledAt,
+      });
+    return Notification.about({
+      kind:
+        summary.status === 'PENDING'
+          ? 'RENTAL_REQUEST_DECLINED'
+          : 'RENTAL_CANCELLED_BY_OWNER',
+      recipientId: summary.renterId,
+      rentalRequestId: summary.id,
+      createdAt: cancelledAt,
+    });
+  }
+
+  // Une demande faite avant cette règle, sans échéance écrite, reçoit celle du
+  // délai en vigueur ; toute autre garde celle figée à sa création.
+  private async freeCancellationUntilOf(
+    summary: RentalRequestSummary,
+  ): Promise<Date> {
+    if (summary.freeCancellationUntil !== null)
+      return summary.freeCancellationUntil;
+    const { freeCancellationHours } =
+      await this.platformSettingsReader.current();
+    return new Date(
+      summary.startsAt.getTime() - freeCancellationHours * 60 * 60 * 1000,
+    );
+  }
+
+  private async afterConcurrentChange(
+    requestId: string,
+  ): Promise<Either.Either<CancellationOutcome, Failure>> {
+    const reread = await this.rentalRepository.findRequestSummary(requestId);
+    if (reread?.status === 'CANCELLED')
+      return Either.right(outcomeOfCancelledMoney(reread.money));
+    return Either.left(new RentalNotCancellableError());
+  }
+}

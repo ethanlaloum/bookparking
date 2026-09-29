@@ -1,0 +1,16 @@
+{
+  "brand": "Bookparking",
+  "skipToContent": "Aller au contenu",
+  "action": {
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "close": "Fermer"
+  },
+  "state": {
+    "loading": "Chargement…"
+  },
+  "error": {
+    "title": "Un problème est survenu",
+    "unexpected": "Une erreur inattendue est survenue. Réessayez dans un instant."
+  }
+}

@@ -15,6 +15,27 @@ import {
   resetRequestRentalState,
 } from '../domain/use-cases/request-rental/requestRentalEpic';
 import type { RequestRentalPayload } from '../domain/ports/RentalGateway';
+import {
+  answerRentalIssueFailed,
+  answerRentalIssueRequested,
+  answerRentalIssueSucceeded,
+} from '../domain/use-cases/answer-rental-issue/answerRentalIssueEpic';
+import {
+  reportRentalIssueFailed,
+  reportRentalIssueRequested,
+  reportRentalIssueSucceeded,
+  resetReportRentalIssue,
+} from '../domain/use-cases/report-rental-issue/reportRentalIssueEpic';
+import {
+  cancelRentalFailed,
+  cancelRentalRequested,
+  cancelRentalSucceeded,
+} from '../domain/use-cases/cancel-rental/cancelRentalEpic';
+import {
+  abandonRentalRequestFailed,
+  abandonRentalRequestRequested,
+  abandonRentalRequestSucceeded,
+} from '../domain/use-cases/abandon-rental-request/abandonRentalRequestEpic';
 import type { RentalRequestView } from '../domain/entities/RentalRequestView';
 import {
   listMyRentalRequestsFailed,
@@ -28,13 +49,22 @@ import {
 } from '../domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
 
 export interface RentalState {
-  lastRequested: RequestRentalPayload | null;
+  lastRequested: (RequestRentalPayload & { requestId: string }) | null;
   myRequests: RentalRequestView[];
   receivedRequests: RentalRequestView[];
   request: CommonState;
   confirm: CommonState;
+  abandon: CommonState;
+  abandonedRequestId: string | null;
+  cancel: CommonState;
+  cancelledRequestId: string | null;
   listMine: CommonState;
   listReceived: CommonState;
+  reportIssue: CommonState;
+  reportedRequestId: string | null;
+  // Par demande : le loueur peut avoir plusieurs réclamations ouvertes, et
+  // l'erreur de l'une ne doit pas s'afficher sous l'autre.
+  answerIssue: CommonState & { requestId: string | null };
 }
 
 const initialState: RentalState = {
@@ -43,8 +73,15 @@ const initialState: RentalState = {
   receivedRequests: [],
   request: initialCommonState,
   confirm: initialCommonState,
+  abandon: initialCommonState,
+  abandonedRequestId: null,
+  cancel: initialCommonState,
+  cancelledRequestId: null,
   listMine: initialCommonState,
   listReceived: initialCommonState,
+  reportIssue: initialCommonState,
+  reportedRequestId: null,
+  answerIssue: { ...initialCommonState, requestId: null },
 };
 
 export const rentalReducer = createReducer(initialState, (builder) => {
@@ -62,6 +99,52 @@ export const rentalReducer = createReducer(initialState, (builder) => {
     .addCase(resetRequestRentalState, (state) => {
       state.request = initialCommonState;
       state.lastRequested = null;
+    })
+    .addCase(reportRentalIssueRequested, (state) => {
+      state.reportIssue = { state: 'pending' };
+    })
+    .addCase(reportRentalIssueSucceeded, (state, action) => {
+      state.reportIssue = { state: 'succeeded' };
+      state.reportedRequestId = action.payload.requestId;
+    })
+    .addCase(reportRentalIssueFailed, (state, action) => {
+      state.reportIssue = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(resetReportRentalIssue, (state) => {
+      state.reportIssue = initialCommonState;
+    })
+    .addCase(answerRentalIssueRequested, (state, action) => {
+      state.answerIssue = { state: 'pending', requestId: action.payload.requestId };
+    })
+    .addCase(answerRentalIssueSucceeded, (state, action) => {
+      state.answerIssue = { state: 'succeeded', requestId: action.payload.requestId };
+    })
+    .addCase(answerRentalIssueFailed, (state, action) => {
+      state.answerIssue = {
+        state: 'failed',
+        errorCode: action.payload.errorCode,
+        requestId: action.payload.requestId,
+      };
+    })
+    .addCase(cancelRentalRequested, (state) => {
+      state.cancel = { state: 'pending' };
+    })
+    .addCase(cancelRentalSucceeded, (state, action) => {
+      state.cancel = { state: 'succeeded' };
+      state.cancelledRequestId = action.payload.requestId;
+    })
+    .addCase(cancelRentalFailed, (state, action) => {
+      state.cancel = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(abandonRentalRequestRequested, (state) => {
+      state.abandon = { state: 'pending' };
+    })
+    .addCase(abandonRentalRequestSucceeded, (state, action) => {
+      state.abandon = { state: 'succeeded' };
+      state.abandonedRequestId = action.payload.requestId;
+    })
+    .addCase(abandonRentalRequestFailed, (state, action) => {
+      state.abandon = { state: 'failed', errorCode: action.payload.errorCode };
     })
     .addCase(confirmRentalRequestRequested, (state) => {
       state.confirm = { state: 'pending' };

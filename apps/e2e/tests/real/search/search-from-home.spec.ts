@@ -31,10 +31,10 @@ test.describe('Search', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const search = new SearchPage(page);
-    await search.searchField().fill('place mass');
+    await search.searchField().fill('place masséna nice');
     await search.suggestion('Place Masséna 06000 Nice').click();
-    await search.vehicleSelect().selectOption('electrique');
-    await search.durationSelect().selectOption('week');
+    await search.chooseVehicle('Voiture électrique');
+    await search.chooseDuration('À la semaine');
     await search.submit();
 
     await expect(page).toHaveURL(/\/recherche\?/);
@@ -42,8 +42,8 @@ test.describe('Search', () => {
     await expect(page).toHaveURL(/duree=week/);
 
     await expect(page.getByRole('heading', { level: 1, name: 'Rechercher une place' })).toBeVisible();
-    await expect(search.vehicleSelect()).toHaveValue('electrique');
-    await expect(search.durationSelect()).toHaveValue('week');
+    await search.expectVehicle('Voiture électrique');
+    await search.expectDuration('À la semaine');
     await search.expectSearchSummary(/Autour de : Place Masséna/);
     await search.expectSearchSummary(/places? (accepte|acceptent) ce véhicule/);
   });
@@ -57,7 +57,7 @@ test.describe('Search', () => {
     );
 
     const search = new SearchPage(page);
-    await expect(search.durationSelect()).toHaveValue('day');
+    await search.expectDuration('À la journée');
     await search.expectSearchSummary(/Autour de : Place Masséna/);
   });
 });

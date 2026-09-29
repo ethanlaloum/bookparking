@@ -1,6 +1,9 @@
+import { Either } from 'effect/index';
 import * as request from 'supertest';
 
 import { createControllerTestApp } from '../../../../../shared/test/http/createControllerTestApp';
+import { AccountStillCommittedError } from '../../../../domain/usecases/delete-account/errors/AccountStillCommittedError';
+import { InvalidCredentialsError } from '../../../../domain/usecases/sign-in/errors/InvalidCredentialsError';
 import { createAccountControllerSUT } from './account.controller.sut';
 
 const MARC_EMAIL = 'marc.d@example.com';
@@ -16,6 +19,21 @@ const ADDRESS_OF_254_CHARACTERS = `${'a'.repeat(242)}@example.com`;
 const ADDRESS_OF_255_CHARACTERS = `${'a'.repeat(243)}@example.com`;
 const ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER = "marc'--@example.com";
 const ACCENTED_ADDRESS = 'Léa.T@Exemple.fr';
+// Bien formée ; le cas d'usage, doublé ici, décide seul si elle est acceptée.
+const HUMAN_PROOF = {
+  algorithm: 'SHA-256',
+  challenge: 'c'.repeat(64),
+  salt: 'a1b2c3d4?expires=1790000000',
+  number: 1234,
+  signature: 's'.repeat(64),
+};
+const HUMAN_CHALLENGE = {
+  algorithm: 'SHA-256' as const,
+  challenge: 'c'.repeat(64),
+  salt: 'a1b2c3d4?expires=1790000000',
+  maxNumber: 50000,
+  signature: 's'.repeat(64),
+};
 
 describe('AccountController @SPEC-002', () => {
   let sut: ReturnType<typeof createAccountControllerSUT>;
@@ -36,17 +54,25 @@ describe('AccountController @SPEC-002', () => {
     it('responds 409 when the email address already has an account @EX-002-04', async () => {
       sut.givenAccountAlreadyExistsFor(MARC_EMAIL);
 
-      const response = await http()
-        .post('/account')
-        .send({ email: MARC_EMAIL, password: OTHER_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: MARC_EMAIL,
+        password: OTHER_PASSWORD,
+      });
 
       expect(response.status).toEqual(409);
       expect(JSON.stringify(response.body)).not.toContain(MARC_EMAIL);
     });
     it('refuses a password shorter than eight characters @EX-002-05', async () => {
-      const response = await http()
-        .post('/account')
-        .send({ email: LEA_EMAIL, password: SEVEN_CHAR_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: LEA_EMAIL,
+        password: SEVEN_CHAR_PASSWORD,
+      });
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
@@ -55,44 +81,64 @@ describe('AccountController @SPEC-002', () => {
     it('accepts a password of exactly eight characters @EX-002-06', async () => {
       sut.givenRegistrationSucceedsFor(LEA_EMAIL);
 
-      const response = await http()
-        .post('/account')
-        .send({ email: LEA_EMAIL, password: EIGHT_CHAR_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: LEA_EMAIL,
+        password: EIGHT_CHAR_PASSWORD,
+      });
 
       expect(response.status).toEqual(201);
       sut.thenAccountWasRegisteredFor(LEA_EMAIL);
     });
 
     it('refuses an empty password @EX-002-09', async () => {
-      const response = await http()
-        .post('/account')
-        .send({ email: LEA_EMAIL, password: '' });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: LEA_EMAIL,
+        password: '',
+      });
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
     });
 
     it('refuses an address with no at sign @EX-002-34', async () => {
-      const response = await http()
-        .post('/account')
-        .send({ email: ADDRESS_WITHOUT_AT_SIGN, password: MARC_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: ADDRESS_WITHOUT_AT_SIGN,
+        password: MARC_PASSWORD,
+      });
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
     });
 
     it('refuses an empty address @EX-002-38', async () => {
-      const response = await http()
-        .post('/account')
-        .send({ email: '', password: MARC_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: '',
+        password: MARC_PASSWORD,
+      });
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
     });
     it('keeps a mistyped password out of the validation response @EX-002-41', async () => {
-      const response = await http()
-        .post('/account')
-        .send({ email: LEA_EMAIL, password: MISTYPED_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: LEA_EMAIL,
+        password: MISTYPED_PASSWORD,
+      });
 
       expect(response.status).toEqual(400);
       expect(JSON.stringify(response.body)).not.toContain('12345678');
@@ -111,9 +157,13 @@ describe('AccountController @SPEC-002', () => {
     });
 
     it('refuses an address of 255 characters @EX-002-36', async () => {
-      const response = await http()
-        .post('/account')
-        .send({ email: ADDRESS_OF_255_CHARACTERS, password: MARC_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: ADDRESS_OF_255_CHARACTERS,
+        password: MARC_PASSWORD,
+      });
 
       expect(response.status).toEqual(400);
       sut.thenNoAccountWasRegistered();
@@ -122,15 +172,22 @@ describe('AccountController @SPEC-002', () => {
     it('accepts an address of 254 characters @EX-002-37', async () => {
       sut.givenRegistrationSucceedsFor(ADDRESS_OF_254_CHARACTERS);
 
-      const response = await http()
-        .post('/account')
-        .send({ email: ADDRESS_OF_254_CHARACTERS, password: MARC_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: ADDRESS_OF_254_CHARACTERS,
+        password: MARC_PASSWORD,
+      });
 
       expect(response.status).toEqual(201);
     });
 
     it('refuses an address carrying a quote and a comment marker @EX-002-40', async () => {
       const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
         email: ADDRESS_CARRYING_A_QUOTE_AND_A_COMMENT_MARKER,
         password: MARC_PASSWORD,
       });
@@ -141,9 +198,13 @@ describe('AccountController @SPEC-002', () => {
     it('accepts an accented address at the HTTP boundary @EX-002-39', async () => {
       sut.givenRegistrationSucceedsFor(ACCENTED_ADDRESS);
 
-      const response = await http()
-        .post('/account')
-        .send({ email: ACCENTED_ADDRESS, password: MARC_PASSWORD });
+      const response = await http().post('/account').send({
+        humanProof: HUMAN_PROOF,
+        acceptsTerms: true,
+        avatar: 'SIGNAL',
+        email: ACCENTED_ADDRESS,
+        password: MARC_PASSWORD,
+      });
 
       expect(response.status).toEqual(201);
       sut.thenAccountWasRegisteredFor(ACCENTED_ADDRESS);
@@ -157,6 +218,253 @@ describe('AccountController @SPEC-002', () => {
 
       expect(response.status).toEqual(401);
       sut.thenNoPasswordWasChanged();
+    });
+  });
+});
+
+describe('AccountController @SPEC-007', () => {
+  let sut: ReturnType<typeof createAccountControllerSUT>;
+  let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
+
+  const http = () => request(testApp.app.getHttpServer());
+
+  beforeEach(async () => {
+    sut = createAccountControllerSUT();
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+  });
+
+  afterEach(async () => {
+    await testApp.close();
+  });
+
+  it('serves a challenge and requires a proof to register @EX-007-18', async () => {
+    sut.givenChallenge(HUMAN_CHALLENGE);
+
+    const challenge = await http().get('/account/human-challenge');
+    const withoutProof = await http().post('/account').send({
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+      acceptsTerms: true,
+      avatar: 'SIGNAL',
+    });
+
+    expect(challenge.status).toEqual(200);
+    expect(challenge.body).toEqual(HUMAN_CHALLENGE);
+    expect(withoutProof.status).toEqual(400);
+    expect(JSON.stringify(withoutProof.body)).not.toContain(MARC_PASSWORD);
+    sut.thenNoAccountWasRegistered();
+  });
+});
+
+describe('AccountController @SPEC-008', () => {
+  let sut: ReturnType<typeof createAccountControllerSUT>;
+  let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
+
+  const http = () => request(testApp.app.getHttpServer());
+
+  beforeEach(async () => {
+    sut = createAccountControllerSUT();
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+  });
+
+  afterEach(async () => {
+    await testApp.close();
+  });
+
+  it('refuses a registration that says nothing of the terms @EX-008-04', async () => {
+    sut.givenRegistrationSucceedsFor(MARC_EMAIL);
+
+    const response = await http().post('/account').send({
+      humanProof: HUMAN_PROOF,
+      email: MARC_EMAIL,
+      password: MARC_PASSWORD,
+      avatar: 'SIGNAL',
+    });
+
+    expect(response.status).toEqual(400);
+    sut.thenNoAccountWasRegistered();
+  });
+});
+
+describe('AccountController — avatar and own account', () => {
+  const LEA = {
+    id: '7c2e5b1a-4d3f-4a8e-9b6c-2e1f0a9d8c7b',
+    email: LEA_EMAIL,
+    avatar: 'RIVIERA' as const,
+  };
+  const AVATAR_REFUSAL = {
+    statusCode: 400,
+    message:
+      'avatar: Avatar invalide : SIGNAL, MARKING, RIVIERA, ASPHALT, CHECKERED',
+  };
+
+  let sut: ReturnType<typeof createAccountControllerSUT>;
+  let testApp: Awaited<ReturnType<typeof createControllerTestApp>>;
+
+  const http = () => request(testApp.app.getHttpServer());
+  const registration = {
+    humanProof: HUMAN_PROOF,
+    acceptsTerms: true,
+    email: LEA_EMAIL,
+    password: MARC_PASSWORD,
+  };
+
+  beforeEach(async () => {
+    sut = createAccountControllerSUT();
+    testApp = await createControllerTestApp(sut.metadata, sut.authState);
+  });
+
+  afterEach(async () => {
+    await testApp.close();
+  });
+
+  it('passes the chosen avatar on to the registration', async () => {
+    sut.givenRegistrationSucceedsFor(LEA_EMAIL);
+
+    const response = await http()
+      .post('/account')
+      .send({ ...registration, avatar: 'RIVIERA' });
+
+    expect(response.status).toEqual(201);
+    sut.thenAccountWasRegisteredWithAvatar('RIVIERA');
+  });
+
+  it('refuses a registration without an avatar, or outside the five', async () => {
+    sut.givenRegistrationSucceedsFor(LEA_EMAIL);
+
+    const withoutAvatar = await http().post('/account').send(registration);
+    const outsideTheFive = await http()
+      .post('/account')
+      .send({ ...registration, avatar: 'OTHER' });
+
+    expect(withoutAvatar.status).toEqual(400);
+    expect(outsideTheFive.status).toEqual(400);
+    expect(outsideTheFive.body).toEqual(AVATAR_REFUSAL);
+    sut.thenNoAccountWasRegistered();
+  });
+
+  it('returns only the id, the address and the avatar', async () => {
+    sut.givenSignedInAs(LEA);
+
+    const response = await http()
+      .get('/account')
+      .set('Authorization', 'Bearer token');
+
+    expect(response.status).toEqual(200);
+    expect(response.body).toEqual(LEA);
+    sut.thenAccountWasReadFor(LEA.id);
+  });
+
+  it('reads no account without a token', async () => {
+    const response = await http().get('/account');
+
+    expect(response.status).toEqual(401);
+    sut.thenNoAccountWasRead();
+  });
+
+  it('changes the avatar of the signed-in account', async () => {
+    sut.givenSignedInAs(LEA);
+    sut.givenAvatarChangeSucceeds();
+
+    const response = await http()
+      .patch('/account/avatar')
+      .set('Authorization', 'Bearer token')
+      .send({ avatar: 'CHECKERED' });
+
+    expect(response.status).toEqual(204);
+    sut.thenAvatarWasChosen(LEA.id, 'CHECKERED');
+  });
+
+  it('refuses an avatar outside the five', async () => {
+    sut.givenSignedInAs(LEA);
+
+    const response = await http()
+      .patch('/account/avatar')
+      .set('Authorization', 'Bearer token')
+      .send({ avatar: 'OTHER' });
+
+    expect(response.status).toEqual(400);
+    expect(response.body).toEqual(AVATAR_REFUSAL);
+    sut.thenNoAvatarWasChosen();
+  });
+
+  it('changes no avatar without a token', async () => {
+    const response = await http()
+      .patch('/account/avatar')
+      .send({ avatar: 'CHECKERED' });
+
+    expect(response.status).toEqual(401);
+    sut.thenNoAvatarWasChosen();
+  });
+
+  describe('DELETE /account', () => {
+    it('deletes the signed-in account with its password', async () => {
+      sut.givenSignedInAs(LEA);
+      sut.givenDeletionAnswers(Either.right(undefined));
+
+      const response = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: 'Promenade06!' });
+
+      expect(response.status).toEqual(204);
+      expect(response.body).toEqual({});
+      sut.thenDeletionWasAskedFor(LEA.id, 'Promenade06!');
+    });
+
+    it('responds 403 to a wrong password', async () => {
+      sut.givenSignedInAs(LEA);
+      sut.givenDeletionAnswers(Either.left(new InvalidCredentialsError()));
+
+      const response = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: 'Mauvais2026!' });
+
+      expect(response.status).toEqual(403);
+      expect(response.body.message).toEqual(
+        'Adresse e-mail ou mot de passe incorrect',
+      );
+    });
+
+    it('responds 409 while a request, a rental or a payout is ongoing', async () => {
+      sut.givenSignedInAs(LEA);
+      sut.givenDeletionAnswers(Either.left(new AccountStillCommittedError()));
+
+      const response = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: 'Promenade06!' });
+
+      expect(response.status).toEqual(409);
+      expect(response.body.message).toEqual(
+        "Une demande, une réservation ou un versement est encore en cours sur votre compte : vous pourrez le supprimer une fois qu'ils seront terminés",
+      );
+    });
+
+    it('refuses a deletion without a password', async () => {
+      sut.givenSignedInAs(LEA);
+
+      const empty = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({ password: '' });
+      const missing = await http()
+        .delete('/account')
+        .set('Authorization', 'Bearer token')
+        .send({});
+
+      expect([empty.status, missing.status]).toEqual([400, 400]);
+      sut.thenNoDeletionWasAsked();
+    });
+
+    it('deletes nothing without a token', async () => {
+      const response = await http()
+        .delete('/account')
+        .send({ password: 'Promenade06!' });
+
+      expect(response.status).toEqual(401);
+      sut.thenNoDeletionWasAsked();
     });
   });
 });

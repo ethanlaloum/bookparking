@@ -1,0 +1,38 @@
+{
+  "banner": {
+    "eyebrow": "Your data, your choice",
+    "title": "Cookies and third-party content",
+    "body": "Bookparking sets no advertising or audience-measurement cookies. Two outside services wait for your consent: the map, served by OpenStreetMap, and the fonts, served by Google. They receive your IP address when they load.",
+    "acceptAll": "Accept all",
+    "refuseAll": "Refuse all",
+    "customize": "Customize"
+  },
+  "settings": {
+    "eyebrow": "Your data, your choice",
+    "title": "Cookies and third-party content",
+    "intro": "Choose what you allow. Your choice is kept for six months in this browser, and can be changed at any time from “Manage cookies”, at the bottom of every page.",
+    "necessary": {
+      "title": "Strictly necessary",
+      "status": "Always on",
+      "body": "Your sign-in session and this choice, kept in this browser: without them, the site would not know who is signed in. Address search queries the Base Adresse Nationale, a French public service, as you type."
+    },
+    "map": {
+      "label": "Map (OpenStreetMap)",
+      "body": "The search map background, served by the OpenStreetMap Foundation. If refused, the list of spaces stays complete: only the map is not shown."
+    },
+    "fonts": {
+      "label": "Fonts (Google Fonts)",
+      "body": "The site’s typefaces, served by Google. If refused, the site uses your device’s fonts."
+    },
+    "save": "Save my choices",
+    "acceptAll": "Accept all",
+    "refuseAll": "Refuse all"
+  },
+  "manage": "Manage cookies",
+  "mapPlaceholder": {
+    "title": "The map is waiting for your consent",
+    "body": "It is served by OpenStreetMap, which receives your IP address when it loads. The list of spaces works without it.",
+    "show": "Show the map",
+    "hint": "You can withdraw this choice from “Manage cookies”, at the bottom of the page."
+  }
+}

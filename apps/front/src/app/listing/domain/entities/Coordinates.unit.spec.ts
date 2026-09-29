@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   centerOf,
-  NICE,
   distanceInKilometers,
+  frameOf,
   isPlaceable,
   precisionOfScore,
   spanInKilometers,
@@ -14,6 +14,10 @@ import {
 const PARIS: Coordinates = { latitude: 48.8566, longitude: 2.3522 };
 const LILLE: Coordinates = { latitude: 50.6292, longitude: 3.0573 };
 const LYON: Coordinates = { latitude: 45.764, longitude: 4.8357 };
+const NICE: Coordinates = { latitude: 43.7009, longitude: 7.2683 };
+const SAINT_DENIS_DE_LA_REUNION: Coordinates = { latitude: -20.8821, longitude: 55.4507 };
+// Le centre géographique de la métropole, à Bruère-Allichamps (Cher).
+const CENTRE_OF_MAINLAND_FRANCE: Coordinates = { latitude: 46.7717, longitude: 2.4319 };
 
 describe('the confidence a geocoder reports', () => {
   it('calls a near-perfect match exact', () => {
@@ -47,8 +51,14 @@ describe('the map framing', () => {
     expect(center.longitude).toBeCloseTo(2.70475, 3);
   });
 
-  it('falls back on Nice when nothing could be placed, because that is the only city served', () => {
-    expect(centerOf([])).toEqual(NICE);
+  it('opens on the whole of France when nothing could be placed, because the whole country is served', () => {
+    const frame = frameOf([]);
+    expect(distanceInKilometers(frame.center, CENTRE_OF_MAINLAND_FRANCE)).toBeLessThan(50);
+    expect(frame.zoom).toBe(5);
+  });
+
+  it('frames a single point at street level', () => {
+    expect(frameOf([PARIS])).toEqual({ center: PARIS, zoom: 13 });
   });
 
   it('centres on the single point it was given', () => {
@@ -69,5 +79,11 @@ describe('the map framing', () => {
     expect(zoomForSpan(0)).toBe(13);
     expect(zoomForSpan(1)).toBe(14);
     expect(zoomForSpan(20)).toBe(10);
+  });
+
+  it('zooms out to the region, the country, then overseas as the spread grows', () => {
+    expect(zoomForSpan(distanceInKilometers(PARIS, LILLE))).toBe(7);
+    expect(zoomForSpan(distanceInKilometers(PARIS, NICE))).toBe(5);
+    expect(zoomForSpan(distanceInKilometers(PARIS, SAINT_DENIS_DE_LA_REUNION))).toBe(2);
   });
 });

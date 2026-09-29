@@ -11,13 +11,41 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Lire son propre compte
+         * @description Rend le compte porté par le jeton, et lui seul : la route ne prend aucun identifiant. C'est d'ici que le site et l'app tirent l'adresse et le pilote choisi comme avatar du compte connecté, `POST /session` ne rendant qu'un jeton. Ni empreinte du mot de passe, ni dates, ni suspension.
+         */
+        get: operations["readOwnAccount"];
         put?: never;
         /**
          * Inscrire un compte
-         * @description Crée un compte à partir d'une adresse e-mail et d'un mot de passe. Route publique.
+         * @description Crée un compte à partir d'une adresse e-mail, d'un mot de passe assez robuste et d'une preuve anti-robot (`GET /account/human-challenge`). Route publique.
          */
         post: operations["registerAccount"];
+        /**
+         * Supprimer son compte
+         * @description Supprime le compte porté par le jeton ; le mot de passe est redemandé. Ses annonces actives sont dépubliées, ses demandes encore impayées abandonnées, et ses notifications, téléphones, e-mails et compte de versement effacés ; ses locations passées restent, sans lien avec une personne. Refusée tant qu'une demande attend la réponse du loueur, qu'une réservation n'est pas terminée, ou qu'un versement est encore dû au loueur. Rejouée, elle trouve un jeton dont le compte n'existe plus : 401.
+         */
+        delete: operations["deleteAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/human-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtenir un défi anti-robot
+         * @description Rend un défi à résoudre avant `POST /account` (SPEC-007). Route publique.
+         */
+        get: operations["issueHumanChallenge"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -38,6 +66,46 @@ export interface paths {
          * @description Change le mot de passe du compte porté par le jeton. Le mot de passe actuel est exigé.
          */
         post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demander un lien de réinitialisation du mot de passe
+         * @description Route publique. Si un compte actif porte cette adresse, un lien valable une heure et une seule fois lui est envoyé par e-mail ; l'api n'en garde que l'empreinte SHA-256. La réponse est la même que l'adresse ait un compte ou non. Une seconde demande pour le même compte moins de deux minutes après la précédente n'envoie rien de plus.
+         */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/password-reset/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choisir un nouveau mot de passe avec le lien reçu
+         * @description Route publique. Le jeton est celui du lien reçu par e-mail (`/mot-de-passe/nouveau?jeton=…`). Une réinitialisation réussie dépense tous les liens encore valables du compte. Les sessions déjà ouvertes restent valables, comme après un changement de mot de passe.
+         */
+        post: operations["resetPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -76,6 +144,8 @@ export interface paths {
         /**
          * Lister les annonces actives
          * @description Rend toutes les annonces actives. Route publique, sans pagination ni filtre à ce jour.
+         *
+         *     Avec `fromDay` et `toDay` (jours `AAAA-MM-JJ`, heure de Paris, bornes comprises), ne rend que les annonces libres sur tout le séjour : ouvertes du premier au dernier jour, et qu'aucune demande en attente de paiement, en attente du loueur ou confirmée ne retient sur l'un de ces jours — la même règle que celle qui refuse une demande en 409. Un jeton facultatif fait ignorer au compte sa propre demande en attente de paiement, qu'une nouvelle demande remplacerait.
          */
         get: operations["listListings"];
         put?: never;
@@ -104,6 +174,48 @@ export interface paths {
          * @description Rend les annonces du compte appelant, **quel que soit leur statut** — c'est la seule route qui montre une annonce dépubliée. Déclarée avant `/listing/{id}` côté serveur, sans quoi « mine » serait décodé comme un identifiant.
          */
         get: operations["listOwnerListings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/listing/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Envoyer une photo d'annonce
+         * @description Enregistre une photo au nom du compte porté par le jeton, et rend son identifiant, à recopier ensuite dans `photos` à la publication ou à la modification d'une annonce. Le format est lu dans les premiers octets du fichier (JPEG, PNG ou WebP), jamais dans le type déclaré. 10 Mo au plus.
+         */
+        post: operations["uploadListingPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/listing/photo/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Lire une photo d'annonce
+         * @description Publique, comme la fiche. Rend les octets sous leur format, avec `Cache-Control: public, max-age=31536000, immutable` : une photo ne change jamais sous un identifiant.
+         */
+        get: operations["getListingPhoto"];
         put?: never;
         post?: never;
         delete?: never;
@@ -143,33 +255,13 @@ export interface paths {
         delete: operations["unpublishListing"];
         options?: never;
         head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/listing/{id}/pricing": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description Identifiant de l'annonce (UUID), tel que rendu par `GET /listing`.
-                 * @example 3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c
-                 */
-                id: components["parameters"]["ListingId"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
         /**
-         * Changer la grille tarifaire d'une annonce
-         * @description Remplace la grille tarifaire de l'annonce active. Un palier absent du corps est effacé : la grille envoyée remplace la précédente en entier.
+         * Modifier une annonce
+         * @description Remplace tout ce que le propriétaire peut changer sur son annonce active : consignes d'accès, photos, véhicules acceptés, grille tarifaire et période de disponibilité. Chaque champ est requis : le corps décrit l'annonce entière, et un palier tarifaire absent est effacé.
+         *
+         *     L'adresse et le box ne se modifient pas : ils sont la place elle-même, et en changer revient à publier une autre annonce. Les demandes et réservations déjà faites restent valables, même hors des nouvelles dates ou pour un véhicule qui n'est plus accepté.
          */
-        patch: operations["updateListingPricing"];
+        patch: operations["editListing"];
         trace?: never;
     };
     "/rental-request": {
@@ -187,9 +279,9 @@ export interface paths {
         put?: never;
         /**
          * Demander une location
-         * @description Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton.
+         * @description Demande la location d'une place — identifiée par le couple (adresse, box) — sur une période de jours calendaires, au nom du compte porté par le jeton, et ouvre la page de paiement Stripe au prix que l'api a figé.
          *
-         *     Une demande non confirmée expire au bout du délai configuré par `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut).
+         *     La demande reste en attente de paiement jusqu'à ce que Stripe annonce l'empreinte ; le délai de `RENTAL_REQUEST_EXPIRY_IN_HOURS` (48 heures par défaut) court ensuite depuis l'empreinte. Une page de paiement vaut trente minutes.
          */
         post: operations["requestRental"];
         delete?: never;
@@ -238,6 +330,8 @@ export interface paths {
          * @description Confirme une demande de location. Seul le propriétaire de la place peut confirmer.
          *
          *     Un identifiant mal formé, une demande inconnue et une demande appartenant à quelqu'un d'autre répondent toutes `404`, avec le même message.
+         *
+         *     Confirmer prélève l'empreinte du conducteur. Si sa banque refuse le prélèvement, la confirmation répond `409` et la demande passe en `PAYMENT_FAILED`.
          */
         post: operations["confirmRentalRequest"];
         delete?: never;
@@ -410,6 +504,422 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rental-request/{id}/abandonment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abandonner sa demande avant de payer
+         * @description Appelée quand le conducteur revient de Stripe sans payer : la page de paiement est fermée et les dates rendues aussitôt. Seul l'auteur de la demande peut l'abandonner.
+         */
+        post: operations["abandonRentalRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payment/stripe-webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recevoir un événement de Stripe
+         * @description Appelée par Stripe seul, jamais par un client. Aucune garde de jeton : l'en-tête `Stripe-Signature` est vérifié sur le corps brut avec `STRIPE_WEBHOOK_SECRET`. Événements lus : `payment_intent.amount_capturable_updated` (empreinte posée) et `checkout.session.expired` (page de paiement expirée).
+         */
+        post: operations["receiveStripeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/cancellation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annuler une réservation
+         * @description Annule une demande qui attend le propriétaire ou une location confirmée, tant qu'elle n'a pas commencé. Le conducteur est remboursé en totalité jusqu'à l'échéance `freeCancellationUntil` incluse, et plus du tout après ; le propriétaire peut annuler à tout moment avant le début, et le conducteur récupère alors tout. Une empreinte non prélevée est toujours levée. Annuler deux fois rend le même effet sans rien refaire.
+         */
+        post: operations["cancelRental"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Changer d'avatar
+         * @description Remplace le pilote choisi comme avatar par le compte porté par le jeton, et lui seul.
+         */
+        patch: operations["chooseAvatar"];
+        trace?: never;
+    };
+    "/notification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire ses notifications
+         * @description Rend les trente notifications les plus récentes du compte porté par le jeton, et le nombre de ses notifications non lues. La route ne prend aucun identifiant : un compte ne lit que les siennes. L'adresse, le box et les jours sont lus sur l'annonce et la demande au moment de la lecture.
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer ses notifications comme lues
+         * @description Marque comme lues toutes les notifications non lues du compte porté par le jeton. Une notification déjà lue garde l'instant de sa première lecture : rejouer la requête ne change rien.
+         */
+        post: operations["markNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/push-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enregistrer son téléphone
+         * @description Rattache le téléphone au compte porté par le jeton, pour qu'il reçoive ses notifications en push. Un téléphone déjà enregistré par un autre compte passe à celui-ci : il n'appartient qu'au dernier compte connecté. L'app l'appelle à chaque session ouverte ; la rejouer ne change rien.
+         */
+        post: operations["registerPushDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/push-device/removal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Oublier un téléphone
+         * @description Le téléphone cesse de recevoir des push. Sans authentification : l'app l'appelle en se déconnectant, quand la session est peut-être déjà effacée — et qui connaît le jeton peut déjà pousser vers ce téléphone par Expo. Répond 204 que le jeton soit connu ou non.
+         */
+        post: operations["forgetPushDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer une notification comme lue
+         * @description Marque comme lue une seule notification du compte porté par le jeton — celle d'une réservation confirmée, une fois fêtée à l'écran. Un identifiant mal formé, inconnu ou appartenant à un autre compte répond 204 comme les autres et ne marque rien : la route ne dit jamais qu'une notification existe.
+         */
+        post: operations["markNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire ses versements
+         * @description L'état du compte Stripe du loueur porté par le jeton, et chaque location payée sur ses places : retenue, libérée ou virée. Un compte pas encore validé est relu chez Stripe à chaque lecture.
+         */
+        get: operations["readPayouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payout/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Saisir ses coordonnées bancaires chez Stripe
+         * @description Crée au premier appel le compte Stripe Connect Express du loueur, puis rend un lien vers les pages de Stripe où il saisit son identité et son IBAN. Au retour, Stripe renvoie vers `/compte?onglet=versements`.
+         */
+        post: operations["startPayoutOnboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payout/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ouvrir son espace Stripe
+         * @description Rend un lien de connexion à l'espace Stripe Express du loueur : son IBAN, ses virements vers sa banque.
+         */
+        post: operations["openPayoutDashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/arrival": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmer son arrivée
+         * @description Le conducteur d'une réservation confirmée dit qu'il est arrivé, à partir du premier instant de la location : l'argent est libéré vers le loueur (D-22). Rejouée, la requête ne change rien.
+         */
+        post: operations["confirmArrival"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire les réglages de location
+         * @description Les valeurs en vigueur et les bornes que l'api fait respecter.
+         */
+        get: operations["readPlatformSettings"];
+        put?: never;
+        /**
+         * Changer les réglages de location
+         * @description Écrit une nouvelle version, qui vaut pour les demandes faites à partir de maintenant ; les demandes déjà faites gardent les valeurs figées sur elles. Le changement est inscrit au journal d'administration avec son motif.
+         */
+        post: operations["changePlatformSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire le journal d'administration
+         * @description Les 200 dernières actions de l'administration, de la plus récente à la plus ancienne : modérations et changements de réglages, avec leur auteur, leur cible et leur motif.
+         */
+        get: operations["readAdminJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire les conditions de location en vigueur
+         * @description Public. Les valeurs qu'une demande faite maintenant figerait : la FAQ, les conditions d'utilisation et « Versements » les citent.
+         */
+        get: operations["readRentalTerms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signaler un problème sur une réservation
+         * @description Le conducteur ne peut pas entrer, ou la place est occupée. Possible pendant la location, avant d'avoir confirmé son arrivée et avant que l'argent parte vers le loueur ; l'argent est gelé jusqu'à la décision de Bookparking, et le loueur est prévenu.
+         */
+        post: operations["reportRentalIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/issue/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Répondre à une réclamation, comme loueur
+         * @description Une seule réponse, tant que la réclamation est ouverte. Le conducteur est prévenu.
+         */
+        post: operations["answerRentalIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister les réclamations
+         * @description Les ouvertes d'abord, puis les plus récentes ; 200 au plus.
+         */
+        get: operations["listRentalIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/issues/{id}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trancher une réclamation
+         * @description Écrit la décision, inscrite au journal avec son motif, et prévient les deux parties.
+         */
+        post: operations["resolveRentalIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -430,7 +940,12 @@ export interface components {
              * @description Adresse e-mail. Les espaces, `@` surnuméraires, apostrophes, guillemets, antislashs et points-virgules sont refusés.
              */
             email: string;
+            /** @description Au moins 8 caractères, et une robustesse moyenne ou forte (SPEC-007 RG-02) ; un mot de passe faible est refusé en 400. */
             password: string;
+            humanProof: components["schemas"]["HumanProof"];
+            /** @description La case « J'accepte les conditions d'utilisation » (SPEC-008). `false` est refusé en 400 ; l'instant de l'acceptation est noté sur le compte. */
+            acceptsTerms: boolean;
+            avatar: components["schemas"]["Avatar"];
         };
         RegisterAccountResponse: {
             /** Format: uuid */
@@ -441,6 +956,9 @@ export interface components {
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
+        };
+        DeleteAccountRequest: {
+            password: string;
         };
         SignInRequest: {
             /** Format: email */
@@ -473,7 +991,7 @@ export interface components {
             address: string;
             /** @example B12 */
             box: string;
-            /** @description Références des photos stockées. */
+            /** @description Identifiants des photos, dans l'ordre d'affichage ; chacune se lit à `GET /listing/photo/{id}`. Une référence qui n'est pas un UUID date d'avant l'envoi de photos et ne désigne aucune image. */
             photos: string[];
             pricing: components["schemas"]["Pricing"];
             availability: {
@@ -490,6 +1008,7 @@ export interface components {
             box: string;
             /** @description Consignes d'accès à la place, remises au locataire une fois la location confirmée. */
             accessDescription: string;
+            /** @description Identifiants rendus par `POST /listing/photo`, dans l'ordre d'affichage. Chacun doit désigner une photo envoyée par le compte qui publie ; une annonce publiée avant l'envoi de photos peut garder d'anciennes références en texte. */
             photos: string[];
             /** @description Au moins un palier. Chaque palier présent est un entier de centimes ; un palier absent n'existe pas. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles. */
             pricing: {
@@ -506,11 +1025,27 @@ export interface components {
             /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. Facultatif : un client qui ne le déclare pas obtient « non déclaré » plutôt qu'un refus. */
             acceptedVehicles?: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
         };
-        /** @description Nouvelle grille tarifaire. Tous les paliers sont facultatifs, mais la grille résultante doit rester complète au sens du domaine ; un palier omis est effacé. Un palier tarifaire absent doit être **omis** de l'objet : envoyer `null` est refusé en 400 (`Expected number, actual null`), alors que `GET /listing` rend `null` pour un palier vide. Relire une annonce puis la republier telle quelle échoue donc — il faut retirer les clés nulles. */
-        UpdateListingPricingRequest: {
-            dayInCents?: number;
-            weekInCents?: number;
-            monthInCents?: number;
+        /** @description L'annonce entière telle que son propriétaire veut qu'elle soit désormais, sans son adresse ni son box. */
+        EditListingRequest: {
+            /** @description Consignes d'accès à la place, remises au locataire une fois la location confirmée. Une réservation déjà confirmée lit aussitôt la nouvelle version. */
+            accessDescription: string;
+            /** @description Identifiants rendus par `POST /listing/photo`, dans l'ordre d'affichage. Chacun doit désigner une photo envoyée par le compte qui publie ; une annonce publiée avant l'envoi de photos peut garder d'anciennes références en texte. */
+            photos: string[];
+            /** @description Les véhicules que la place accepte. Un tableau vide se lit « non déclaré », jamais « n'accepte rien » : les annonces publiées avant cette notion le restent, et une recherche par véhicule ne les écarte pas. `electrique` annonce en outre une borne de recharge. */
+            acceptedVehicles: ("velo" | "moto" | "voiture" | "electrique" | "utilitaire")[];
+            /** @description Au moins un palier. Un palier absent doit être **omis** : `null` est refusé en 400. */
+            pricing: {
+                dayInCents?: number;
+                weekInCents?: number;
+                monthInCents?: number;
+            };
+            /** @description Refusée seulement si elle est entièrement passée : une période déjà commencée se modifie. */
+            availability: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+            };
         };
         RequestRentalRequest: {
             /** @example 12 rue des Lilas, 75011 Paris */
@@ -530,7 +1065,7 @@ export interface components {
              */
             toDay: string;
         };
-        /** @description Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut. `accessDescription` reste hors de toute réponse, y compris celle-ci. */
+        /** @description Une annonce telle que son propriétaire la voit : ce que la lecture publique montre, plus son statut et ses consignes d'accès — que seul le propriétaire relit, pour pouvoir les modifier. */
         OwnerListing: {
             /** Format: uuid */
             id: string;
@@ -541,6 +1076,9 @@ export interface components {
              * @enum {string}
              */
             status: "ACTIVE" | "UNPUBLISHED";
+            /** @description Consignes d'accès à la place. Absentes de toute lecture publique. */
+            accessDescription: string;
+            /** @description Identifiants des photos, dans l'ordre d'affichage ; chacune se lit à `GET /listing/photo/{id}`. Une référence qui n'est pas un UUID date d'avant l'envoi de photos et ne désigne aucune image. */
             photos: string[];
             pricing: components["schemas"]["Pricing"];
             availability: {
@@ -569,12 +1107,47 @@ export interface components {
             toDay: string;
             /** @description Le montant figé au moment de la demande. */
             priceInCents: number;
-            /** @enum {string} */
-            status: "PENDING" | "CONFIRMED" | "EXPIRED";
+            /**
+             * @description `AWAITING_PAYMENT` : la page de paiement est ouverte, l'empreinte n'est pas constatée ; la demande retient ses dates mais le propriétaire ne la voit pas. `ABANDONED` : le paiement n'a jamais eu lieu. `PAYMENT_FAILED` : la banque a refusé le prélèvement à la confirmation.
+             * @enum {string}
+             */
+            status: "AWAITING_PAYMENT" | "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "ABANDONED" | "PAYMENT_FAILED";
+            /**
+             * @description Où en est l'argent du conducteur. `AUTHORIZED` : empreinte posée, rien de prélevé. `CAPTURED` : prélevé à la confirmation. `RELEASE_DUE` / `REFUND_DUE` : l'empreinte est en cours de levée, le remboursement en cours. `NONE` : demande faite avant l'encaissement.
+             * @enum {string}
+             */
+            money: "NONE" | "AUTHORIZED" | "CAPTURED" | "RELEASE_DUE" | "RELEASED" | "REFUND_DUE" | "REFUNDED";
             /** Format: date-time */
             requestedAt: string;
             /** Format: date-time */
             confirmedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Le premier instant de la location, heure de Paris. Une réservation ne s'annule plus à partir de cet instant.
+             */
+            startsAt: string;
+            /**
+             * Format: date-time
+             * @description L'échéance d'annulation gratuite, figée à la demande : jusqu'à cet instant inclus, le conducteur qui annule une location confirmée est remboursé en totalité.
+             */
+            freeCancellationUntil: string | null;
+            /**
+             * Format: date-time
+             * @description Tant que la demande attend le loueur (`PENDING`) : l'instant où elle expirera sans réponse, 48 heures (réglables) après l'empreinte, ou après la demande pour celles d'avant l'encaissement. `null` sinon.
+             */
+            answerBy: string | null;
+            /** @description Les consignes d'accès du loueur (digicode, étage, repères). Rendues au seul conducteur d'une réservation `CONFIRMED`, jusqu'à la fin du dernier jour loué ; `null` partout ailleurs, y compris pour le loueur dans `GET /rental-request/received`. */
+            accessInstructions: string | null;
+            /** @description Pour le seul loueur (`GET /rental-request/received`) : le prix moins la commission figée au moment de la demande. `null` pour le conducteur. */
+            ownerShareInCents: number | null;
+            /**
+             * Format: date-time
+             * @description L'instant où le conducteur a confirmé son arrivée (`POST /rental-request/{id}/arrival`), qui libère l'argent vers le loueur.
+             */
+            arrivedAt: string | null;
+            issue: null | components["schemas"]["RentalIssue"];
+            /** @description Vrai pour le seul conducteur, pendant une location payée qu'il n'a pas déclarée commencée et dont l'argent n'est pas parti : il peut signaler un problème. */
+            issueReportable: boolean;
         };
         /** @description Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention. */
         Overview: {
@@ -600,6 +1173,8 @@ export interface components {
                 requestsPendingOverADay: number;
                 listingsWithoutAnyPrice: number;
                 accountsWithoutAnyActivity: number;
+                /** @description Réclamations qui attendent une décision. */
+                openRentalIssues: number;
             };
         };
         AdminAccount: {
@@ -644,7 +1219,7 @@ export interface components {
             toDay: string;
             priceInCents: number;
             /** @enum {string} */
-            status: "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED";
+            status: "AWAITING_PAYMENT" | "PENDING" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "ABANDONED" | "PAYMENT_FAILED";
             /** Format: date-time */
             requestedAt: string;
             /** Format: date-time */
@@ -652,6 +1227,280 @@ export interface components {
         };
         /** @description Toute action de modération exige un motif. Ce n'est pas une formalité : c'est ce qui permet de répondre, six mois plus tard, à un propriétaire qui demande pourquoi son annonce a disparu. */
         ModerationRequest: {
+            reason: string;
+        };
+        RequestRentalResponse: {
+            /**
+             * Format: uuid
+             * @description L'identifiant de la demande, en attente de paiement.
+             */
+            id: string;
+            /**
+             * Format: uri
+             * @description La page de paiement Stripe Checkout où le conducteur pose son empreinte. Toujours sur `https://checkout.stripe.com/`.
+             */
+            checkoutUrl: string;
+        };
+        CancellationResult: {
+            /**
+             * @description `RELEASED` : l'empreinte est levée, rien n'avait été prélevé. `REFUNDED` : le prélèvement est remboursé en totalité. `KEPT` : annulation tardive du conducteur, le prélèvement est gardé. `NOTHING_TO_RETURN` : demande faite avant l'encaissement.
+             * @enum {string}
+             */
+            outcome: "RELEASED" | "REFUNDED" | "KEPT" | "NOTHING_TO_RETURN";
+        };
+        /** @description Défi anti-robot (SPEC-007) : retrouver le nombre `n` ≤ `maxNumber` tel que SHA-256(`salt` + `n`) = `challenge`. Valable 20 minutes. */
+        HumanChallenge: {
+            /** @enum {string} */
+            algorithm: "SHA-256";
+            /** @description Condensé SHA-256 hexadécimal. */
+            challenge: string;
+            /** @description Sel, qui porte son échéance (`?expires=` en secondes Unix). */
+            salt: string;
+            maxNumber: number;
+            /** @description HMAC du condensé, par l'api. */
+            signature: string;
+        };
+        /** @description Le défi recopié, avec le nombre trouvé. Accepté une seule fois. */
+        HumanProof: {
+            algorithm: string;
+            challenge: string;
+            salt: string;
+            number: number;
+            signature: string;
+        };
+        OwnAccount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            avatar: components["schemas"]["Avatar"];
+        };
+        /**
+         * @description Le pilote choisi comme avatar : casque bleu signal, jaune marquage, Riviera, bitume ou damier. Les comptes d'avant le choix valent `SIGNAL`.
+         * @enum {string}
+         */
+        Avatar: "SIGNAL" | "MARKING" | "RIVIERA" | "ASPHALT" | "CHECKERED";
+        ChooseAvatarRequest: {
+            avatar: components["schemas"]["Avatar"];
+        };
+        /**
+         * @description Le moment notifié. Reçue, restée sans réponse et annulée par le conducteur vont au loueur ; acceptée, refusée, expirée, annulée par le loueur et paiement refusé vont au conducteur ; annulée par Bookparking va aux deux. Le virement parti vers son compte Stripe va au loueur.
+         * @enum {string}
+         */
+        NotificationKind: "RENTAL_REQUEST_RECEIVED" | "RENTAL_REQUEST_ACCEPTED" | "RENTAL_REQUEST_DECLINED" | "RENTAL_REQUEST_EXPIRED" | "RENTAL_REQUEST_UNANSWERED" | "RENTAL_CANCELLED_BY_RENTER" | "RENTAL_CANCELLED_BY_OWNER" | "RENTAL_CANCELLED_BY_OPERATOR" | "RENTAL_PAYMENT_FAILED" | "RENTAL_PAYOUT_SENT" | "RENTAL_ISSUE_REPORTED" | "RENTAL_ISSUE_ANSWERED" | "RENTAL_ISSUE_RESOLVED";
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["NotificationKind"];
+            /**
+             * @description Le rôle du destinataire sur la demande : loueur ou conducteur. Décide où le site l'emmène.
+             * @enum {string}
+             */
+            audience: "OWNER" | "RENTER";
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description `null` tant que la cloche n'a pas été ouverte.
+             */
+            readAt: string | null;
+            /**
+             * Format: uuid
+             * @description La demande de location concernée.
+             */
+            requestId: string;
+            address: string;
+            box: string;
+            /**
+             * Format: date
+             * @description Premier jour loué, calendrier de Paris.
+             */
+            fromDay: string;
+            /**
+             * Format: date
+             * @description Dernier jour loué, inclus.
+             */
+            toDay: string;
+        };
+        NotificationList: {
+            /** @description Toutes les notifications non lues du compte, y compris au-delà des trente rendues. */
+            unreadCount: number;
+            /** @description Les trente plus récentes, de la plus récente à la plus ancienne. */
+            items: components["schemas"]["Notification"][];
+        };
+        PushDeviceRequest: {
+            /** @description Le jeton de push Expo du téléphone, tel que le rend `getExpoPushTokenAsync`. */
+            token: string;
+        };
+        PayoutLine: {
+            /** Format: uuid */
+            requestId: string;
+            address: string;
+            box: string;
+            /** Format: date */
+            fromDay: string;
+            /** Format: date */
+            toDay: string;
+            /** @description Ce que le conducteur a payé. */
+            priceInCents: number;
+            /** @description Ce que le loueur reçoit : le prix moins la commission figée à la demande. */
+            amountInCents: number;
+            /**
+             * @description HELD : retenu jusqu'à l'arrivée du conducteur ou 24 h après le début. AWAITING_ACCOUNT : libéré, en attente des coordonnées bancaires. SENDING : libéré, viré au prochain passage. SENT : viré.
+             * @enum {string}
+             */
+            status: "HELD" | "AWAITING_ACCOUNT" | "SENDING" | "SENT";
+            /** Format: date-time */
+            releaseAt: string;
+            /** Format: date-time */
+            transferredAt: string | null;
+        };
+        PayoutSummary: {
+            /**
+             * @description MISSING : aucune coordonnée bancaire. INCOMPLETE : inscription Stripe commencée ou en vérification. READY : Stripe accepte les virements.
+             * @enum {string}
+             */
+            accountStatus: "MISSING" | "INCOMPLETE" | "READY";
+            /** @description La commission en vigueur pour les nouvelles demandes. */
+            feePercent: number;
+            /** @description Délai de libération en vigueur, en heures après le premier instant loué, pour les locations à venir ; chaque ligne porte déjà sa date de libération. */
+            releaseDelayHours: number;
+            upcomingInCents: number;
+            sentInCents: number;
+            payouts: components["schemas"]["PayoutLine"][];
+        };
+        StripeLink: {
+            /**
+             * Format: uri
+             * @description Une page de Stripe, valable quelques minutes.
+             */
+            url: string;
+        };
+        RequestPasswordResetRequest: {
+            email: string;
+        };
+        ResetPasswordRequest: {
+            token: string;
+            newPassword: string;
+        };
+        UploadedListingPhoto: {
+            /**
+             * Format: uuid
+             * @description À recopier dans `photos` de `POST /listing` ou `PATCH /listing/{id}`.
+             */
+            id: string;
+        };
+        /** @description Les quatre conditions de location réglées depuis le back-office. Chacune est figée sur une demande au moment où elle est faite : une valeur changée ne vaut que pour les demandes suivantes. */
+        PlatformSettings: {
+            /** @description Commission de la plateforme, en pourcentage du prix payé par le conducteur, au centième près. */
+            platformFeePercent: number;
+            /** @description Le conducteur annule sans frais jusqu'à ce nombre d'heures avant le premier instant loué. */
+            freeCancellationHours: number;
+            /** @description Délai de réponse du loueur, compté depuis l'empreinte ; au-delà, la demande expire et l'empreinte est levée. */
+            requestExpiryHours: number;
+            /** @description L'argent est libéré vers le loueur à l'arrivée confirmée du conducteur, ou au plus tard ce nombre d'heures après le premier instant loué. */
+            payoutReleaseDelayHours: number;
+        };
+        SettingBounds: {
+            min: number;
+            max: number;
+            /** @description Décimales admises : 2 pour la commission, 0 pour les délais. */
+            decimals: number;
+        };
+        PlatformSettingsForm: {
+            settings: components["schemas"]["PlatformSettings"];
+            bounds: {
+                platformFeePercent: components["schemas"]["SettingBounds"];
+                freeCancellationHours: components["schemas"]["SettingBounds"];
+                requestExpiryHours: components["schemas"]["SettingBounds"];
+                payoutReleaseDelayHours: components["schemas"]["SettingBounds"];
+            };
+        };
+        ChangePlatformSettingsRequest: components["schemas"]["PlatformSettings"] & {
+            /** @description Motif, inscrit au journal d'administration. */
+            reason: string;
+        };
+        AdminJournalEntry: {
+            id: string;
+            /** Format: date-time */
+            actedAt: string;
+            /** @description `null` quand le compte de l'administrateur a été supprimé. */
+            adminEmail: string | null;
+            /** @enum {string} */
+            kind: "UNPUBLISH_LISTING" | "SUSPEND_ACCOUNT" | "LIFT_ACCOUNT_SUSPENSION" | "CANCEL_RENTAL_REQUEST" | "CHANGE_PLATFORM_SETTINGS" | "RESOLVE_RENTAL_ISSUE";
+            /** @enum {string} */
+            targetType: "LISTING" | "ACCOUNT" | "RENTAL_REQUEST" | "PLATFORM_SETTINGS";
+            targetId: string;
+            /** @description L'adresse d'une annonce, l'e-mail d'un compte, la place et les jours d'une demande ; `null` pour des réglages, ou quand la cible a disparu. */
+            targetLabel: string | null;
+            reason: string | null;
+            /** @description Pour un changement de réglages : la version écrite, et celle qu'elle a remplacée. */
+            settingsChange: null | {
+                before: null | components["schemas"]["PlatformSettings"];
+                after: components["schemas"]["PlatformSettings"];
+            };
+        };
+        /** @description La réclamation du conducteur sur une réservation en cours. Tant qu'elle est `OPEN`, l'argent du loueur est gelé. */
+        RentalIssue: {
+            /** @enum {string} */
+            reason: "NO_ACCESS" | "PLACE_OCCUPIED" | "OTHER";
+            message: string | null;
+            /** Format: date-time */
+            reportedAt: string;
+            /** @enum {string} */
+            status: "OPEN" | "REFUNDED" | "PARTIALLY_REFUNDED" | "DISMISSED";
+            ownerReply: string | null;
+            /** Format: date-time */
+            ownerRepliedAt: string | null;
+            /** @description Ce qui est rendu au conducteur : le prix entier pour `REFUNDED`, une part pour `PARTIALLY_REFUNDED`. */
+            refundInCents: number | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+        };
+        ReportRentalIssueRequest: {
+            /** @enum {string} */
+            reason: "NO_ACCESS" | "PLACE_OCCUPIED" | "OTHER";
+            /** @description Facultatif, sauf pour `OTHER` (10 caractères au moins). */
+            message?: string | null;
+        };
+        AnswerRentalIssueRequest: {
+            reply: string;
+        };
+        AdminRentalIssue: {
+            id: string;
+            requestId: string;
+            /** @enum {string} */
+            reason: "NO_ACCESS" | "PLACE_OCCUPIED" | "OTHER";
+            message: string | null;
+            /** Format: date-time */
+            reportedAt: string;
+            /** @enum {string} */
+            status: "OPEN" | "REFUNDED" | "PARTIALLY_REFUNDED" | "DISMISSED";
+            ownerReply: string | null;
+            /** Format: date-time */
+            ownerRepliedAt: string | null;
+            refundInCents: number | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolutionReason: string | null;
+            address: string;
+            box: string;
+            fromDay: string;
+            toDay: string;
+            priceInCents: number;
+            /** @description Le prix moins la commission : un remboursement partiel en est pris, et lui laisse au moins un centime. */
+            ownerShareInCents: number;
+            renterEmail: string | null;
+            ownerEmail: string | null;
+        };
+        ResolveRentalIssueRequest: {
+            /**
+             * @description `REFUND` annule la réservation et rend tout ; `PARTIAL_REFUND` rend `refundInCents`, pris sur la part du loueur ; `DISMISS` libère l'argent vers le loueur.
+             * @enum {string}
+             */
+            decision: "REFUND" | "PARTIAL_REFUND" | "DISMISS";
+            /** @description Pour `PARTIAL_REFUND` seulement : de 1 à la part du loueur moins un centime. */
+            refundInCents?: number | null;
             reason: string;
         };
     };
@@ -697,6 +1546,37 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readOwnAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le compte connecté. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le jeton désigne un compte qui n'existe plus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     registerAccount: {
         parameters: {
             query?: never;
@@ -719,7 +1599,7 @@ export interface operations {
                     "application/json": components["schemas"]["RegisterAccountResponse"];
                 };
             };
-            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères. */
+            /** @description Corps de requête invalide : adresse e-mail mal formée ou trop longue (254 caractères au maximum), mot de passe de moins de 8 caractères ou trop faible, preuve anti-robot absente, fausse, expirée ou déjà servie, conditions d'utilisation non acceptées, avatar absent ou hors des cinq pilotes. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -738,6 +1618,77 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+        };
+    };
+    deleteAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Compte supprimé. Aucun corps de réponse ; le jeton ne vaut plus rien. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps de requête invalide, ou mot de passe vide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Mot de passe incorrect. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Une demande, une réservation ou un versement retient encore le compte. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    issueHumanChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Défi émis. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HumanChallenge"];
+                };
+            };
         };
     };
     changePassword: {
@@ -772,6 +1723,70 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Mot de passe actuel incorrect. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestPasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Demande reçue. Aucun corps de réponse, que l'adresse ait un compte ou non. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps de requête invalide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Mot de passe remplacé. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Corps de requête invalide, lien inconnu, expiré ou déjà utilisé, ou nouveau mot de passe trop faible. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -826,7 +1841,18 @@ export interface operations {
     };
     listListings: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Premier jour du séjour. À donner avec `toDay`.
+                 * @example 2026-10-10
+                 */
+                fromDay?: string;
+                /**
+                 * @description Dernier jour du séjour, compris. À donner avec `fromDay`.
+                 * @example 2026-10-12
+                 */
+                toDay?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -840,6 +1866,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Listing"][];
+                };
+            };
+            /** @description Une seule des deux dates, ou un séjour illisible (jour inexistant, départ avant l'arrivée). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description La liste des annonces est indisponible. */
@@ -873,7 +1908,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Corps de requête invalide, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu. */
+            /** @description Corps de requête invalide (dont moins d'une ou plus de dix photos), photo jamais envoyée par ce compte, période de disponibilité déjà passée, grille tarifaire incomplète, ou type de véhicule inconnu. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -893,15 +1928,6 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
-            /** @description Le stockage des photos a échoué. */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
         };
     };
     listOwnerListings: {
@@ -923,6 +1949,99 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    uploadListingPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Le fichier, dans le champ `photo`.
+                     */
+                    photo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Photo enregistrée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedListingPhoto"];
+                };
+            };
+            /** @description Aucun fichier dans le champ `photo`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Fichier de plus de 10 Mo. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Ni un JPEG, ni un PNG, ni un WebP. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    getListingPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les octets de la photo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            /** @description Photo inconnue, ou identifiant qui n'est pas un UUID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -997,7 +2116,7 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    updateListingPricing: {
+    editListing: {
         parameters: {
             query?: never;
             header?: never;
@@ -1012,20 +2131,20 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateListingPricingRequest"];
+                "application/json": components["schemas"]["EditListingRequest"];
             };
         };
         responses: {
-            /** @description L'annonce, avec sa nouvelle grille tarifaire. */
+            /** @description L'annonce modifiée, telle que son propriétaire la voit. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Listing"];
+                    "application/json": components["schemas"]["OwnerListing"];
                 };
             };
-            /** @description Corps de requête invalide (un prix n'est pas un nombre entier de centimes), ou grille tarifaire incomplète. */
+            /** @description Corps de requête invalide (dont moins d'une ou plus de dix photos), nouvelle photo jamais envoyée par ce compte, grille tarifaire incomplète, véhicule inconnu, ou période entièrement passée. Une valeur mal typée n'est jamais recopiée dans le message. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1081,7 +2200,10 @@ export interface operations {
     requestRental: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description L'identifiant d'intention, un UUID choisi par le client pour une place et une période. Renvoyé à l'identique, il rend la demande déjà créée — même identifiant, même page de paiement — au lieu d'en créer une seconde, et la réponse porte alors `Idempotent-Replayed: true`. Il est propre au compte qui l'envoie. */
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1091,14 +2213,16 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Demande enregistrée. Aucun corps de réponse. */
+            /** @description Demande enregistrée, en attente de paiement. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RequestRentalResponse"];
+                };
             };
-            /** @description Corps de requête invalide. */
+            /** @description Corps de requête invalide, ou en-tête `Idempotency-Key` absent ou qui n'est pas un UUID. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1108,7 +2232,16 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
-            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée ». */
+            /** @description Une demande sous cet identifiant d'intention est en cours de création : réessayer dans un instant. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description La demande est bien formée mais le domaine la refuse. Messages possibles : « Les dates demandées sont invalides », « La période demandée dépasse la durée maximale de 366 jours », « Ces dates sont déjà louées », « Cette place n'a aucune annonce publiée », « Aucun tarif ne couvre la période demandée », « La place n'est pas ouverte sur toute la période demandée » (un jour hors de la période de disponibilité de l'annonce), « Cet identifiant de demande a déjà servi pour une autre place ou une autre période ». */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1118,6 +2251,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas : la demande est abandonnée et ses dates rendues. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listReceivedRentalRequests: {
@@ -1184,6 +2326,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas : rien n'est prélevé ni confirmé, la confirmation peut être rejouée. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     confirmAdminAccess: {
@@ -1468,6 +2619,707 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Cible inexistante, ou déjà dans l'état demandé. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    abandonRentalRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Demande abandonnée, ou déjà abandonnée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inexistante, identifiant mal formé, ou demande d'un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description L'empreinte est déjà posée : la demande attend le propriétaire. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    receiveStripeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Événement accusé, qu'il ait changé une demande ou non. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signature absente ou invalide. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelRental: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifiant de la demande de location (UUID).
+                 * @example 9b2f4d6a-1c3e-4f5a-8b7c-0d1e2f3a4b5c
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Réservation annulée. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inexistante, identifiant mal formé, ou demande que ce compte ne peut ni voir ni annuler. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description La location a commencé, ou la demande n'est ni en attente du propriétaire ni confirmée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    chooseAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseAvatarRequest"];
+            };
+        };
+        responses: {
+            /** @description Avatar changé. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Avatar absent ou hors des cinq pilotes. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le jeton désigne un compte qui n'existe plus. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les notifications du compte. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    markNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notifications marquées comme lues. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    registerPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description Téléphone enregistré. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Jeton absent, ou qui n'est pas un jeton de push Expo. La valeur soumise n'est jamais recopiée. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    forgetPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description Téléphone oublié, ou inconnu. Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Jeton absent, ou qui n'est pas un jeton de push Expo. La valeur soumise n'est jamais recopiée. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Aucun corps de réponse. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readPayouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les versements du compte. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    startPayoutOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le lien vers Stripe. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeLink"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    openPayoutDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le lien vers Stripe. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeLink"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Stripe n'a pas encore validé le compte. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+            /** @description Stripe ne répond pas. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmArrival: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Arrivée enregistrée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Demande inconnue, mal nommée ou d'un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Réservation pas encore confirmée, ou location pas encore commencée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readPlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les réglages. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsForm"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    changePlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePlatformSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Fait. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Champ absent, valeur hors bornes, motif trop court, ou aucune valeur changée. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readAdminJournal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le journal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminJournalEntry"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readRentalTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les conditions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettings"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    reportRentalIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportRentalIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Enregistrée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Motif inconnu, ou message absent pour `OTHER`, ou trop long. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Aucune réservation de ce conducteur sous cet identifiant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Déjà signalée, pas encore commencée, terminée, arrivée confirmée, argent déjà versé, ou réservation non confirmée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    answerRentalIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRentalIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Enregistrée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Réponse trop courte ou trop longue. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Aucune réservation de ce loueur sous cet identifiant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Aucune réclamation ouverte n'attend de réponse. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listRentalIssues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les réclamations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRentalIssue"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    resolveRentalIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveRentalIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Tranchée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Décision inconnue, montant hors bornes, ou motif trop court. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Réclamation inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Déjà tranchée, ou réservation déjà annulée pour un remboursement total. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

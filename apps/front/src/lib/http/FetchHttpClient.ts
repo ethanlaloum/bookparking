@@ -8,6 +8,7 @@ const FALLBACK_BY_STATUS: Record<number, string> = {
   401: 'Votre session a expiré. Reconnectez-vous pour continuer.',
   403: "Vous n'avez pas les droits nécessaires pour cette action.",
   404: 'Cet élément est introuvable.',
+  413: 'Ce fichier est trop lourd.',
   502: "Un service externe n'a pas répondu. Réessayez dans un instant.",
 };
 
@@ -23,8 +24,16 @@ export class FetchHttpClient implements HttpClient {
     return this.request<T>('GET', path);
   }
 
-  post<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
-    return this.request<T>('POST', path, body);
+  post<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Observable<HttpResponse<T>> {
+    return this.request<T>('POST', path, body, headers);
+  }
+
+  postForm<T>(path: string, form: FormData): Observable<HttpResponse<T>> {
+    return this.request<T>('POST', path, form);
   }
 
   patch<T>(path: string, body?: unknown): Observable<HttpResponse<T>> {
@@ -35,19 +44,25 @@ export class FetchHttpClient implements HttpClient {
     return this.request<T>('DELETE', path, body);
   }
 
-  private request<T>(method: Method, path: string, body?: unknown): Observable<HttpResponse<T>> {
+  private request<T>(
+    method: Method,
+    path: string,
+    body?: unknown,
+    extraHeaders: Record<string, string> = {},
+  ): Observable<HttpResponse<T>> {
     return new Observable<HttpResponse<T>>((subscriber) => {
       const controller = new AbortController();
 
-      const headers: Record<string, string> = {};
-      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      const isForm = body instanceof FormData;
+      const headers: Record<string, string> = { ...extraHeaders };
+      if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
       const token = this.readToken();
       if (token !== null) headers.Authorization = `Bearer ${token}`;
 
       fetch(`${this.baseUrl}${path}`, {
         method,
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
         signal: controller.signal,
       })
         .then(async (response) => {

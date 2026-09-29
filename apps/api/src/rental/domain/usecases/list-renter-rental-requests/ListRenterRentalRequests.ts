@@ -2,27 +2,30 @@ import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { UseCase } from '../../../../shared/use-case/UseCase';
+import { RentalRepository } from '../../ports/RentalRepository';
 import {
-  RentalRepository,
-  RentalRequestView,
-} from '../../ports/RentalRepository';
+  PresentedRentalRequest,
+  presentRentalRequest,
+} from '../../services/presentRentalRequest';
 
 interface Props {
   renterId: string;
+  now: Date;
 }
 
 export class ListRenterRentalRequests implements UseCase<
   Props,
-  Promise<Either.Either<RentalRequestView[], UnknownError>>
+  Promise<Either.Either<PresentedRentalRequest[], UnknownError>>
 > {
   constructor(private readonly rentalRepository: RentalRepository) {}
 
   public async execute(
     props: Props,
-  ): Promise<Either.Either<RentalRequestView[], UnknownError>> {
+  ): Promise<Either.Either<PresentedRentalRequest[], UnknownError>> {
     try {
+      const views = await this.rentalRepository.findAllByRenter(props.renterId);
       return Either.right(
-        await this.rentalRepository.findAllByRenter(props.renterId),
+        views.map((view) => presentRentalRequest(view, 'RENTER', props.now)),
       );
     } catch (error: unknown) {
       return Either.left(

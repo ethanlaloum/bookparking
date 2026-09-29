@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { Either } from 'effect/index';
 
+import { AvailabilityPeriodExpiredError } from '../errors/AvailabilityPeriodExpiredError';
 import { IncompletePricingError } from '../errors/IncompletePricingError';
 import { UnknownVehicleTypeError } from '../errors/UnknownVehicleTypeError';
 import { ListingNotOwnedError } from '../errors/ListingNotOwnedError';
+import { StayDays } from './StayDays';
 
 export enum ListingStatus {
   ACTIVE = 'ACTIVE',
@@ -25,6 +27,8 @@ export enum VehicleType {
   UTILITAIRE = 'utilitaire',
 }
 
+export const MAX_PHOTOS_PER_LISTING = 10;
+
 export const isVehicleType = (value: string): value is VehicleType =>
   (Object.values(VehicleType) as string[]).includes(value);
 
@@ -42,6 +46,14 @@ export interface ListingAvailability {
 export interface ListingPlace {
   address: string;
   box: string;
+}
+
+export interface ListingEdition {
+  accessDescription: string;
+  photos: string[];
+  acceptedVehicles: VehicleType[];
+  pricing: ListingPricing;
+  availability: ListingAvailability;
 }
 
 const normalizePlacePart = (part: string): string =>
@@ -117,16 +129,35 @@ export class Listing {
     return this.props.ownerId === ownerId;
   }
 
-  public changePricing(params: {
-    ownerId: string;
-    pricing: ListingPricing;
-  }): Either.Either<Listing, ListingNotOwnedError | IncompletePricingError> {
-    const { ownerId, pricing } = params;
-    if (!this.isOwnedBy(ownerId))
+  public edit(
+    params: ListingEdition & { ownerId: string; editedAt: Date },
+  ): Either.Either<
+    Listing,
+    | ListingNotOwnedError
+    | AvailabilityPeriodExpiredError
+    | IncompletePricingError
+    | UnknownVehicleTypeError
+  > {
+    if (!this.isOwnedBy(params.ownerId))
       return Either.left(new ListingNotOwnedError());
-    if (!Listing.offersAnyDuration(pricing))
+    if (
+      Listing.isAvailabilityEntirelyPast(params.availability, params.editedAt)
+    )
+      return Either.left(new AvailabilityPeriodExpiredError());
+    if (!Listing.offersAnyDuration(params.pricing))
       return Either.left(new IncompletePricingError());
-    return Either.right(new Listing({ ...this.props, pricing }));
+    if (params.acceptedVehicles.some((vehicle) => !isVehicleType(vehicle)))
+      return Either.left(new UnknownVehicleTypeError());
+    return Either.right(
+      new Listing({
+        ...this.props,
+        accessDescription: params.accessDescription,
+        photos: params.photos,
+        acceptedVehicles: params.acceptedVehicles,
+        pricing: params.pricing,
+        availability: params.availability,
+      }),
+    );
   }
 
   public unpublish(params: {
@@ -136,6 +167,14 @@ export class Listing {
       return Either.left(new ListingNotOwnedError());
     return Either.right(
       new Listing({ ...this.props, status: ListingStatus.UNPUBLISHED }),
+    );
+  }
+
+  public isOpenOver(stay: StayDays): boolean {
+    const { from, to } = this.props.availability;
+    return (
+      from.toISOString().slice(0, 10) <= stay.from &&
+      stay.to <= to.toISOString().slice(0, 10)
     );
   }
 

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -32,6 +32,8 @@ export const SignInPage = () => {
     resolver: zodResolver(signInSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  const email = useWatch({ control: form.control, name: 'email' });
 
   useEffect(() => {
     if (success) void navigate('/', { replace: true });
@@ -88,6 +90,14 @@ export const SignInPage = () => {
             />
           )}
         </Field>
+
+        <Link
+          to="/mot-de-passe-oublie"
+          state={{ email }}
+          className="-mt-1 self-end text-sm font-medium text-accent underline underline-offset-4"
+        >
+          {t('auth:signIn.forgotPassword')}
+        </Link>
 
         <Button type="submit" size="lg" block disabled={loading} className="mt-2">
           {loading && <Spinner />}

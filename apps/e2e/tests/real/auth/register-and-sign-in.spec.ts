@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { expect, test } from '../../../src/fixtures/test';
+import { DashboardPage } from '../../../src/pages/DashboardPage';
 import { HeaderNav } from '../../../src/pages/HeaderNav';
 import { RegisterPage } from '../../../src/pages/RegisterPage';
 import { SignInPage } from '../../../src/pages/SignInPage';
@@ -21,16 +22,74 @@ import { SignInPage } from '../../../src/pages/SignInPage';
 const PASSWORD = 'motdepasse-e2e-123';
 
 test.describe('Account', () => {
-  test('registers an account and lands signed in', async ({ page, target }) => {
+  test('registers an account and lands signed in @SPEC-007 @EX-007-20', async ({ page, target }) => {
     const email = `e2e-register-${randomUUID().slice(0, 8)}@bookparking.test`;
 
     await page.goto(target.frontUrl);
     const register = new RegisterPage(page);
     await register.open();
-    await register.register(email, PASSWORD);
+    await register.fill(email, PASSWORD);
+    await register.acceptTerms();
+    await register.expectStrength('Fort');
+    await register.expectHumanCheckPassed();
+    await register.submit();
 
     await new HeaderNav(page).expectSignedIn();
     await expect(page).toHaveURL(`${target.frontUrl}/`);
+  });
+
+  test('refuses to create the account until the terms box is ticked @SPEC-008 @EX-008-05', async ({
+    page,
+    target,
+  }) => {
+    const email = `e2e-terms-${randomUUID().slice(0, 8)}@bookparking.test`;
+
+    await page.goto(target.frontUrl);
+    const register = new RegisterPage(page);
+    await register.open();
+    await register.fill(email, PASSWORD);
+    await register.expectHumanCheckPassed();
+    await register.submit();
+
+    await register.expectTermsRequired();
+    await expect(page).toHaveURL(`${target.frontUrl}/inscription`);
+  });
+
+  test("shows the new account's avatar once registered", async ({ page, target }) => {
+    const email = `e2e-avatar-${randomUUID().slice(0, 8)}@bookparking.test`;
+
+    await page.goto(target.frontUrl);
+    const register = new RegisterPage(page);
+    await register.open();
+    await register.fill(email, PASSWORD);
+    await register.chooseAvatar('Damier');
+    await register.acceptTerms();
+    await register.expectHumanCheckPassed();
+    await register.submit();
+
+    const header = new HeaderNav(page);
+    await header.expectAvatar();
+    await header.openAccount();
+    await new DashboardPage(page).expectAvatar('Damier', email);
+  });
+
+  test('changes the avatar from the settings, and keeps it', async ({ page, seed, target }) => {
+    const user = await seed.user('avatar');
+
+    await page.goto(target.frontUrl);
+    await new SignInPage(page).open();
+    await new SignInPage(page).signIn(user.email, user.password);
+    await new HeaderNav(page).expectSignedIn();
+
+    const dashboard = new DashboardPage(page);
+    await dashboard.open();
+    await dashboard.expectAvatar('Signal', user.email);
+    await dashboard.openTab('Réglages');
+    await dashboard.chooseAvatar('Riviera');
+    await dashboard.expectAvatar('Riviera', user.email);
+
+    await page.reload();
+    await dashboard.expectAvatar('Riviera', user.email);
   });
 
   test('signs in an existing account and reaches the listings', async ({ page, seed, target }) => {

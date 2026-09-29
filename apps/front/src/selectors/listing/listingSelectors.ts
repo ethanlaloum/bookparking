@@ -5,19 +5,19 @@ import {
   type Listing,
 } from '../../app/listing/domain/entities/Listing';
 import {
-  centerOf,
   CITY_ZOOM,
   distanceInKilometers,
+  frameOf,
   isWithinWalkingDistance,
-  spanInKilometers,
-  zoomForSpan,
   type AddressSuggestion,
   type Coordinates,
   type LocatedAddress,
+  type MapFrame,
 } from '../../app/listing/domain/entities/Coordinates';
 import {
   acceptsVehicle,
   declaresVehicles,
+  type SearchedStay,
   type VehicleType,
 } from '../../app/listing/domain/entities/SearchCriteria';
 import type { OwnerListing } from '../../app/listing/domain/ports/ListingGateway';
@@ -62,16 +62,14 @@ export const selectUnpublishError = (state: AppState): string | null =>
     ? (state.core.listing.unpublish.errorCode ?? null)
     : null;
 
-export const selectUpdatePricingLoading = (state: AppState): boolean =>
-  state.core.listing.updatePricing.state === 'pending';
+export const selectEditListingLoading = (state: AppState): boolean =>
+  state.core.listing.edit.state === 'pending';
 
-export const selectUpdatePricingError = (state: AppState): string | null =>
-  state.core.listing.updatePricing.state === 'failed'
-    ? (state.core.listing.updatePricing.errorCode ?? null)
-    : null;
+export const selectEditListingError = (state: AppState): string | null =>
+  state.core.listing.edit.state === 'failed' ? (state.core.listing.edit.errorCode ?? null) : null;
 
-export const selectUpdatePricingSuccess = (state: AppState): boolean =>
-  state.core.listing.updatePricing.state === 'succeeded';
+export const selectEditListingSuccess = (state: AppState): boolean =>
+  state.core.listing.edit.state === 'succeeded';
 
 export const selectCheapestRateInCents = createSelector([selectListings], (listings) => {
   const rates = listings
@@ -94,6 +92,11 @@ export const selectOwnerListingsError = (state: AppState): string | null =>
     ? (state.core.listing.listOwner.errorCode ?? null)
     : null;
 
+export const selectEditableOwnerListing = (state: AppState, id: string): OwnerListing | null =>
+  state.core.listing.ownerListings.find(
+    (listing) => listing.id === id && listing.status === 'ACTIVE',
+  ) ?? null;
+
 export const selectActiveOwnerListings = createSelector([selectOwnerListings], (listings) =>
   listings.filter((listing) => listing.status === 'ACTIVE'),
 );
@@ -112,8 +115,43 @@ export const selectLocating = (state: AppState): boolean =>
 export const selectLocated = (state: AppState): boolean =>
   state.core.listing.locate.state === 'succeeded';
 
+export const selectSearchedStay = (state: AppState): SearchedStay | null =>
+  state.core.listing.freeStay;
+
+const selectFreeListingIds = (state: AppState): string[] | null =>
+  state.core.listing.freeListingIds;
+
+export const selectFreeListingsLoading = (state: AppState): boolean =>
+  state.core.listing.searchFree.state === 'pending';
+
+export const selectFreeListingsError = (state: AppState): string | null =>
+  state.core.listing.searchFree.state === 'failed'
+    ? (state.core.listing.searchFree.errorCode ?? null)
+    : null;
+
+export const selectListingsForStay = createSelector(
+  [selectListings, selectSearchedStay, selectFreeListingIds],
+  (listings, stay, freeIds): Listing[] => {
+    if (stay === null) return listings;
+    if (freeIds === null) return [];
+    const free = new Set(freeIds);
+    return listings.filter((listing) => free.has(listing.id));
+  },
+);
+
+export interface StayTally {
+  free: number;
+  hidden: number;
+}
+
+export const selectStayTally = createSelector(
+  [selectListings, selectListingsForStay, selectFreeListingIds],
+  (listings, forStay, freeIds): StayTally | null =>
+    freeIds === null ? null : { free: forStay.length, hidden: listings.length - forStay.length },
+);
+
 export const selectMappedListings = createSelector(
-  [selectListings, selectLocations],
+  [selectListingsForStay, selectLocations],
   (listings, locations): MappedListing[] =>
     listings
       .map((listing) => ({ listing, located: locations[listing.id] }))
@@ -121,20 +159,9 @@ export const selectMappedListings = createSelector(
 );
 
 export const selectUnmappableCount = createSelector(
-  [selectListings, selectLocations],
+  [selectListingsForStay, selectLocations],
   (listings, locations) =>
     listings.filter((listing) => locations[listing.id] === undefined).length,
-);
-
-const coordinatesOf = (mapped: MappedListing[]): Coordinates[] =>
-  mapped.map((entry) => entry.located.coordinates);
-
-export const selectMapCenter = createSelector([selectMappedListings], (mapped): Coordinates =>
-  centerOf(coordinatesOf(mapped)),
-);
-
-export const selectMapZoom = createSelector([selectMappedListings], (mapped): number =>
-  zoomForSpan(spanInKilometers(coordinatesOf(mapped))),
 );
 
 export const selectApproximateCount = createSelector(
@@ -186,12 +213,9 @@ export const selectNearbyCount = createSelector(
 // demande, et non plus le barycentre de toutes les annonces.
 export const selectMapFocus = createSelector(
   [selectMappedListings, selectSearchPoint],
-  (mapped, point): { center: Coordinates; zoom: number } =>
+  (mapped, point): MapFrame =>
     point === null
-      ? {
-          center: centerOf(mapped.map((entry) => entry.located.coordinates)),
-          zoom: zoomForSpan(spanInKilometers(mapped.map((entry) => entry.located.coordinates))),
-        }
+      ? frameOf(mapped.map((entry) => entry.located.coordinates))
       : { center: point, zoom: CITY_ZOOM + 2 },
 );
 
@@ -207,7 +231,7 @@ export interface VehicleTally {
  * croire que toutes ont été vérifiées.
  */
 export const selectVehicleTally = createSelector(
-  [selectListings, (_state: AppState, vehicle: VehicleType | null) => vehicle],
+  [selectListingsForStay, (_state: AppState, vehicle: VehicleType | null) => vehicle],
   (listings, vehicle): VehicleTally => {
     if (vehicle === null) return { accepting: 0, undeclared: 0 };
     return {

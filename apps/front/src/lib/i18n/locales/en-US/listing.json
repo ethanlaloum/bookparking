@@ -8,7 +8,10 @@
     "noPrice": "Price on request",
     "availableUntil": "Available until {{date}}",
     "photoCount_one": "{{count}} photo",
-    "photoCount_other": "{{count}} photos"
+    "photoCount_other": "{{count}} photos",
+    "stayTotal_one": "for {{count}} day",
+    "stayTotal_other": "for {{count}} days",
+    "noStayPrice": "No rate for these dates"
   },
   "detail": {
     "access": "Access",
@@ -18,17 +21,18 @@
     "ownerActions": "Manage this listing",
     "ownerHint": "These actions only succeed if the listing is yours.",
     "unpublish": "Unpublish",
-    "editPricing": "Edit pricing",
-    "unpublished": "The listing has been unpublished."
+    "edit": "Edit the listing",
+    "unpublished": "The listing has been unpublished.",
+    "photosHint": "References from before real photos could be uploaded: they have no picture.",
+    "photoAlt": "Photo {{position}} of {{total}} of the space",
+    "showPhoto": "Show photo {{position}}",
+    "references": "Photo references"
   },
   "pricing": {
     "day": "Day",
     "week": "Week",
     "month": "Month",
     "none": "—",
-    "save": "Save pricing",
-    "saved": "Pricing updated.",
-    "atLeastOne": "Set at least one price.",
     "integer": "A price must be a whole number of cents."
   },
   "publish": {
@@ -41,7 +45,22 @@
     },
     "submit": "Publish the listing",
     "published": "Your listing is live.",
-    "seeIt": "See the spaces"
+    "seeIt": "See the spaces",
+    "preview": "Preview",
+    "previewHint": "What drivers will see, updated as you type.",
+    "previewAddress": "Address of the space"
+  },
+  "edit": {
+    "title": "Edit the listing",
+    "subtitle": "Access instructions, photos, vehicles, prices and dates: change them all here, without unpublishing.",
+    "placeLocked": "The address and box identify the space: to change them, publish a new listing.",
+    "bookingsKept": "Requests and bookings already made still stand, even outside the new dates.",
+    "submit": "Save changes",
+    "saved": "Listing updated.",
+    "savedBody": "Drivers already see the new version.",
+    "seeIt": "See the listing",
+    "notEditable": "This listing can’t be edited.",
+    "notEditableBody": "Only a published listing can be edited, and only by its owner."
   },
   "field": {
     "address": "Address",
@@ -50,7 +69,7 @@
     "accessDescription": "Access instructions",
     "accessHint": "Door code, floor, landmarks. Shared with the renter after confirmation.",
     "photos": "Photos",
-    "photosHint": "One reference per line. At least one.",
+    "photosHint": "JPEG, PNG or WebP, ten at most. The first one is the cover.",
     "from": "Available from",
     "to": "Until"
   },
@@ -63,11 +82,12 @@
     "from": "Pick a start date.",
     "to": "Pick an end date.",
     "reversed": "The end must follow the start.",
-    "past": "That period is already over."
+    "past": "That period is already over.",
+    "photosLimit": "Ten photos at most."
   },
   "map": {
     "title": "Find a space",
-    "subtitle": "Every space published in Nice, on the map.",
+    "subtitle": "Every space published in France, on the map.",
     "nav": "Search",
     "located_one": "{{count}} space placed",
     "located_other": "{{count}} spaces placed",
@@ -88,9 +108,9 @@
     "mapTab": "Map"
   },
   "mapSearch": {
-    "label": "Search an address in Nice",
-    "placeholder": "Start typing a street in Nice…",
-    "hint": "At least 3 characters. Only addresses in Nice are offered.",
+    "label": "Search an address",
+    "placeholder": "An address, with its city…",
+    "hint": "At least 3 characters. Add the city to narrow the suggestions.",
     "clear": "Clear the address",
     "noResult": "No address matches.",
     "suggestions": "Address suggestions",
@@ -131,17 +151,64 @@
     "vehicleFiltered_other": "{{count}} spaces take this vehicle.",
     "noVehicle": "No space takes this vehicle. All of them stay visible.",
     "undeclaredKept_one": "{{count}} space stated nothing and stays visible.",
-    "undeclaredKept_other": "{{count}} spaces stated nothing and stay visible."
+    "undeclaredKept_other": "{{count}} spaces stated nothing and stay visible.",
+    "arrival": "Arrival",
+    "departure": "Departure",
+    "stayIncomplete": "Choose both the arrival and the departure.",
+    "stayFiltered_one": "{{count}} space free from {{from}} to {{to}}.",
+    "stayFiltered_other": "{{count}} spaces free from {{from}} to {{to}}.",
+    "noStay": "No space free from {{from}} to {{to}}.",
+    "stayHidden_one": "{{count}} other, booked or closed on these dates, is not shown.",
+    "stayHidden_other": "{{count}} others, booked or closed on these dates, are not shown."
   },
   "home": {
-    "pitch": "Search an address in Nice, say which vehicle and for how long. Available spaces show up on the map.",
+    "live": "Right now in France",
+    "heroLead": "Parking spaces,",
+    "heroAccent": "between neighbors.",
+    "ticket": {
+      "title": "Starting rate",
+      "caption": "The lowest published price, brought down to one night."
+    },
+    "visual": {
+      "free": "Space available",
+      "confirmed": "Request confirmed"
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "Book in three moves.",
+      "step": {
+        "search": {
+          "title": "Search around an address",
+          "body": "Type an address anywhere in France: every space shows up on the map, closest first."
+        },
+        "dates": {
+          "title": "Pick your dates",
+          "body": "The price is worked out before you send, from the owner’s rates: by the day, the week or the month."
+        },
+        "park": {
+          "title": "Park",
+          "body": "Once the request is confirmed, you receive the access instructions: door code, level, landmarks."
+        }
+      }
+    },
+    "why": {
+      "eyebrow": "Why Bookparking",
+      "title": "Neighbors everywhere, a price that holds.",
+      "noFees": "in fees added once the price is shown"
+    },
+    "owner": {
+      "eyebrow": "Owners",
+      "title": "A space sitting idle? Rent it to your neighbors.",
+      "body": "Set a price by the day, the week or the month, pick the period, and confirm every request yourself."
+    },
+    "pitch": "Search an address anywhere in France, say which vehicle and for how long. Available spaces show up on the map.",
     "available_one": "{{count}} space available",
     "available_other": "{{count}} spaces available",
     "seeAll": "See every space on the map",
     "argument": {
       "local": {
-        "title": "Nice only",
-        "body": "Every space is in the city, listed by someone who lives there. No result three hundred kilometres away."
+        "title": "Everywhere in France",
+        "body": "Every space is listed by someone who lives in the neighborhood. Around the address you search, the closest come first."
       },
       "price": {
         "title": "The quoted price is the price paid",
@@ -151,6 +218,17 @@
         "title": "The owner confirms",
         "body": "A request commits to nothing until it is accepted. Without an answer, it expires on its own."
       }
+    }
+  },
+  "photos": {
+    "add": "Add photos",
+    "preparing": "Preparing…",
+    "remove": "Remove photo {{position}}",
+    "cover": "Cover",
+    "alt": "Photo {{position}} of the space",
+    "refused": {
+      "format": "A photo was not added: only JPEG, PNG and WebP are accepted.",
+      "size": "A photo was not added: it is larger than 10 MB."
     }
   }
 }

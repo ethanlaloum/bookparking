@@ -3,7 +3,7 @@ id: SPEC-002
 titre: Comptes et authentification des loueurs et conducteurs
 slug: comptes-authentification
 statut: valide
-revision: 4
+revision: 5
 derive_de: BR-20260919-comptes-authentification@3839b9c
 amont: present
 langue: fr
@@ -63,9 +63,8 @@ Valeurs canoniques de cette spec : `Marc D.` loueur, `marc.d@example.com`, mot d
 Quand `Marc D.` s'inscrit avec `marc.d@example.com` et `Barla2026!` le `01/10/2026 à 09:00`
 Alors un compte est créé, identifié par `marc.d@example.com`
 Et le mot de passe enregistré n'est pas `Barla2026!`
-Et aucun e-mail n'est envoyé
 
-<!-- jp-way:ex {"id":"EX-01","regle":"RG-01","origine":"mapping","barreau":"unit","empreinte":"5011e387"} -->
+<!-- jp-way:ex {"id":"EX-01","regle":"RG-01","origine":"mapping","barreau":"unit","empreinte":"311cc273"} -->
 
 #### EX-02 · une adresse déjà utilisée est refusée
 
@@ -397,10 +396,10 @@ Et aucun compte n'est créé
 
 Quand `Marc D.` s'inscrit avec `marc.d@example.com`
 Alors le compte est immédiatement utilisable pour publier
-Et aucun e-mail n'est envoyé
 Et aucun jeton de vérification n'est écrit
+Et le seul e-mail mis en file est la bienvenue de SPEC-006, qui ne demande aucune action
 
-<!-- jp-way:ex {"id":"EX-35","regle":"RG-07","origine":"mapping","barreau":"unit","empreinte":"9a7c1934"} -->
+<!-- jp-way:ex {"id":"EX-35","regle":"RG-07","origine":"mapping","barreau":"unit","empreinte":"94f248fd"} -->
 
 #### EX-36 · une adresse de 255 caractères est refusée
 
@@ -463,7 +462,7 @@ Sept règles croisées avec les dix dimensions : 70 intersections, toutes résol
 ⁶ la règle est binaire — compte ou pas de compte — et ne porte aucune borne numérique.
 ⁷ l'expiration est portée par RG-03 et vérifiée par la garde (`apps/api/src/user-management/adapters/rest/guards/auth.guard.ts:33-35`).
 ⁸ la règle ne lit ni n'écrit d'état partagé ; deux requêtes simultanées suivent chacune le même chemin.
-⁹ aucun appel à un tiers dans ce chemin — aucun fournisseur d'e-mails n'existe en v1.
+⁹ aucun appel à un tiers dans ce chemin : la bienvenue est mise en file, et seul le balayage de SPEC-006 parle à Resend.
 ¹⁰ un jeton malformé fait renvoyer `null` par le vérificateur et la garde répond 401 (`apps/api/src/user-management/adapters/rest/guards/auth.guard.ts:33-35`).
 ¹¹ jeton absent ou vide : la garde répond 401 avant toute vérification (`apps/api/src/user-management/adapters/rest/guards/auth.guard.ts:27-31`).
 ¹² le jeton est sans état côté serveur : deux usages simultanés ne partagent aucune ligne.
@@ -479,7 +478,7 @@ Sept règles croisées avec les dix dimensions : 70 intersections, toutes résol
 ²² la validation syntaxique est locale à la requête et ne lit aucun état partagé.
 ²³ la validation s'applique avant toute authentification.
 ²⁴ la validité syntaxique d'une adresse ne dépend d'aucun état du compte.
-²⁵ aucun envoi d'e-mail n'a lieu en v1 : c'est précisément ce que la règle assume.
+²⁵ aucune vérification par e-mail n'a lieu : c'est précisément ce que la règle assume. La bienvenue de SPEC-006 ne demande aucune action.
 
 ## 6. Écrans
 
@@ -497,7 +496,7 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 - **Secret.** Le mot de passe n'est jamais stocké en clair, jamais journalisé, jamais renvoyé dans une réponse. Ni l'ancien ni le nouveau lors d'un changement.
 - **Indistinction du refus.** Une connexion échouée ne distingue jamais une adresse inconnue d'un mot de passe faux, ni par le message, ni par le délai. Le ralentissement de RG-05 s'applique de la même manière dans les deux cas.
 - **Conformité RGPD.** L'adresse e-mail est une donnée personnelle (`quality.compliance.dataClasses: pii`). Sa conservation suit celle du compte ; l'effacement est porté par SPEC-003, pas ici.
-- **Sous-traitants.** Aucun envoi d'e-mail en v1, donc aucun destinataire tiers de données personnelles à déclarer pour ce périmètre.
+- **Sous-traitants.** Depuis SPEC-006, Resend reçoit l'adresse de chaque inscrit pour l'e-mail de bienvenue : un sous-traitant, déclaré au §8 de SPEC-006.
 - **Limitation de débit.** Aucune limitation de débit générale n'existe dans le dépôt (constat repris de SPEC-001, AUTO-30). Le ralentissement de RG-05 est le premier mécanisme du genre et ne couvre que la connexion : ni l'inscription, ni le changement de mot de passe, ni les routes de SPEC-001.
 - **Infalsifiabilité du jeton.** Un jeton doit porter une signature que seul le serveur peut produire, et la clé de signature doit faire échouer le démarrage si elle est absente — jamais de valeur de repli. Tant que cette condition n'est pas tenue, **aucune route qui délivre ou consomme un jeton ne peut être montée dans un module** : un jeton non signé est un jeton que n'importe qui fabrique pour n'importe quel compte, sans avoir jamais présenté de mot de passe. Constat relevé en revue de sécurité de US-015, où le jeton est délivré sans signature ; la condition est portée par US-016, qui implémente `AccessTokenVerifier`.
 - **Temps.** La validité d'un jeton se compte en heures depuis son dernier usage, jamais en dates locales : un changement d'heure décale donc l'échéance sur l'horloge locale, et un jeton peut expirer alors que l'heure locale affiche encore moins de sept jours (EX-19).
@@ -514,7 +513,7 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 ## 10. Hors sujet
 
 - **La suppression de compte et l'effacement des données** — partent en SPEC-003 avec la dette #18, par décision de séance : les deux chemins d'anonymisation touchent les mêmes tables et doivent être écrits ensemble. C'est la parade de R-07 du brainstorm.
-- **Le parcours « mot de passe oublié »** — écarté par D-03 : il suppose un fournisseur d'e-mails qui n'existe pas en v1.
+- **Le parcours « mot de passe oublié »** — écarté par D-03, qui supposait qu'aucun fournisseur d'e-mails n'existe. SPEC-006 en apporte un : la décision reste à rouvrir, elle n'est pas rouverte ici.
 - **La vérification de l'adresse e-mail** — assumée par RG-07 : aucune vérification en v1.
 - **La connexion par SMS, Google ou Apple** — écartées en séance de phase 1 au profit du mot de passe.
 - **Le rôle déclaré à l'inscription** — écarté par D-05 : la donnée serait fausse dès qu'un conducteur publie.
@@ -537,3 +536,4 @@ Conséquence appliquée : RG-07 est écrite en ces termes et porte EX-34 à EX-4
 | 2 | 20/09/2026 | EX-19 réécrit. Les deux instants de la version 1 (`25/10/2026 09:00` et `01/11/2026 08:30`) étaient tous deux en heure d'hiver : aucun changement d'heure n'était traversé, et la règle « en heures » comme la règle « en dates locales » donnaient la même limite, de sorte que l'exemple ne pouvait pas échouer. Remplacé par `23/10/2026 09:00` → `30/10/2026 08:30`, qui encadre le passage du 25/10 : l'issue devient un refus. La contrainte temporelle du §8 est reformulée en conséquence. Défaut relevé à la porte de phase 3, corrigé sur demande. Rejoué par `/jp-way:sync SPEC-002` sur `sync/spec-002-rev-2` : 0 nouveau · 1 modifié (EX-19) · 0 supprimé · 39 inchangés. Aucun test réécrit ni exécuté — aucun fichier du dépôt ne porte `@SPEC-002`, le build n'a jamais tourné pour cette spec ; le rejeu s'est limité au plan (ré-empreinte `f8b7fc3b` → `55b7ef5d`, `derive_de` → `SPEC-002@5fd7d23`, révision 1 → 2), au titre anglais du cas, devenu un verdict de refus, et au cadre rouge de l'issue #29. |
 | 3 | 21/09/2026 | EX-41 et EX-42 ajoutés sous RG-01, `origine: bug`. La revue de sécurité de US-012 a trouvé deux chemins par lesquels le corps d'une réponse `400` renvoyait la valeur soumise — un mot de passe envoyé comme nombre JSON, puis un corps racine qui n'est pas un objet — contre la contrainte « Secret » du §8. Les deux sont corrigés (`3af4eda`, `04fb79b`), mais aucun test ne les gardait : ces deux exemples les figent. La case `RG-01 × Données` de la sonde les porte. |
 | 4 | 22/09/2026 | Deux ajouts nés de la revue de sécurité de US-015. Le §8 gagne une contrainte d'infalsifiabilité : le jeton doit être signé, la clé doit faire échouer le démarrage si elle manque, et aucune route qui délivre ou consomme un jeton ne peut être montée tant que ce n'est pas tenu — le jeton livré par US-015 est du base64 non signé, que quiconque fabrique pour n'importe quel compte. RG-03 gagne EX-43, `origine: bug`, au barreau `int-repo` : `KnexAccountRepository.findByEmail`, écrit en US-015 pour réparer le build, n'avait de test à aucun barreau, et `SignIn` confondant « compte introuvable » et « mot de passe faux », une erreur de mappage de colonne n'aurait produit aucun symptôme. |
+| 5 | 24/09/2026 | Deux exemples réécrits par SPEC-006, qui met en file un e-mail de bienvenue à chaque inscription (décision de JP du 24/09/2026). EX-01 perd « aucun e-mail n'est envoyé », que SPEC-006 EX-01 contredit. EX-35 garde son sens — aucune vérification d'adresse, aucun jeton, un compte utilisable aussitôt — et dit désormais que le seul e-mail mis en file est la bienvenue, qui ne demande aucune action. Les renvois ⁹ et ²⁵ de la sonde, le §8 « Sous-traitants » et le §10 sont mis à jour. |

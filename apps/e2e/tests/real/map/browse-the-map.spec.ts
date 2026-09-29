@@ -8,12 +8,13 @@
 // contrepartie est assumée — si la BAN est indisponible, ce test échoue, et
 // c'est correct : la fonctionnalité l'est aussi.
 //
+// Bookparking couvre toute la France : une place de Lyon doit être située
+// comme une place de Nice, et une adresse lyonnaise doit être proposée à la
+// recherche. Seul ce barreau le voit — le géocodage réel ne se simule pas.
+//
 // Sans équivalent ici, et pourquoi :
-// - le cadrage, le repli sur Nice et la règle de précision : fonctions pures,
-//   déjà vertes au rung `unit` du front.
-// - une adresse hors de Nice refusée par le filtre `citycode` : le vérifier ici
-//   demanderait de publier une annonce que le produit ne veut pas, pour
-//   observer une absence. Le rung `unit` le prouve sur le double.
+// - le cadrage, le repli sur la France entière et la règle de précision :
+//   fonctions pures, déjà vertes au rung `unit` du front.
 import { expect, test } from '../../../src/fixtures/test';
 import { SearchPage } from '../../../src/pages/SearchPage';
 
@@ -48,12 +49,33 @@ test.describe('Map', () => {
     await map.open();
     await expect(map.marker(listing.address)).toBeVisible();
 
-    await map.searchAddress('place mass', 'Place Masséna 06000 Nice');
+    // La ville fait partie de la frappe : sans elle, « place mass » propose
+    // d'abord les places Massenet du reste du pays.
+    await map.searchAddress('place masséna nice', 'Place Masséna 06000 Nice');
 
     await map.expectSearchSummary(/Autour de : Place Masséna/);
     await map.expectSearchSummary(/à moins d.un kilomètre/);
 
     await map.abandonSearch();
     await expect(page.getByText(/Autour de/)).toHaveCount(0);
+  });
+
+  test('places a listing outside Nice, and finds it from an address in the same city', async ({
+    page,
+    seed,
+  }) => {
+    const owner = await seed.user('map-lyon-owner');
+    const listing = await seed.listing(owner, {
+      address: '14 rue de la République, 69002 Lyon',
+    });
+
+    const map = new SearchPage(page);
+    await map.open();
+    await expect(map.marker(listing.address)).toBeVisible();
+
+    await map.searchAddress('place bellecour lyon', 'Place Bellecour 69002 Lyon');
+
+    await map.expectSearchSummary(/Autour de : Place Bellecour/);
+    await map.expectSearchSummary(/1 place à moins d.un kilomètre/);
   });
 });

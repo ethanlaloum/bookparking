@@ -1,0 +1,16 @@
+{
+  "brand": "Bookparking",
+  "skipToContent": "Skip to content",
+  "action": {
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "state": {
+    "loading": "Loading…"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "unexpected": "An unexpected error occurred. Try again in a moment."
+  }
+}

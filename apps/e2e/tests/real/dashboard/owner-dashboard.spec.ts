@@ -7,7 +7,10 @@
 //
 // Le total des revenus est assertion légitime ici — contrairement à un décompte
 // global sur environnement partagé — parce que le propriétaire est amorcé par
-// ce test seul et n'a reçu aucune autre demande.
+// ce test seul et n'a reçu aucune autre demande. Ce sont les revenus du loueur,
+// pas le prix payé : 45 € réglés par le conducteur, moins la commission de 15 %
+// (réglage du back-office, laissé à sa valeur par défaut dans la pile e2e),
+// soit 38,25 €.
 //
 // Sans équivalent ici, et pourquoi :
 // - le calcul des revenus lui-même : fonction pure, déjà verte au rung `unit`
@@ -22,16 +25,13 @@ test.describe('Dashboard', () => {
   test('shows the owner places, confirms a received request and moves the revenue', async ({
     page,
     seed,
-    api,
     app,
   }) => {
     const owner = await seed.user('dashboard-owner');
     const renter = await seed.user('dashboard-renter');
     const listing = await seed.listing(owner, { pricing: { dayInCents: 1500 } });
 
-    await api.requestRental(renter.token, {
-      address: listing.address,
-      box: listing.box,
+    await seed.paidRentalRequest(page, renter, listing, {
       fromDay: dayInDays(10),
       toDay: dayInDays(12),
     });
@@ -51,7 +51,7 @@ test.describe('Dashboard', () => {
     await dashboard.expectRequestConfirmed(listing.address);
 
     await dashboard.openTab("Vue d'ensemble");
-    await dashboard.expectConfirmedRevenue('45');
+    await dashboard.expectConfirmedRevenue('38,25');
   });
 
   test('shows no received request to an owner nobody asked', async ({ page, seed, app }) => {

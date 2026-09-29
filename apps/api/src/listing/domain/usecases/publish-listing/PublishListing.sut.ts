@@ -1,9 +1,10 @@
 import { Either } from 'effect/index';
 
 import { ListingBuilder } from '../../builders/ListingBuilder';
+import { ListingPhotoBuilder } from '../../builders/ListingPhotoBuilder';
 import { Listing, ListingStatus, VehicleType } from '../../entities/Listing';
 import { InMemoryListingRepository } from '../../../adapters/repositories/listing/InMemoryListingRepository';
-import { InMemoryPhotoStorage } from '../../../adapters/services/photo-storage/InMemoryPhotoStorage';
+import { InMemoryPhotoStorage } from '../../../adapters/repositories/listing-photo/InMemoryPhotoStorage';
 import { PublishListing } from './PublishListing';
 
 interface Place {
@@ -87,6 +88,7 @@ export const createPublishListingSUT = () => {
     testConstants,
     outboundPorts,
     owner: null as OwnerForTest | null,
+    photosUploadedByPublisher: true,
   };
 
   const thenResultIsRight = (result: Either.Either<unknown, unknown>) => {
@@ -125,8 +127,17 @@ export const createPublishListingSUT = () => {
       return { listing, unpublishedOn: params.unpublishedOn };
     },
 
-    givenPhotoStorageFailingOnEveryUpload() {
-      context.photoStorage.enableFailureOnEveryUpload();
+    givenPhotoUploadedBy(ownerName: string, photoId: string) {
+      context.photoStorage.photoList.push(
+        new ListingPhotoBuilder()
+          .withId(photoId)
+          .withOwnerId(toAccountId(ownerName))
+          .build(),
+      );
+    },
+
+    givenNoPhotoUploaded() {
+      context.photosUploadedByPublisher = false;
     },
 
     givenOwner(owner: OwnerForTest) {
@@ -148,6 +159,22 @@ export const createPublishListingSUT = () => {
         publishedAt: '2026-09-10',
       };
       const input = { ...defaults, ...overrides };
+
+      if (context.photosUploadedByPublisher)
+        input.photos
+          .filter((photoId) =>
+            context.photoStorage.photoList.every(
+              (photo) => photo.id !== photoId,
+            ),
+          )
+          .forEach((photoId) =>
+            context.photoStorage.photoList.push(
+              new ListingPhotoBuilder()
+                .withId(photoId)
+                .withOwnerId(toAccountId(input.owner))
+                .build(),
+            ),
+          );
 
       return context.publishListing.execute({
         ownerId: toAccountId(input.owner),

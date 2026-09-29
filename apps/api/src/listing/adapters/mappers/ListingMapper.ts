@@ -32,6 +32,7 @@ export class ListingMapper {
     return {
       ...ListingMapper.toGetListingDto(listing),
       status: state.status,
+      accessDescription: state.accessDescription,
     };
   }
 }

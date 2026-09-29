@@ -22,11 +22,41 @@ const RegisterPage = lazy(async () => ({
 const PublishPage = lazy(async () => ({
   default: (await import('../pages/PublishPage')).PublishPage,
 }));
+const EditListingPage = lazy(async () => ({
+  default: (await import('../pages/EditListingPage')).EditListingPage,
+}));
 const AccountPage = lazy(async () => ({
   default: (await import('../pages/AccountPage')).AccountPage,
 }));
 const ConfirmRequestPage = lazy(async () => ({
   default: (await import('../pages/ConfirmRequestPage')).ConfirmRequestPage,
+}));
+const PaymentReturnPage = lazy(async () => ({
+  default: (await import('../pages/PaymentReturnPage')).PaymentReturnPage,
+}));
+const ForgotPasswordPage = lazy(async () => ({
+  default: (await import('../pages/ForgotPasswordPage')).ForgotPasswordPage,
+}));
+const NewPasswordPage = lazy(async () => ({
+  default: (await import('../pages/NewPasswordPage')).NewPasswordPage,
+}));
+const FaqPage = lazy(async () => ({
+  default: (await import('../pages/FaqPage')).FaqPage,
+}));
+const LegalNoticePage = lazy(async () => ({
+  default: (await import('../pages/legal/LegalNoticePage')).LegalNoticePage,
+}));
+const PrivacyPage = lazy(async () => ({
+  default: (await import('../pages/legal/PrivacyPage')).PrivacyPage,
+}));
+const TermsPage = lazy(async () => ({
+  default: (await import('../pages/legal/TermsPage')).TermsPage,
+}));
+const MobileAppPage = lazy(async () => ({
+  default: (await import('../pages/MobileAppPage')).MobileAppPage,
+}));
+const AccountDeletedPage = lazy(async () => ({
+  default: (await import('../pages/AccountDeletedPage')).AccountDeletedPage,
 }));
 const NotFoundPage = lazy(async () => ({
   default: (await import('../pages/NotFoundPage')).NotFoundPage,
@@ -40,10 +70,20 @@ export const Routes = () => (
       <Route path="/place/:id" element={<ListingDetailPage />} />
       <Route path="/connexion" element={<SignInPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
+      <Route path="/mot-de-passe/nouveau" element={<NewPasswordPage />} />
+      <Route path="/compte-supprime" element={<AccountDeletedPage />} />
+      <Route path="/faq" element={<FaqPage />} />
+      <Route path="/application" element={<MobileAppPage />} />
+      <Route path="/mentions-legales" element={<LegalNoticePage />} />
+      <Route path="/donnees-personnelles" element={<PrivacyPage />} />
+      <Route path="/conditions-d-utilisation" element={<TermsPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/publier" element={<PublishPage />} />
+        <Route path="/place/:id/modifier" element={<EditListingPage />} />
         <Route path="/compte" element={<AccountPage />} />
         <Route path="/demande/:requestId/confirmation" element={<ConfirmRequestPage />} />
+        <Route path="/demande/:requestId/paiement" element={<PaymentReturnPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </RouterRoutes>

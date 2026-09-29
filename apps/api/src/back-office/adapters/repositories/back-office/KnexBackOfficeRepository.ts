@@ -1,5 +1,10 @@
 import type { Knex } from 'knex';
 
+import { PlatformSettings } from '../../../../shared/platform-settings/domain/entities/PlatformSettings';
+import {
+  PLATFORM_SETTINGS_TABLE,
+  toPlatformSettings,
+} from '../../../../shared/platform-settings/adapters/repositories/KnexPlatformSettingsReader';
 import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
 import {
   AdminAction,
@@ -8,17 +13,98 @@ import {
 } from '../../../domain/entities/AdminAction';
 import {
   AdminAccountView,
+  AdminJournalEntry,
   AdminListingView,
+  AdminRentalIssueView,
   AdminRentalRequestView,
   BackOfficeRepository,
+  CancelledRentalParties,
   OverviewActivity,
   OverviewAttention,
   OverviewCounts,
+  IssueResolution,
+  IssueToResolve,
+  PlatformSettingsChange,
 } from '../../../domain/ports/BackOfficeRepository';
 
 const DAY_MS = 86_400_000;
 
 const asNumber = (value: unknown): number => Number(value ?? 0);
+
+interface JournalRow {
+  id: string;
+  acted_at: Date | string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  reason: string | null;
+  admin_email: string | null;
+  listing_address: string | null;
+  listing_box: string | null;
+  account_email: string | null;
+  request_address: string | null;
+  request_box: string | null;
+  request_from_day: string | null;
+  request_to_day: string | null;
+  after_fee: number | string | null;
+  after_cancellation: number | null;
+  after_expiry: number | null;
+  after_release: number | null;
+  before_fee: number | string | null;
+  before_cancellation: number | null;
+  before_expiry: number | null;
+  before_release: number | null;
+}
+
+// « 2026-10-10 » devient « 10/10/2026 » : le journal se lit, il ne se trie pas.
+const frenchDay = (day: string): string => day.split('-').reverse().join('/');
+
+const targetLabelOf = (row: JournalRow): string | null => {
+  if (row.target_type === AdminTargetType.LISTING && row.listing_address)
+    return `${row.listing_address} · ${row.listing_box}`;
+  if (row.target_type === AdminTargetType.ACCOUNT) return row.account_email;
+  if (row.target_type === AdminTargetType.RENTAL_REQUEST && row.request_address)
+    return `${row.request_address} · ${row.request_box}, du ${frenchDay(
+      row.request_from_day ?? '',
+    )} au ${frenchDay(row.request_to_day ?? '')}`;
+  return null;
+};
+
+const settingsOf = (
+  fee: number | string | null,
+  cancellation: number | null,
+  expiry: number | null,
+  release: number | null,
+): PlatformSettings | null =>
+  fee === null || cancellation === null || expiry === null || release === null
+    ? null
+    : toPlatformSettings({
+        platform_fee_percent: fee,
+        free_cancellation_hours: cancellation,
+        request_expiry_hours: expiry,
+        payout_release_delay_hours: release,
+      });
+
+const settingsChangeOf = (
+  row: JournalRow,
+): AdminJournalEntry['settingsChange'] => {
+  const after = settingsOf(
+    row.after_fee,
+    row.after_cancellation,
+    row.after_expiry,
+    row.after_release,
+  );
+  if (after === null) return null;
+  return {
+    before: settingsOf(
+      row.before_fee,
+      row.before_cancellation,
+      row.before_expiry,
+      row.before_release,
+    ),
+    after,
+  };
+};
 
 /**
  * Le seul adaptateur du dépôt qui lise plusieurs tables métier à la fois : un
@@ -126,7 +212,8 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
          (SELECT COUNT(*) FROM accounts a
            WHERE NOT EXISTS (SELECT 1 FROM listings l WHERE l.owner_id = a.id::text)
              AND NOT EXISTS (SELECT 1 FROM rental_requests r WHERE r.renter_id = a.id::text)
-         ) AS idle_accounts`,
+         ) AS idle_accounts,
+         (SELECT COUNT(*) FROM rental_issues WHERE status = 'OPEN') AS open_issues`,
       [new Date(now.getTime() - DAY_MS)],
     );
     if (trx) query.transacting(trx);
@@ -137,6 +224,7 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
       requestsPendingOverADay: asNumber(row.stale_requests),
       listingsWithoutAnyPrice: asNumber(row.priceless_listings),
       accountsWithoutAnyActivity: asNumber(row.idle_accounts),
+      openRentalIssues: asNumber(row.open_issues),
     };
   }
 
@@ -274,13 +362,138 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
   public async cancelRentalRequest(
     requestId: string,
     trx?: GenericTransaction,
-  ): Promise<boolean> {
+  ): Promise<CancelledRentalParties | null> {
     // Une demande déjà expirée ou annulée ne se ré-annule pas : le filtre rend
     // l'opération idempotente et libère la place par la contrainte partielle.
+    // L'argent du conducteur change dans le même UPDATE que le statut : une
+    // annulation ne peut pas être écrite sans la dette qu'elle fait naître
+    // envers lui. C'est le balayage du contexte `rental` qui l'éteint chez
+    // Stripe — levée si rien n'a été prélevé, remboursement sinon.
     const query = this.connection('rental_requests')
       .where({ id: requestId })
       .whereIn('status', ['PENDING', 'CONFIRMED'])
-      .update({ status: 'CANCELLED', updated_at: new Date() });
+      .update({
+        status: 'CANCELLED',
+        money_status: this.connection.raw(
+          "CASE money_status WHEN 'AUTHORIZED' THEN 'RELEASE_DUE' WHEN 'CAPTURED' THEN 'REFUND_DUE' ELSE money_status END",
+        ),
+        cancelled_at: new Date(),
+        cancelled_by: 'OPERATOR',
+        updated_at: new Date(),
+      })
+      .returning(['renter_id', 'listing_id']);
+    if (trx) query.transacting(trx);
+    const [cancelled] = (await query) as {
+      renter_id: string;
+      listing_id: string;
+    }[];
+    if (!cancelled) return null;
+
+    const owner = this.connection('listings')
+      .where({ id: cancelled.listing_id })
+      .first('owner_id');
+    if (trx) owner.transacting(trx);
+    const listing = (await owner) as { owner_id: string } | undefined;
+    return {
+      renterId: cancelled.renter_id,
+      ownerId: listing?.owner_id ?? '',
+    };
+  }
+
+  public async findRentalIssues(
+    trx?: GenericTransaction,
+  ): Promise<AdminRentalIssueView[]> {
+    const query = this.connection.raw(
+      `SELECT i.id, i.rental_request_id, i.reason, i.message, i.reported_at,
+              i.status, i.owner_reply, i.owner_replied_at, i.refund_in_cents,
+              i.resolved_at, i.resolution_reason,
+              l.address, l.box, r.from_day, r.to_day, r.price_in_cents,
+              r.price_in_cents - COALESCE(r.platform_fee_in_cents, 0) AS owner_share,
+              renter.email AS renter_email, owner.email AS owner_email
+         FROM rental_issues i
+         JOIN rental_requests r ON r.id = i.rental_request_id
+         JOIN listings l ON l.id = r.listing_id
+         LEFT JOIN accounts renter ON renter.id::text = r.renter_id
+         LEFT JOIN accounts owner ON owner.id::text = l.owner_id
+        ORDER BY (i.status = 'OPEN') DESC, i.reported_at DESC
+        LIMIT 200`,
+    );
+    if (trx) query.transacting(trx);
+    const { rows } = (await query) as { rows: Record<string, unknown>[] };
+    const dateOrNull = (value: unknown): Date | null =>
+      value === null ? null : new Date(value as string);
+
+    return rows.map((row) => ({
+      id: String(row.id),
+      requestId: String(row.rental_request_id),
+      reason: String(row.reason),
+      message: row.message === null ? null : String(row.message),
+      reportedAt: new Date(row.reported_at as string),
+      status: String(row.status),
+      ownerReply: row.owner_reply === null ? null : String(row.owner_reply),
+      ownerRepliedAt: dateOrNull(row.owner_replied_at),
+      refundInCents:
+        row.refund_in_cents === null ? null : asNumber(row.refund_in_cents),
+      resolvedAt: dateOrNull(row.resolved_at),
+      resolutionReason:
+        row.resolution_reason === null ? null : String(row.resolution_reason),
+      address: String(row.address),
+      box: String(row.box),
+      fromDay: String(row.from_day),
+      toDay: String(row.to_day),
+      priceInCents: asNumber(row.price_in_cents),
+      ownerShareInCents: asNumber(row.owner_share),
+      renterEmail: row.renter_email === null ? null : String(row.renter_email),
+      ownerEmail: row.owner_email === null ? null : String(row.owner_email),
+    }));
+  }
+
+  public async findIssueToResolve(
+    issueId: string,
+    trx?: GenericTransaction,
+  ): Promise<IssueToResolve | null> {
+    const query = this.connection('rental_issues as i')
+      .join('rental_requests as r', 'r.id', 'i.rental_request_id')
+      .join('listings as l', 'l.id', 'r.listing_id')
+      .whereRaw('i.id::text = ?', [issueId])
+      .first(
+        'i.id as issue_id',
+        'r.id as request_id',
+        'i.status as status',
+        'r.price_in_cents as price_in_cents',
+        'r.platform_fee_in_cents as platform_fee_in_cents',
+        'r.renter_id as renter_id',
+        'l.owner_id as owner_id',
+      );
+    if (trx) query.transacting(trx);
+    const row = (await query) as Record<string, unknown> | undefined;
+    if (row === undefined) return null;
+    const price = asNumber(row.price_in_cents);
+    return {
+      issueId: String(row.issue_id),
+      requestId: String(row.request_id),
+      status: String(row.status),
+      priceInCents: price,
+      ownerShareInCents: price - asNumber(row.platform_fee_in_cents),
+      renterId: String(row.renter_id),
+      ownerId: String(row.owner_id),
+    };
+  }
+
+  public async resolveRentalIssue(
+    issueId: string,
+    resolution: IssueResolution,
+    trx?: GenericTransaction,
+  ): Promise<boolean> {
+    const query = this.connection('rental_issues')
+      .where({ id: issueId, status: 'OPEN' })
+      .update({
+        status: resolution.status,
+        refund_in_cents: resolution.refundInCents,
+        resolved_at: resolution.resolvedAt,
+        resolved_by: resolution.resolvedBy,
+        resolution_reason: resolution.reason,
+      });
     if (trx) query.transacting(trx);
     return (await query) > 0;
   }
@@ -299,6 +512,87 @@ export class KnexBackOfficeRepository implements BackOfficeRepository {
     });
     if (trx) query.transacting(trx);
     await query;
+  }
+
+  public async savePlatformSettings(
+    settings: PlatformSettings,
+    change: PlatformSettingsChange,
+    trx?: GenericTransaction,
+  ): Promise<string> {
+    const query = this.connection(PLATFORM_SETTINGS_TABLE)
+      .insert({
+        platform_fee_percent: settings.platformFeePercent,
+        free_cancellation_hours: settings.freeCancellationHours,
+        request_expiry_hours: settings.requestExpiryHours,
+        payout_release_delay_hours: settings.payoutReleaseDelayHours,
+        effective_from: change.at,
+        changed_by: change.adminAccountId,
+        reason: change.reason,
+      })
+      .returning('id');
+    if (trx) query.transacting(trx);
+    const [row] = (await query) as { id: string }[];
+    return row.id;
+  }
+
+  // Une seule lecture pour tout le journal : la cible est nommée par jointure
+  // selon son type — les identifiants sont des UUID, `target_id` du texte —,
+  // et un changement de réglages est lu avec la version qui le précédait.
+  public async findJournal(
+    limit: number,
+    trx?: GenericTransaction,
+  ): Promise<AdminJournalEntry[]> {
+    const query = this.connection.raw(
+      `SELECT a.id, a.acted_at, a.action, a.target_type, a.target_id, a.reason,
+              admin.email AS admin_email,
+              l.address AS listing_address, l.box AS listing_box,
+              acc.email AS account_email,
+              rl.address AS request_address, rl.box AS request_box,
+              rr.from_day AS request_from_day, rr.to_day AS request_to_day,
+              v.platform_fee_percent AS after_fee,
+              v.free_cancellation_hours AS after_cancellation,
+              v.request_expiry_hours AS after_expiry,
+              v.payout_release_delay_hours AS after_release,
+              p.platform_fee_percent AS before_fee,
+              p.free_cancellation_hours AS before_cancellation,
+              p.request_expiry_hours AS before_expiry,
+              p.payout_release_delay_hours AS before_release
+         FROM admin_action_logs a
+         LEFT JOIN accounts admin ON admin.id = a.admin_account_id
+         LEFT JOIN listings l
+           ON a.target_type = 'LISTING' AND l.id::text = a.target_id
+         LEFT JOIN accounts acc
+           ON a.target_type = 'ACCOUNT' AND acc.id::text = a.target_id
+         LEFT JOIN rental_requests rr
+           ON a.target_type = 'RENTAL_REQUEST' AND rr.id::text = a.target_id
+         LEFT JOIN listings rl ON rl.id = rr.listing_id
+         LEFT JOIN ${PLATFORM_SETTINGS_TABLE} v
+           ON a.target_type = 'PLATFORM_SETTINGS' AND v.id::text = a.target_id
+         LEFT JOIN LATERAL (
+           SELECT * FROM ${PLATFORM_SETTINGS_TABLE} previous
+            WHERE v.id IS NOT NULL
+              AND (previous.effective_from, previous.id) < (v.effective_from, v.id)
+            ORDER BY previous.effective_from DESC, previous.id DESC
+            LIMIT 1
+         ) p ON TRUE
+        ORDER BY a.acted_at DESC, a.created_at DESC
+        LIMIT ?`,
+      [limit],
+    );
+    if (trx) query.transacting(trx);
+    const { rows } = (await query) as { rows: JournalRow[] };
+
+    return rows.map((row) => ({
+      id: row.id,
+      actedAt: new Date(row.acted_at),
+      adminEmail: row.admin_email,
+      kind: row.action as AdminActionKind,
+      targetType: row.target_type as AdminTargetType,
+      targetId: row.target_id,
+      targetLabel: targetLabelOf(row),
+      reason: row.reason,
+      settingsChange: settingsChangeOf(row),
+    }));
   }
 
   public async findRecentActions(

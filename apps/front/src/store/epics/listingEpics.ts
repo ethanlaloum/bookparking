@@ -3,17 +3,19 @@ import { listListingsEpic } from '../../app/listing/domain/use-cases/list-listin
 import { listOwnerListingsEpic } from '../../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
 import { locateListingsEpic } from '../../app/listing/domain/use-cases/locate-listings/locateListingsEpic';
 import { searchAddressEpic } from '../../app/listing/domain/use-cases/search-address/searchAddressEpic';
+import { searchFreeListingsEpic } from '../../app/listing/domain/use-cases/search-free-listings/searchFreeListingsEpic';
 import { publishListingEpic } from '../../app/listing/domain/use-cases/publish-listing/publishListingEpic';
 import { unpublishListingEpic } from '../../app/listing/domain/use-cases/unpublish-listing/unpublishListingEpic';
-import { updateListingPricingEpic } from '../../app/listing/domain/use-cases/update-listing-pricing/updateListingPricingEpic';
+import { editListingEpic } from '../../app/listing/domain/use-cases/edit-listing/editListingEpic';
 
 export const listingEpics = [
   listListingsEpic,
   listOwnerListingsEpic,
   locateListingsEpic,
   searchAddressEpic,
+  searchFreeListingsEpic,
   getListingEpic,
   publishListingEpic,
   unpublishListingEpic,
-  updateListingPricingEpic,
+  editListingEpic,
 ];

@@ -16,7 +16,8 @@
   },
   "validation": {
     "current": "Saisissez votre mot de passe actuel.",
-    "next": "Le nouveau mot de passe doit contenir au moins 8 caractères."
+    "next": "Le nouveau mot de passe doit contenir au moins 8 caractères.",
+    "deletePassword": "Saisissez votre mot de passe pour confirmer."
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -26,7 +27,8 @@
       "places": "Mes places",
       "received": "Demandes reçues",
       "mine": "Mes réservations",
-      "settings": "Réglages"
+      "settings": "Réglages",
+      "payouts": "Versements"
     }
   },
   "metric": {
@@ -46,6 +48,8 @@
     "active": "Publiée",
     "unpublished": "Dépubliée",
     "open": "Voir l'annonce",
+    "edit": "Modifier",
+    "editLabel": "Modifier l'annonce {{address}} · {{box}}",
     "count_one": "{{count}} place",
     "count_other": "{{count}} places"
   },
@@ -65,14 +69,155 @@
     "awaiting": "En attente de la réponse du propriétaire."
   },
   "status": {
+    "AWAITING_PAYMENT": "À payer",
     "PENDING": "En attente",
     "CONFIRMED": "Confirmée",
-    "EXPIRED": "Expirée"
+    "EXPIRED": "Expirée",
+    "CANCELLED": "Annulée",
+    "ABANDONED": "Abandonnée",
+    "PAYMENT_FAILED": "Refusée"
   },
   "row": {
     "period": "Du {{from}} au {{to}}",
     "nights_one": "{{count}} nuit",
     "nights_other": "{{count}} nuits",
-    "requestedOn": "Demandée le {{date}}"
+    "requestedOn": "Demandée le {{date}}",
+    "answerBy": "Réponse du loueur avant le {{date}}",
+    "answerByOwner": "À confirmer avant le {{date}}"
+  },
+  "money": {
+    "awaitingPayment": "Paiement en cours de vérification",
+    "abandoned": "Paiement abandonné",
+    "paymentFailed": "Paiement refusé par la banque",
+    "holdAwaitingOwner": "Empreinte de {{amount}} · en attente du loueur",
+    "captured": "Confirmée · {{amount}} prélevés",
+    "expiredReleasing": "Expirée · empreinte en cours de levée",
+    "expiredReleased": "Expirée · rien n’a été prélevé",
+    "cancelledReleasing": "Annulée · empreinte en cours de levée",
+    "cancelledReleased": "Annulée · rien n’a été prélevé",
+    "cancelledRefunding": "Annulée · remboursement en cours",
+    "cancelledRefunded": "Annulée · {{amount}} remboursés",
+    "pendingWithoutPayment": "En attente du loueur",
+    "confirmedWithoutPayment": "Confirmée",
+    "expiredWithoutPayment": "Expirée",
+    "cancelledWithoutPayment": "Annulée",
+    "cancelledKept": "Annulée · {{amount}} non remboursés"
+  },
+  "cancel": {
+    "action": "Annuler",
+    "title": "Annuler cette réservation ?",
+    "confirm": "Annuler la réservation",
+    "keep": "Garder ma réservation",
+    "ownerConfirm": "Annuler la location",
+    "ownerKeep": "Garder la location",
+    "terms": {
+      "refund": "Vous serez remboursé de {{amount}}.",
+      "nonRefundable": "L’échéance d’annulation gratuite est passée : les {{amount}} prélevés ne seront pas remboursés.",
+      "release": "L’empreinte de {{amount}} sera levée : rien n’a été prélevé.",
+      "ownerFullReturn": "Le conducteur récupérera tout son argent.",
+      "nothingAtStake": "Aucun paiement n’est en jeu pour cette réservation."
+    },
+    "deadline": "Annulation gratuite jusqu’au {{date}}."
+  },
+  "profile": {
+    "avatar": "Votre avatar : pilote {{name}}",
+    "signedInAs": "Connecté en tant que {{email}}"
+  },
+  "avatar": {
+    "title": "Votre avatar",
+    "hint": "Il s’affiche dans l’en-tête, sur le site comme dans l’app.",
+    "saved": "Avatar enregistré."
+  },
+  "access": {
+    "title": "Consignes d’accès",
+    "hint": "Valables jusqu’à la fin de votre location.",
+    "copy": "Copier les consignes",
+    "copied": "Copiées"
+  },
+  "payouts": {
+    "missingTitle": "Recevez l’argent de vos locations",
+    "missingBody": "Bookparking encaisse le conducteur, garde {{fee}} % de commission et vous vire le reste, au plus tard {{release}} après le début de chaque location — dès son arrivée s’il la confirme.",
+    "stripeNote": "Votre identité et votre IBAN se saisissent chez Stripe, notre prestataire de paiement : Bookparking ne les voit jamais.",
+    "add": "Ajouter mes coordonnées bancaires",
+    "incompleteTitle": "Stripe vérifie vos informations",
+    "incompleteBody": "La vérification prend souvent quelques minutes. S’il manque une pièce, Stripe vous la demande.",
+    "resume": "Reprendre chez Stripe",
+    "readyTitle": "Versements activés",
+    "readyBody": "Chaque location part vers votre compte bancaire, commission de {{fee}} % déduite.",
+    "dashboard": "Voir mon espace Stripe",
+    "upcoming": "À venir",
+    "upcomingHint": "Retenu jusqu’à l’arrivée du conducteur",
+    "sent": "Déjà versé",
+    "sentHint": "Envoyé vers votre compte bancaire",
+    "listTitle": "Location par location",
+    "empty": "Aucune location payée pour l’instant.",
+    "receive": "Vous recevez {{amount}} sur {{price}}",
+    "status": {
+      "HELD": "Retenu jusqu’au {{date}}",
+      "AWAITING_ACCOUNT": "En attente de vos coordonnées",
+      "SENDING": "Virement en cours",
+      "SENT": "Versé le {{date}}"
+    },
+    "waiting": "De l’argent vous attend : ajoutez vos coordonnées bancaires pour le recevoir.",
+    "waitingAction": "Voir mes versements"
+  },
+  "arrival": {
+    "action": "Je suis arrivé",
+    "done": "Arrivée confirmée"
+  },
+  "deletion": {
+    "title": "Supprimer mon compte",
+    "intro": "Vos annonces sont retirées du site ; votre adresse e-mail, votre mot de passe et vos notifications sont effacés. Vos réservations passées restent, sans lien avec vous. C’est définitif.",
+    "blocked": "Possible seulement quand aucune demande n’attend de réponse, qu’aucune réservation n’est en cours ou à venir, et qu’aucun versement ne vous est encore dû.",
+    "action": "Supprimer mon compte",
+    "dialogTitle": "Supprimer votre compte ?",
+    "dialogBody": "Le compte ne pourra pas être rétabli. Saisissez votre mot de passe pour confirmer.",
+    "password": "Mot de passe",
+    "keep": "Garder mon compte",
+    "confirm": "Supprimer définitivement",
+    "doneTitle": "Votre compte est supprimé",
+    "done": "Vos annonces ne sont plus en ligne et vos données personnelles sont effacées. Merci d’avoir utilisé bookparking.",
+    "home": "Revenir à l’accueil",
+    "privacy": "Ce que bookparking conserve, et combien de temps"
+  },
+  "issue": {
+    "report": "Signaler un problème",
+    "title": "Signaler un problème",
+    "intro": "Bookparking gèle l’argent de la location et examine votre réclamation. Le loueur est prévenu et peut vous répondre.",
+    "reasonLabel": "Que se passe-t-il ?",
+    "reason": {
+      "NO_ACCESS": "Je ne peux pas entrer",
+      "PLACE_OCCUPIED": "La place est occupée",
+      "OTHER": "Autre problème"
+    },
+    "message": "Précisions",
+    "messageHint": "Facultatif, sauf pour « Autre problème ». Le loueur et Bookparking le liront.",
+    "messagePlaceholder": "Le portail ne s’ouvre pas avec le code donné…",
+    "submit": "Envoyer",
+    "close": "Fermer",
+    "validation": {
+      "message": "Décrivez le problème en quelques mots, 10 caractères au moins.",
+      "tooLong": "2 000 caractères au plus."
+    },
+    "heading": "Problème signalé le {{date}} : {{reason}}",
+    "status": {
+      "renter": {
+        "OPEN": "Bookparking examine votre réclamation ; le loueur est prévenu.",
+        "REFUNDED": "Bookparking a tranché : vous êtes remboursé en totalité.",
+        "PARTIALLY_REFUNDED": "Bookparking a tranché : {{amount}} vous sont remboursés.",
+        "DISMISSED": "Bookparking a classé la réclamation sans suite."
+      },
+      "owner": {
+        "OPEN": "Le conducteur signale un problème. L’argent de cette location est gelé jusqu’à la décision de Bookparking : répondez-lui.",
+        "REFUNDED": "Bookparking a remboursé le conducteur en totalité : cette location ne vous sera pas versée.",
+        "PARTIALLY_REFUNDED": "Bookparking a remboursé {{amount}} au conducteur, pris sur votre part.",
+        "DISMISSED": "Bookparking a classé la réclamation sans suite : votre versement suit son cours."
+      }
+    },
+    "ownerReply": "Réponse du loueur",
+    "replyLabel": "Votre réponse au conducteur",
+    "replyHint": "Une seule réponse, 10 caractères au moins. Le conducteur et Bookparking la liront.",
+    "replyPlaceholder": "Le code du portail a changé : …",
+    "replySubmit": "Envoyer la réponse"
   }
 }

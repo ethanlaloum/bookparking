@@ -9,6 +9,7 @@ import {
   hasAnyCriterion,
   offersTier,
   priceForTier,
+  stayFromSearchParams,
   type SearchCriteria,
 } from './SearchCriteria';
 
@@ -17,7 +18,12 @@ const MASSENA = {
   coordinates: { latitude: 43.6975, longitude: 7.2707 },
 };
 
-const FULL: SearchCriteria = { address: MASSENA, vehicle: 'electrique', tier: 'week' };
+const FULL: SearchCriteria = {
+  address: MASSENA,
+  vehicle: 'electrique',
+  tier: 'week',
+  stay: { from: '2026-10-10', to: '2026-10-12' },
+};
 
 const PRICING = { dayInCents: 1500, weekInCents: 8000, monthInCents: null };
 
@@ -53,6 +59,7 @@ describe('the search criteria carried in the url', () => {
       address: null,
       vehicle: null,
       tier: 'week',
+      stay: null,
     });
   });
 
@@ -88,5 +95,40 @@ describe('the vehicles a place accepts', () => {
   it('knows a place that declared something from one that stayed silent', () => {
     expect(declaresVehicles(['velo'])).toBe(true);
     expect(declaresVehicles([])).toBe(false);
+  });
+});
+
+describe('the stay a searcher asks for', () => {
+  it('is written as an arrival and a departure day', () => {
+    expect(
+      criteriaToSearchParams({ ...EMPTY_CRITERIA, stay: { from: '2026-10-10', to: '2026-10-12' } }).toString(),
+    ).toBe('arrivee=2026-10-10&depart=2026-10-12');
+  });
+
+  it('accepts a stay of a single day', () => {
+    expect(stayFromSearchParams(new URLSearchParams('arrivee=2026-10-10&depart=2026-10-10'))).toEqual({
+      from: '2026-10-10',
+      to: '2026-10-10',
+    });
+  });
+
+  it('ignores a stay missing its departure', () => {
+    expect(stayFromSearchParams(new URLSearchParams('arrivee=2026-10-10'))).toEqual(null);
+  });
+
+  it('ignores a departure before the arrival', () => {
+    expect(stayFromSearchParams(new URLSearchParams('arrivee=2026-10-12&depart=2026-10-10'))).toEqual(null);
+  });
+
+  it('ignores a day that does not exist', () => {
+    expect(stayFromSearchParams(new URLSearchParams('arrivee=2026-02-28&depart=2026-02-30'))).toEqual(null);
+  });
+
+  it('ignores a day written as on screen rather than year-month-day', () => {
+    expect(stayFromSearchParams(new URLSearchParams('arrivee=10/10/2026&depart=2026-10-12'))).toEqual(null);
+  });
+
+  it('counts as a criterion on its own', () => {
+    expect(hasAnyCriterion({ ...EMPTY_CRITERIA, stay: { from: '2026-10-10', to: '2026-10-12' } })).toBe(true);
   });
 });

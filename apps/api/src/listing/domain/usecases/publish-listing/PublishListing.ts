@@ -10,11 +10,11 @@ import {
 } from '../../entities/Listing';
 import { ListingRepository } from '../../ports/ListingRepository';
 import { PhotoStorage } from '../../ports/PhotoStorage';
-import { AvailabilityPeriodExpiredError } from './errors/AvailabilityPeriodExpiredError';
+import { AvailabilityPeriodExpiredError } from '../../errors/AvailabilityPeriodExpiredError';
 import { IncompletePricingError } from '../../errors/IncompletePricingError';
 import { UnknownVehicleTypeError } from '../../errors/UnknownVehicleTypeError';
 import { ListingAlreadyActiveError } from './errors/ListingAlreadyActiveError';
-import { PhotoStorageFailedError } from './errors/PhotoStorageFailedError';
+import { UnknownPhotoError } from '../../errors/UnknownPhotoError';
 
 interface Props {
   ownerId: string;
@@ -36,7 +36,7 @@ export class PublishListing implements UseCase<
       | AvailabilityPeriodExpiredError
       | IncompletePricingError
       | ListingAlreadyActiveError
-      | PhotoStorageFailedError
+      | UnknownPhotoError
       | UnknownVehicleTypeError
       | UnknownError
     >
@@ -55,7 +55,7 @@ export class PublishListing implements UseCase<
       | AvailabilityPeriodExpiredError
       | IncompletePricingError
       | ListingAlreadyActiveError
-      | PhotoStorageFailedError
+      | UnknownPhotoError
       | UnknownVehicleTypeError
       | UnknownError
     >
@@ -77,8 +77,12 @@ export class PublishListing implements UseCase<
       );
       if (activeListing) return Either.left(new ListingAlreadyActiveError());
 
-      const storage = await this.photoStorage.storeAll(props.photos);
-      if (Either.isLeft(storage)) return Either.left(storage.left);
+      const ownedPhotoIds = await this.photoStorage.findIdsOwnedBy(
+        props.ownerId,
+        props.photos,
+      );
+      if (props.photos.some((photoId) => !ownedPhotoIds.includes(photoId)))
+        return Either.left(new UnknownPhotoError());
 
       await this.listingRepository.create(publication.right);
       return Either.right(publication.right);

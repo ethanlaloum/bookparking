@@ -2,7 +2,7 @@ import { createReducer } from '@reduxjs/toolkit';
 
 import { logoutSucceeded } from '../../auth/domain/use-cases/sign-out/signOutEpic';
 import { initialCommonState, type CommonState } from '../../../store/CommonState';
-import type { Listing } from '../domain/entities/Listing';
+import { publicListingOf, type Listing } from '../domain/entities/Listing';
 import type { AddressSuggestion, Coordinates, LocatedAddress } from '../domain/entities/Coordinates';
 import {
   addressSearchCleared,
@@ -10,6 +10,13 @@ import {
   addressSuggestionsReceived,
 } from '../domain/use-cases/search-address/searchAddressEpic';
 import type { OwnerListing } from '../domain/ports/ListingGateway';
+import { isSameStay, type SearchedStay } from '../domain/entities/SearchCriteria';
+import {
+  freeListingsCleared,
+  freeListingsFailed,
+  freeListingsRequested,
+  freeListingsSucceeded,
+} from '../domain/use-cases/search-free-listings/searchFreeListingsEpic';
 import {
   locateListingsRequested,
   locateListingsSucceeded,
@@ -43,11 +50,11 @@ import {
   unpublishListingSucceeded,
 } from '../domain/use-cases/unpublish-listing/unpublishListingEpic';
 import {
-  resetUpdateListingPricingState,
-  updateListingPricingFailed,
-  updateListingPricingRequested,
-  updateListingPricingSucceeded,
-} from '../domain/use-cases/update-listing-pricing/updateListingPricingEpic';
+  editListingFailed,
+  editListingRequested,
+  editListingSucceeded,
+  resetEditListingState,
+} from '../domain/use-cases/edit-listing/editListingEpic';
 
 export interface ListingState {
   listings: Listing[];
@@ -56,14 +63,17 @@ export interface ListingState {
   suggestions: AddressSuggestion[];
   searchPoint: Coordinates | null;
   searchLabel: string | null;
+  freeStay: SearchedStay | null;
+  freeListingIds: string[] | null;
   selected: Listing | null;
   list: CommonState;
+  searchFree: CommonState;
   listOwner: CommonState;
   locate: CommonState;
   get: CommonState;
   publish: CommonState;
   unpublish: CommonState;
-  updatePricing: CommonState;
+  edit: CommonState;
 }
 
 const initialState: ListingState = {
@@ -73,14 +83,17 @@ const initialState: ListingState = {
   suggestions: [],
   searchPoint: null,
   searchLabel: null,
+  freeStay: null,
+  freeListingIds: null,
   selected: null,
   list: initialCommonState,
+  searchFree: initialCommonState,
   listOwner: initialCommonState,
   locate: initialCommonState,
   get: initialCommonState,
   publish: initialCommonState,
   unpublish: initialCommonState,
-  updatePricing: initialCommonState,
+  edit: initialCommonState,
 };
 
 export const listingReducer = createReducer(initialState, (builder) => {
@@ -124,6 +137,25 @@ export const listingReducer = createReducer(initialState, (builder) => {
       state.suggestions = [];
       state.searchPoint = null;
       state.searchLabel = null;
+    })
+    .addCase(freeListingsRequested, (state, action) => {
+      state.freeStay = action.payload;
+      state.freeListingIds = null;
+      state.searchFree = { state: 'pending' };
+    })
+    .addCase(freeListingsSucceeded, (state, action) => {
+      if (!isSameStay(state.freeStay, action.payload.stay)) return;
+      state.freeListingIds = action.payload.listingIds;
+      state.searchFree = { state: 'succeeded' };
+    })
+    .addCase(freeListingsFailed, (state, action) => {
+      if (!isSameStay(state.freeStay, action.payload.stay)) return;
+      state.searchFree = { state: 'failed', errorCode: action.payload.errorCode };
+    })
+    .addCase(freeListingsCleared, (state) => {
+      state.freeStay = null;
+      state.freeListingIds = null;
+      state.searchFree = initialCommonState;
     })
     .addCase(getListingRequested, (state) => {
       state.get = { state: 'pending' };
@@ -169,21 +201,31 @@ export const listingReducer = createReducer(initialState, (builder) => {
     .addCase(resetUnpublishListingState, (state) => {
       state.unpublish = initialCommonState;
     })
-    .addCase(updateListingPricingRequested, (state) => {
-      state.updatePricing = { state: 'pending' };
+    .addCase(editListingRequested, (state) => {
+      state.edit = { state: 'pending' };
     })
-    .addCase(updateListingPricingSucceeded, (state, action) => {
-      state.updatePricing = { state: 'succeeded' };
-      state.selected = action.payload;
-      state.listings = state.listings.map((listing) =>
+    .addCase(editListingSucceeded, (state, action) => {
+      const edited = publicListingOf(action.payload);
+      state.edit = { state: 'succeeded' };
+      state.ownerListings = state.ownerListings.map((listing) =>
         listing.id === action.payload.id ? action.payload : listing,
       );
+      state.listings = state.listings.map((listing) =>
+        listing.id === edited.id ? edited : listing,
+      );
+      if (state.selected?.id === edited.id) state.selected = edited;
     })
-    .addCase(updateListingPricingFailed, (state, action) => {
-      state.updatePricing = { state: 'failed', errorCode: action.payload.errorCode };
+    .addCase(editListingFailed, (state, action) => {
+      state.edit = { state: 'failed', errorCode: action.payload.errorCode };
     })
-    .addCase(resetUpdateListingPricingState, (state) => {
-      state.updatePricing = initialCommonState;
+    .addCase(resetEditListingState, (state) => {
+      state.edit = initialCommonState;
     })
-    .addCase(logoutSucceeded, (state) => ({ ...initialState, listings: state.listings }));
+    .addCase(logoutSucceeded, (state) => ({
+      ...initialState,
+      listings: state.listings,
+      freeStay: state.freeStay,
+      freeListingIds: state.freeListingIds,
+      searchFree: state.searchFree,
+    }));
 });

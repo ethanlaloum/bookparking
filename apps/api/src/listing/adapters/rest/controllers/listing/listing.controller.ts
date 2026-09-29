@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -19,26 +20,29 @@ import { UnknownError } from '../../../../../shared/error/errors/UnknownError';
 import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
-import { AvailabilityPeriodExpiredError } from '../../../../domain/usecases/publish-listing/errors/AvailabilityPeriodExpiredError';
+import { OptionalAuthGuard } from '../../../../../user-management/adapters/rest/guards/optional-auth.guard';
+import { AvailabilityPeriodExpiredError } from '../../../../domain/errors/AvailabilityPeriodExpiredError';
 import { ListActiveListings } from '../../../../domain/usecases/list-active-listings/ListActiveListings';
+import { ListFreeListings } from '../../../../domain/usecases/list-free-listings/ListFreeListings';
+import { InvalidStayError } from '../../../../domain/usecases/list-free-listings/errors/InvalidStayError';
 import { ListOwnerListings } from '../../../../domain/usecases/list-owner-listings/ListOwnerListings';
 import { GetListing } from '../../../../domain/usecases/get-listing/GetListing';
 import { IncompletePricingError } from '../../../../domain/errors/IncompletePricingError';
 import { UnknownVehicleTypeError } from '../../../../domain/errors/UnknownVehicleTypeError';
 import { ListingAlreadyActiveError } from '../../../../domain/usecases/publish-listing/errors/ListingAlreadyActiveError';
 import { ListingNotFoundError } from '../../../../domain/usecases/get-listing/errors/ListingNotFoundError';
-import { PhotoStorageFailedError } from '../../../../domain/usecases/publish-listing/errors/PhotoStorageFailedError';
+import { UnknownPhotoError } from '../../../../domain/errors/UnknownPhotoError';
 import { PublishListing } from '../../../../domain/usecases/publish-listing/PublishListing';
 import { VehicleType } from '../../../../domain/entities/Listing';
-import { ActiveListingNotFoundError } from '../../../../domain/usecases/update-listing-pricing/errors/ActiveListingNotFoundError';
+import { ActiveListingNotFoundError } from '../../../../domain/errors/ActiveListingNotFoundError';
 import { ListingNotOwnedError } from '../../../../domain/errors/ListingNotOwnedError';
 import { UnpublishListing } from '../../../../domain/usecases/unpublish-listing/UnpublishListing';
-import { UpdateListingPricing } from '../../../../domain/usecases/update-listing-pricing/UpdateListingPricing';
+import { EditListing } from '../../../../domain/usecases/edit-listing/EditListing';
 import { ListingMapper } from '../../../mappers/ListingMapper';
 import { GetListingResponseDto } from '../../dtos/GetListingResponseDto';
 import { GetOwnerListingResponseDto } from '../../dtos/GetOwnerListingResponseDto';
+import { EditListingSchema } from '../../dtos/EditListingSchema';
 import { PublishListingSchema } from '../../dtos/PublishListingSchema';
-import { UpdateListingPricingSchema } from '../../dtos/UpdateListingPricingSchema';
 
 @Controller('listing')
 export class ListingController {
@@ -48,7 +52,8 @@ export class ListingController {
     private readonly listActiveListingsUseCase: ListActiveListings,
     private readonly listOwnerListingsUseCase: ListOwnerListings,
     private readonly unpublishListingUseCase: UnpublishListing,
-    private readonly updateListingPricingUseCase: UpdateListingPricing,
+    private readonly editListingUseCase: EditListing,
+    private readonly listFreeListingsUseCase: ListFreeListings,
   ) {}
 
   @UseGuards(AuthGuard)
@@ -100,8 +105,8 @@ export class ListingController {
         if (error instanceof ListingAlreadyActiveError) {
           throw new HttpException(error.message, HttpStatus.CONFLICT);
         }
-        if (error instanceof PhotoStorageFailedError) {
-          throw new HttpException(error.message, HttpStatus.BAD_GATEWAY);
+        if (error instanceof UnknownPhotoError) {
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
         if (error instanceof UnknownError) {
           throw new HttpException(
@@ -124,15 +129,42 @@ export class ListingController {
   }
 
   @Get()
-  public async listListings(): Promise<GetListingResponseDto[]> {
-    const result = await this.listActiveListingsUseCase.execute();
+  @UseGuards(OptionalAuthGuard)
+  public async listListings(
+    @Req() req: { user?: { id: string } },
+    @Query('fromDay') fromDay: unknown,
+    @Query('toDay') toDay: unknown,
+  ): Promise<GetListingResponseDto[]> {
+    if (fromDay === undefined && toDay === undefined) {
+      const result = await this.listActiveListingsUseCase.execute();
+      if (Either.isLeft(result))
+        throw new HttpException(
+          'La liste des annonces est indisponible',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      return result.right.map((listing) =>
+        ListingMapper.toGetListingDto(listing),
+      );
+    }
 
-    if (Either.isLeft(result))
+    if (typeof fromDay !== 'string' || typeof toDay !== 'string')
+      throw new HttpException(
+        'Une recherche par dates demande une arrivée et un départ',
+        HttpStatus.BAD_REQUEST,
+      );
+
+    const result = await this.listFreeListingsUseCase.execute({
+      stay: { from: fromDay, to: toDay },
+      viewerId: req.user?.id ?? null,
+    });
+    if (Either.isLeft(result)) {
+      if (result.left instanceof InvalidStayError)
+        throw new HttpException(result.left.message, HttpStatus.BAD_REQUEST);
       throw new HttpException(
         'La liste des annonces est indisponible',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
-
+    }
     return result.right.map((listing) =>
       ListingMapper.toGetListingDto(listing),
     );
@@ -198,10 +230,6 @@ export class ListingController {
       });
     }
   }
-  // Les deux cas d'usage ci-dessous sont clés sur la place — adresse et box —
-  // quand la route l'est sur l'identifiant que `GET /listing` rend aux clients.
-  // `GetListing` fait la jonction : c'est une lecture de plus par requête,
-  // assumée, pour ne pas réécrire deux cas d'usage déjà prouvés.
   @Delete(':id')
   @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -257,13 +285,13 @@ export class ListingController {
     }
   }
 
-  @Patch(':id/pricing')
+  @Patch(':id')
   @UseGuards(AuthGuard)
-  async updateListingPricing(
+  async editListing(
     @Req() req: TokenRequest,
     @Param('id') id: string,
     @Body() body: unknown,
-  ): Promise<GetListingResponseDto | void> {
+  ): Promise<GetOwnerListingResponseDto | void> {
     try {
       const decodeId = Schema.decodeUnknownEither(Schema.UUID)(id);
       if (Either.isLeft(decodeId))
@@ -272,62 +300,53 @@ export class ListingController {
           HttpStatus.NOT_FOUND,
         );
 
-      const decodeBody = Schema.decodeUnknownEither(UpdateListingPricingSchema)(
-        body,
-      );
+      const decodeBody = Schema.decodeUnknownEither(EditListingSchema)(body);
       if (Either.isLeft(decodeBody))
         throw new HttpException(
           parseSchemaError(decodeBody.left),
           HttpStatus.BAD_REQUEST,
         );
 
-      const found = await this.getListingUseCase.execute({
-        listingId: decodeId.right,
-      });
-      if (Either.isLeft(found)) {
-        if (found.left instanceof ListingNotFoundError)
-          throw new HttpException(
-            new ActiveListingNotFoundError().message,
-            HttpStatus.NOT_FOUND,
-          );
-        throw new HttpException(
-          'La mise à jour de la grille tarifaire a échoué',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
-      const place = found.right.toState();
-      const result = await this.updateListingPricingUseCase.execute({
+      const edition = decodeBody.right;
+      const result = await this.editListingUseCase.execute({
         ownerId: req.user.id,
-        address: place.address,
-        box: place.box,
+        listingId: decodeId.right,
+        accessDescription: edition.accessDescription,
+        photos: [...edition.photos],
+        acceptedVehicles: [...edition.acceptedVehicles] as VehicleType[],
         pricing: {
-          dayInCents: decodeBody.right.dayInCents ?? null,
-          weekInCents: decodeBody.right.weekInCents ?? null,
-          monthInCents: decodeBody.right.monthInCents ?? null,
+          dayInCents: edition.pricing.dayInCents ?? null,
+          weekInCents: edition.pricing.weekInCents ?? null,
+          monthInCents: edition.pricing.monthInCents ?? null,
         },
-        updatedAt: new Date(),
+        availability: { ...edition.availability },
+        editedAt: new Date(),
       });
 
       if (Either.isLeft(result)) {
         const error = result.left;
-        if (error instanceof IncompletePricingError)
-          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
-        if (error instanceof ListingNotOwnedError)
-          throw new HttpException(error.message, HttpStatus.FORBIDDEN);
         if (error instanceof ActiveListingNotFoundError)
           throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+        if (error instanceof ListingNotOwnedError)
+          throw new HttpException(error.message, HttpStatus.FORBIDDEN);
+        if (
+          error instanceof AvailabilityPeriodExpiredError ||
+          error instanceof IncompletePricingError ||
+          error instanceof UnknownVehicleTypeError ||
+          error instanceof UnknownPhotoError
+        )
+          throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         throw new HttpException(
-          'La mise à jour de la grille tarifaire a échoué',
+          "La modification de l'annonce a échoué",
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 
-      return ListingMapper.toGetListingDto(result.right);
+      return ListingMapper.toGetOwnerListingDto(result.right);
     } catch (error) {
       controllerErrorHandler(error, {
         name: 'ListingController',
-        method: 'updateListingPricing',
+        method: 'editListing',
         userId: req.user.id,
         listingId: id,
       });

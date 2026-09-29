@@ -15,27 +15,42 @@ import { Either, Schema } from 'effect/index';
 
 import { controllerErrorHandler } from '../../../../../shared/error/controllerErrorHandler';
 import { parseSchemaError } from '../../../../../shared/error/parseSchemaError';
+import { InvalidPlatformSettingsError } from '../../../../../shared/platform-settings/domain/errors/InvalidPlatformSettingsError';
 import { TokenRequest } from '../../../../../user-management/adapters/rest/dtos/TokenRequest';
 import { AuthGuard } from '../../../../../user-management/adapters/rest/guards/auth.guard';
 import { MissingModerationReasonError } from '../../../../domain/errors/MissingModerationReasonError';
 import { ModerationTargetNotFoundError } from '../../../../domain/errors/ModerationTargetNotFoundError';
 import { NotABackOfficeAdminError } from '../../../../domain/errors/NotABackOfficeAdminError';
+import { PlatformSettingsUnchangedError } from '../../../../domain/errors/PlatformSettingsUnchangedError';
 import { CancelRentalRequest } from '../../../../domain/usecases/cancel-rental-request/CancelRentalRequest';
 import { LiftAccountSuspension } from '../../../../domain/usecases/lift-account-suspension/LiftAccountSuspension';
 import { ListAccounts } from '../../../../domain/usecases/list-accounts/ListAccounts';
 import { ListAllListings } from '../../../../domain/usecases/list-listings/ListAllListings';
+import { ChangePlatformSettings } from '../../../../domain/usecases/change-platform-settings/ChangePlatformSettings';
+import { ListRentalIssues } from '../../../../domain/usecases/list-rental-issues/ListRentalIssues';
+import { InvalidRefundAmountError } from '../../../../domain/usecases/resolve-rental-issue/errors/InvalidRefundAmountError';
+import { RentalIssueAlreadyResolvedError } from '../../../../domain/usecases/resolve-rental-issue/errors/RentalIssueAlreadyResolvedError';
+import { RentalNoLongerRefundableError } from '../../../../domain/usecases/resolve-rental-issue/errors/RentalNoLongerRefundableError';
+import { ResolveRentalIssue } from '../../../../domain/usecases/resolve-rental-issue/ResolveRentalIssue';
 import { ListAllRentalRequests } from '../../../../domain/usecases/list-rental-requests/ListAllRentalRequests';
+import { ReadAdminJournal } from '../../../../domain/usecases/read-admin-journal/ReadAdminJournal';
+import { ReadPlatformSettings } from '../../../../domain/usecases/read-platform-settings/ReadPlatformSettings';
 import { ReadOverview } from '../../../../domain/usecases/read-overview/ReadOverview';
 import { SuspendAccount } from '../../../../domain/usecases/suspend-account/SuspendAccount';
 import { UnpublishAnyListing } from '../../../../domain/usecases/unpublish-any-listing/UnpublishAnyListing';
 import { BackOfficeMapper } from '../../../mappers/BackOfficeMapper';
 import {
   AdminAccountResponseDto,
+  AdminJournalEntryResponseDto,
   AdminListingResponseDto,
+  AdminRentalIssueResponseDto,
   AdminRentalRequestResponseDto,
   OverviewResponseDto,
+  PlatformSettingsFormResponseDto,
 } from '../../dtos/BackOfficeResponseDtos';
+import { ChangePlatformSettingsSchema } from '../../dtos/ChangePlatformSettingsSchema';
 import { ModerationSchema } from '../../dtos/ModerationSchema';
+import { ResolveRentalIssueSchema } from '../../dtos/ResolveRentalIssueSchema';
 import { AdminGuard } from '../../guards/admin.guard';
 
 type ModerationUseCase = {
@@ -59,6 +74,11 @@ export class BackOfficeController {
     private readonly suspendAccountUseCase: SuspendAccount,
     private readonly liftAccountSuspensionUseCase: LiftAccountSuspension,
     private readonly cancelRentalRequestUseCase: CancelRentalRequest,
+    private readonly readPlatformSettingsUseCase: ReadPlatformSettings,
+    private readonly changePlatformSettingsUseCase: ChangePlatformSettings,
+    private readonly readAdminJournalUseCase: ReadAdminJournal,
+    private readonly listRentalIssuesUseCase: ListRentalIssues,
+    private readonly resolveRentalIssueUseCase: ResolveRentalIssue,
   ) {}
 
   /**
@@ -186,6 +206,117 @@ export class BackOfficeController {
     );
   }
 
+  @Get('settings')
+  public async readSettings(
+    @Req() req: TokenRequest,
+  ): Promise<PlatformSettingsFormResponseDto> {
+    const result = await this.readPlatformSettingsUseCase.execute({
+      adminAccountId: req.user.id,
+    });
+    if (Either.isLeft(result)) throw BackOfficeController.toHttp(result.left);
+    return result.right;
+  }
+
+  // POST et non PUT : chaque changement écrit une nouvelle version, la
+  // précédente reste lisible dans le journal.
+  @Post('settings')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public async changeSettings(
+    @Req() req: TokenRequest,
+    @Body() body: unknown,
+  ): Promise<void> {
+    try {
+      const decoded = Schema.decodeUnknownEither(ChangePlatformSettingsSchema)(
+        body,
+      );
+      if (Either.isLeft(decoded))
+        throw new HttpException(
+          parseSchemaError(decoded.left),
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const { reason, ...settings } = decoded.right;
+      const result = await this.changePlatformSettingsUseCase.execute({
+        adminAccountId: req.user.id,
+        settings,
+        reason,
+        actedAt: new Date(),
+      });
+      if (Either.isLeft(result)) throw BackOfficeController.toHttp(result.left);
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'BackOfficeController',
+        method: 'changeSettings',
+        userId: req.user.id,
+      });
+    }
+  }
+
+  @Get('journal')
+  public async readJournal(
+    @Req() req: TokenRequest,
+  ): Promise<AdminJournalEntryResponseDto[]> {
+    const result = await this.readAdminJournalUseCase.execute({
+      adminAccountId: req.user.id,
+    });
+    if (Either.isLeft(result)) throw BackOfficeController.toHttp(result.left);
+    return result.right.map((entry) =>
+      BackOfficeMapper.toJournalEntryDto(entry),
+    );
+  }
+
+  @Get('issues')
+  public async listIssues(
+    @Req() req: TokenRequest,
+  ): Promise<AdminRentalIssueResponseDto[]> {
+    const result = await this.listRentalIssuesUseCase.execute({
+      adminAccountId: req.user.id,
+    });
+    if (Either.isLeft(result)) throw BackOfficeController.toHttp(result.left);
+    return result.right.map((view) => BackOfficeMapper.toRentalIssueDto(view));
+  }
+
+  @Post('issues/:id/resolution')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public async resolveIssue(
+    @Req() req: TokenRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<void> {
+    try {
+      const decodeId = Schema.decodeUnknownEither(Schema.UUID)(id);
+      if (Either.isLeft(decodeId))
+        throw new HttpException(
+          new ModerationTargetNotFoundError().message,
+          HttpStatus.NOT_FOUND,
+        );
+      const decoded = Schema.decodeUnknownEither(ResolveRentalIssueSchema)(
+        body,
+      );
+      if (Either.isLeft(decoded))
+        throw new HttpException(
+          parseSchemaError(decoded.left),
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const result = await this.resolveRentalIssueUseCase.execute({
+        adminAccountId: req.user.id,
+        issueId: decodeId.right,
+        decision: decoded.right.decision,
+        refundInCents: decoded.right.refundInCents ?? null,
+        reason: decoded.right.reason,
+        actedAt: new Date(),
+      });
+      if (Either.isLeft(result)) throw BackOfficeController.toHttp(result.left);
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'BackOfficeController',
+        method: 'resolveIssue',
+        userId: req.user.id,
+      });
+    }
+  }
+
   // Les quatre actions de modération ont la même forme : un identifiant, un
   // motif, et la même échelle de refus. Les écrire quatre fois inviterait une
   // divergence entre elles.
@@ -235,6 +366,17 @@ export class BackOfficeController {
       return new HttpException(error.message, HttpStatus.BAD_REQUEST);
     if (error instanceof ModerationTargetNotFoundError)
       return new HttpException(error.message, HttpStatus.NOT_FOUND);
+    if (
+      error instanceof InvalidPlatformSettingsError ||
+      error instanceof PlatformSettingsUnchangedError ||
+      error instanceof InvalidRefundAmountError
+    )
+      return new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    if (
+      error instanceof RentalIssueAlreadyResolvedError ||
+      error instanceof RentalNoLongerRefundableError
+    )
+      return new HttpException(error.message, HttpStatus.CONFLICT);
     return new HttpException(
       "L'action d'administration a échoué",
       HttpStatus.INTERNAL_SERVER_ERROR,

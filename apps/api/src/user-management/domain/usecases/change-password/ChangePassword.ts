@@ -1,13 +1,12 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { passwordStrengthOf } from '../../services/passwordStrength';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import { AccountRepository } from '../../ports/AccountRepository';
 import { PasswordHasher } from '../../ports/PasswordHasher';
 import { InvalidCredentialsError } from '../sign-in/errors/InvalidCredentialsError';
-import { WeakPasswordError } from './errors/WeakPasswordError';
-
-const MINIMUM_PASSWORD_LENGTH = 8;
+import { WeakPasswordError } from '../../errors/WeakPasswordError';
 
 interface Props {
   accountId: string;
@@ -39,8 +38,9 @@ export class ChangePassword implements UseCase<
       )
         return Either.left(new InvalidCredentialsError());
 
-      if (props.newPassword.length < MINIMUM_PASSWORD_LENGTH)
-        return Either.left(new WeakPasswordError());
+      const strength = passwordStrengthOf(props.newPassword);
+      if (strength === 'TOO_SHORT' || strength === 'WEAK')
+        return Either.left(new WeakPasswordError(strength));
 
       await this.accountRepository.replacePasswordHash(
         account.id,

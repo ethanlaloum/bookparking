@@ -1,10 +1,27 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import {
+  Notification,
+  NotificationKind,
+} from '../../../../shared/notification-outbox/domain/entities/Notification';
+import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
+import { GenericTransaction } from '../../../../shared/unit-of-work/GenericTransaction';
+import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
-import { RentalRepository } from '../../ports/RentalRepository';
+import {
+  hasReachedTheOwner,
+  idempotencyKeyOf,
+} from '../../entities/RentalMoney';
+import { PaymentUnavailableError } from '../../errors/PaymentUnavailableError';
+import { PaymentGateway } from '../../ports/PaymentGateway';
+import {
+  RentalRepository,
+  RentalRequestSummary,
+} from '../../ports/RentalRepository';
 import { RentalRequestExpiredError } from './errors/RentalRequestExpiredError';
-import { RentalRequestNotFoundError } from './errors/RentalRequestNotFoundError';
+import { RentalRequestPaymentFailedError } from './errors/RentalRequestPaymentFailedError';
+import { RentalRequestNotFoundError } from '../../errors/RentalRequestNotFoundError';
 
 interface Props {
   requestId: string;
@@ -17,18 +34,31 @@ export class ConfirmRentalRequest implements UseCase<
   Promise<
     Either.Either<
       void,
-      RentalRequestExpiredError | RentalRequestNotFoundError | UnknownError
+      | PaymentUnavailableError
+      | RentalRequestExpiredError
+      | RentalRequestNotFoundError
+      | RentalRequestPaymentFailedError
+      | UnknownError
     >
   >
 > {
-  constructor(private readonly rentalRepository: RentalRepository) {}
+  constructor(
+    private readonly rentalRepository: RentalRepository,
+    private readonly paymentGateway: PaymentGateway,
+    private readonly notificationOutbox: NotificationOutbox,
+    private readonly unitOfWork: UnitOfWork,
+  ) {}
 
   public async execute(
     props: Props,
   ): Promise<
     Either.Either<
       void,
-      RentalRequestExpiredError | RentalRequestNotFoundError | UnknownError
+      | PaymentUnavailableError
+      | RentalRequestExpiredError
+      | RentalRequestNotFoundError
+      | RentalRequestPaymentFailedError
+      | UnknownError
     >
   > {
     try {
@@ -42,6 +72,11 @@ export class ConfirmRentalRequest implements UseCase<
       if (summary === null || summary.ownerId !== props.ownerId)
         return Either.left(new RentalRequestNotFoundError());
 
+      // Une demande qui n'a jamais atteint le loueur se refuse comme une
+      // demande inconnue : il ne l'a pas vue, et rien n'y est à prélever.
+      if (!hasReachedTheOwner(summary.status))
+        return Either.left(new RentalRequestNotFoundError());
+
       // Confirmer deux fois ne produit ni erreur ni seconde écriture : le
       // loueur qui rejoue sa requête obtient le même état, comme une seconde
       // dépublication d'annonce.
@@ -52,10 +87,58 @@ export class ConfirmRentalRequest implements UseCase<
       if (summary.isExpired)
         return Either.left(new RentalRequestExpiredError());
 
-      await this.rentalRepository.confirmRequest(
-        props.requestId,
-        props.confirmedAt,
-      );
+      if (summary.status === 'PAYMENT_FAILED')
+        return Either.left(new RentalRequestPaymentFailedError());
+
+      // Le prélèvement précède l'écriture : confirmer sans avoir été payé
+      // donnerait au loueur une réservation qu'aucun argent ne garantit. Si
+      // l'écriture échoue ensuite, le loueur rejoue sa confirmation et la clé
+      // d'idempotence rend le même prélèvement ; à défaut, le balayage relit
+      // ce prélèvement comme une confirmation.
+      if (summary.money === 'AUTHORIZED' && summary.paymentId !== null) {
+        let outcome: 'CAPTURED' | 'DECLINED';
+        try {
+          outcome = await this.paymentGateway.capture(
+            summary.paymentId,
+            idempotencyKeyOf(summary.id, 'capture'),
+          );
+        } catch (error: unknown) {
+          if (error instanceof PaymentUnavailableError)
+            return Either.left(error);
+          throw error;
+        }
+        if (outcome === 'DECLINED') {
+          await this.unitOfWork.process(async (trx) => {
+            if (await this.rentalRepository.markPaymentFailed(summary.id, trx))
+              await this.tellTheRenter(
+                'RENTAL_PAYMENT_FAILED',
+                summary,
+                props,
+                trx,
+              );
+          });
+          return Either.left(new RentalRequestPaymentFailedError());
+        }
+      }
+
+      // Seule l'écriture qui confirme prévient le conducteur : une
+      // confirmation concurrente, ou une demande expirée entre la lecture et
+      // l'écriture, ne trouve plus de ligne en attente et ne dit rien.
+      await this.unitOfWork.process(async (trx) => {
+        if (
+          await this.rentalRepository.confirmRequest(
+            props.requestId,
+            props.confirmedAt,
+            trx,
+          )
+        )
+          await this.tellTheRenter(
+            'RENTAL_REQUEST_ACCEPTED',
+            summary,
+            props,
+            trx,
+          );
+      });
       return Either.right(undefined);
     } catch (error: unknown) {
       return Either.left(
@@ -64,5 +147,22 @@ export class ConfirmRentalRequest implements UseCase<
         ),
       );
     }
+  }
+
+  private async tellTheRenter(
+    kind: NotificationKind,
+    summary: RentalRequestSummary,
+    props: Props,
+    trx: GenericTransaction,
+  ): Promise<void> {
+    await this.notificationOutbox.notify(
+      Notification.about({
+        kind,
+        recipientId: summary.renterId,
+        rentalRequestId: summary.id,
+        createdAt: props.confirmedAt,
+      }),
+      trx,
+    );
   }
 }

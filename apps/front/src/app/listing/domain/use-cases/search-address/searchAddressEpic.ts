@@ -17,7 +17,7 @@ export const addressSelected = createAction<AddressSuggestion>('listing/addressS
 export const addressSearchCleared = createAction('listing/addressSearchCleared');
 
 /**
- * Le seul `switchMap` de l'application, et il est à sa place : sur une frappe,
+ * Un `switchMap`, et il est à sa place : sur une frappe,
  * la dernière requête gagne et la précédente ne vaut plus rien — l'annuler est
  * exactement ce qu'on veut. `exhaustMap` laisserait s'afficher les suggestions
  * d'un préfixe déjà effacé.

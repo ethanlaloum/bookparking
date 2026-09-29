@@ -21,6 +21,21 @@ import { designatesSamePlace, RentalPlace } from './RentalPlace';
 
 export const MAX_REQUESTED_PERIOD_IN_DAYS = 366;
 
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+
+// L'échéance se compte en heures depuis le premier instant de la location,
+// heure de Paris — jamais en jours locaux : c'est elle qui est figée sur la
+// demande, et un délai modifié plus tard ne la déplace pas.
+const freeCancellationUntilOf = (
+  period: RentalPeriod,
+  freeCancellationHours: number | undefined,
+): Date | null =>
+  freeCancellationHours === undefined
+    ? null
+    : new Date(
+        period.from.getTime() - freeCancellationHours * MILLISECONDS_PER_HOUR,
+      );
+
 interface Props {
   id: string;
   renterId: string;
@@ -30,7 +45,23 @@ interface Props {
   period: RentalPeriod;
   priceInCents: number;
   requestedAt: Date;
+  idempotencyKey?: string | null;
+  freeCancellationUntil?: Date | null;
+  // La commission de la plateforme, figée à la demande (Q-13) : un taux
+  // changé plus tard ne la déplace pas. `null` quand aucun taux n'est donné.
+  platformFeeInCents?: number | null;
+  // Le délai de réponse du loueur et celui de la libération de l'argent,
+  // figés à la demande comme la commission : `null` quand aucun n'est donné,
+  // et la base applique alors ses défauts.
+  requestExpiryHours?: number | null;
+  payoutReleaseDelayHours?: number | null;
 }
+
+// Au centime le plus proche : 15 % de 19,99 € font 3,00 €, pas 2,9985 €.
+export const platformFeeOf = (
+  priceInCents: number,
+  platformFeePercent: number,
+): number => Math.round((priceInCents * platformFeePercent) / 100);
 
 export class RentalRequest {
   private constructor(private readonly props: Props) {}
@@ -50,6 +81,11 @@ export class RentalRequest {
     days: CalendarDayRange;
     pricing: RentalPricing;
     requestedAt: Date;
+    idempotencyKey?: string | null;
+    freeCancellationHours?: number;
+    platformFeePercent?: number;
+    requestExpiryHours?: number;
+    payoutReleaseDelayHours?: number;
   }): Either.Either<
     RentalRequest,
     | InvalidRequestedPeriodError
@@ -82,6 +118,17 @@ export class RentalRequest {
         period: parisPeriodOfDays(params.days),
         priceInCents: price.amountInCents,
         requestedAt: params.requestedAt,
+        idempotencyKey: params.idempotencyKey ?? null,
+        freeCancellationUntil: freeCancellationUntilOf(
+          parisPeriodOfDays(params.days),
+          params.freeCancellationHours,
+        ),
+        platformFeeInCents:
+          params.platformFeePercent === undefined
+            ? null
+            : platformFeeOf(price.amountInCents, params.platformFeePercent),
+        requestExpiryHours: params.requestExpiryHours ?? null,
+        payoutReleaseDelayHours: params.payoutReleaseDelayHours ?? null,
       }),
     );
   }

@@ -93,4 +93,19 @@ describe('ListOwnerRentalRequests', () => {
 
     sut.thenResultIsAnUnknownError(result);
   });
+
+  it('hides a request still awaiting payment from the owner @SPEC-004 @EX-004-05', async () => {
+    const sut = createListRentalRequestsSUT();
+    await sut.givenRequestAwaitingPayment({
+      ownerId: MARC,
+      renterId: LOUISE,
+      ...BARLA,
+      from: '2026-10-10',
+      to: '2026-10-12',
+    });
+
+    const result = await sut.whenListingAsOwner(MARC);
+
+    sut.thenRequestedPlacesAre(result, []);
+  });
 });

@@ -1,0 +1,11 @@
+{
+  "label": "L’app iPhone",
+  "title": "L’app Bookparking",
+  "hero": { "lead": "Bookparking,", "accent": "dans votre poche.", "pitch": "La carte, la réservation, vos demandes et votre place à louer : tout le site, pensé pour le pouce." },
+  "store": { "download": "Télécharger dans l’App Store", "soon": "Bientôt sur l’App Store", "iphoneOnly": "Pour iPhone.", "meanwhile": "En attendant sa sortie, tout se fait déjà sur le site." },
+  "features": { "eyebrow": "Dans l’app", "title": "Tout ce que fait le site, à portée de pouce.", "search": {"title": "Une place, sur la carte", "body": "Cherchez par adresse, par dates et par véhicule, puis passez de la liste à la carte d’un geste."}, "book": {"title": "Réserver sans être prélevé", "body": "Votre carte est seulement autorisée au moment de la demande : rien n’est prélevé tant que le propriétaire n’a pas confirmé."}, "follow": {"title": "Vos réservations, d’un coup d’œil", "body": "Suivez chaque demande, de la page de paiement jusqu’à la réponse du propriétaire."}, "publish": {"title": "Votre place, depuis votre téléphone", "body": "Publiez-la avec son adresse, ses tarifs et ses disponibilités, puis confirmez les demandes que vous recevez."}},
+  "same": { "title": "Un seul compte, partout.", "body": "L’app et le site partagent le même compte : vos réservations et vos places vous suivent de l’un à l’autre." },
+  "cta": { "title": "Pas d’iPhone sous la main ?", "body": "Le site fait la même chose, sur n’importe quel écran.", "search": "Chercher une place" },
+  "mockup": { "title": "Rechercher", "address": "Autour de vous", "tab": {"home": "Accueil", "search": "Rechercher", "bookings": "Réservations", "account": "Compte"}},
+  "home": { "title": "Bookparking existe aussi en app.", "body": "Chercher, réserver et suivre vos demandes depuis votre iPhone." }
+}

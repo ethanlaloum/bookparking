@@ -25,7 +25,12 @@ export const isHttpError = (error: unknown): error is HttpError => error instanc
  */
 export interface HttpClient {
   get<T>(path: string): Observable<HttpResponse<T>>;
-  post<T>(path: string, body?: unknown): Observable<HttpResponse<T>>;
+  post<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Observable<HttpResponse<T>>;
+  postForm<T>(path: string, form: FormData): Observable<HttpResponse<T>>;
   patch<T>(path: string, body?: unknown): Observable<HttpResponse<T>>;
   delete<T>(path: string, body?: unknown): Observable<HttpResponse<T>>;
 }

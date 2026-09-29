@@ -4,6 +4,8 @@ import { createEpicMiddleware } from 'redux-observable';
 
 import { isSessionLive } from '../app/auth/domain/entities/Session';
 import { buildInitialAuthState } from '../app/auth/store/AuthSlice';
+import { restoreConsent } from '../app/consent/domain/entities/Consent';
+import { buildInitialConsentState } from '../app/consent/store/ConsentSlice';
 import type { AppState } from './AppState';
 import { buildDependencies } from './buildDependencies';
 import { coreReducer } from './coreReducer';
@@ -23,10 +25,18 @@ export const createAppStore = (baseUrl: string) => {
   const session = isSessionLive(stored, new Date()) ? stored : null;
   if (stored !== null && session === null) dependencies.sessionStore.clear();
 
+  // Une décision périmée ou d'une version antérieure vaut absence : le bandeau
+  // réapparaît, et rien de tiers ne se charge d'ici là.
+  const consent = restoreConsent(dependencies.consentStore.read(), dependencies.clock.now());
+
   const store = configureStore({
     reducer: { core: coreReducer },
     preloadedState: {
-      core: { ...coreReducer(undefined, INIT), auth: buildInitialAuthState(session) },
+      core: {
+        ...coreReducer(undefined, INIT),
+        auth: buildInitialAuthState(session),
+        consent: buildInitialConsentState(consent),
+      },
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ thunk: false }).concat(epicMiddleware),

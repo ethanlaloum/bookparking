@@ -1,5 +1,5 @@
 import type { Coordinates } from './Coordinates';
-import type { Pricing } from './Listing';
+import type { CalendarDay, Pricing } from './Listing';
 
 export const RENTAL_TIERS = ['day', 'week', 'month'] as const;
 export type RentalTier = (typeof RENTAL_TIERS)[number];
@@ -31,13 +31,41 @@ export interface SearchedAddress {
   coordinates: Coordinates;
 }
 
+export interface SearchedStay {
+  from: CalendarDay;
+  to: CalendarDay;
+}
+
 export interface SearchCriteria {
   address: SearchedAddress | null;
   vehicle: VehicleType | null;
   tier: RentalTier | null;
+  stay: SearchedStay | null;
 }
 
-export const EMPTY_CRITERIA: SearchCriteria = { address: null, vehicle: null, tier: null };
+export const EMPTY_CRITERIA: SearchCriteria = {
+  address: null,
+  vehicle: null,
+  tier: null,
+  stay: null,
+};
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+const isCalendarDay = (value: string | null): value is CalendarDay => {
+  if (value === null || !ISO_DAY.test(value)) return false;
+  const time = Date.parse(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value;
+};
+
+export const stayFromSearchParams = (params: URLSearchParams): SearchedStay | null => {
+  const from = params.get('arrivee');
+  const to = params.get('depart');
+  return isCalendarDay(from) && isCalendarDay(to) && from <= to ? { from, to } : null;
+};
+
+export const isSameStay = (left: SearchedStay | null, right: SearchedStay | null): boolean =>
+  left?.from === right?.from && left?.to === right?.to;
 
 export const priceForTier = (pricing: Pricing, tier: RentalTier): number | null => {
   if (tier === 'day') return pricing.dayInCents;
@@ -91,6 +119,7 @@ export const criteriaFromSearchParams = (params: URLSearchParams): SearchCriteri
     address,
     vehicle: isVehicleType(vehicle) ? vehicle : null,
     tier: isRentalTier(tier) ? tier : null,
+    stay: stayFromSearchParams(params),
   };
 };
 
@@ -103,8 +132,15 @@ export const criteriaToSearchParams = (criteria: SearchCriteria): URLSearchParam
   }
   if (criteria.vehicle !== null) params.set('vehicule', criteria.vehicle);
   if (criteria.tier !== null) params.set('duree', criteria.tier);
+  if (criteria.stay !== null) {
+    params.set('arrivee', criteria.stay.from);
+    params.set('depart', criteria.stay.to);
+  }
   return params;
 };
 
 export const hasAnyCriterion = (criteria: SearchCriteria): boolean =>
-  criteria.address !== null || criteria.vehicle !== null || criteria.tier !== null;
+  criteria.address !== null ||
+  criteria.vehicle !== null ||
+  criteria.tier !== null ||
+  criteria.stay !== null;

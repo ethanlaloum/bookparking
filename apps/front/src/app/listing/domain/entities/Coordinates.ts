@@ -42,13 +42,13 @@ export const precisionOfScore = (score: number): LocationPrecision =>
 export const isPlaceable = (score: number): boolean => score >= MINIMUM_PLACEABLE_SCORE;
 
 /**
- * Bookparking ne couvre que Nice. C'est ce qui rend un repli légitime : une
- * carte sans aucun point situé s'ouvre sur la ville, et non sur un centre
- * arbitraire. Le même fait sert à biaiser le géocodage — voir
- * `RealGeocodingGateway`.
+ * Bookparking couvre toute la France. C'est ce qui rend un repli légitime : une
+ * carte sans aucun point situé s'ouvre sur le pays entier, et non sur une ville
+ * qui laisserait croire que le produit s'y arrête. Le centre est celui de la
+ * métropole ; le zoom la fait tenir, Corse comprise, même sur un téléphone.
  */
-export const NICE: Coordinates = { latitude: 43.7009, longitude: 7.2683 };
-export const NICE_INSEE_CODE = '06088';
+export const FRANCE: Coordinates = { latitude: 46.6, longitude: 2.4 };
+export const COUNTRY_ZOOM = 5;
 export const CITY_ZOOM = 13;
 
 const EARTH_RADIUS_KM = 6371;
@@ -68,11 +68,11 @@ export const distanceInKilometers = (from: Coordinates, to: Coordinates): number
 /**
  * Le centre est la moyenne des points, pas le premier d'entre eux : une carte
  * cadrée sur une seule annonce laisse toutes les autres hors champ. Sans aucun
- * point, le repli sur Nice n'est pas arbitraire — c'est la seule ville que le
- * produit couvre, et l'utilisateur y est par construction.
+ * point, le repli sur la France n'est pas arbitraire — c'est tout ce que le
+ * produit couvre.
  */
 export const centerOf = (points: readonly Coordinates[]): Coordinates => {
-  if (points.length === 0) return NICE;
+  if (points.length === 0) return FRANCE;
   const total = points.reduce(
     (sum, point) => ({
       latitude: sum.latitude + point.latitude,
@@ -98,15 +98,37 @@ export const spanInKilometers = (points: readonly Coordinates[]): number => {
 /**
  * Un niveau de zoom qui laisse la dispersion tenir à l'écran. Les paliers sont
  * grossiers volontairement : ajuster finement demanderait la taille du
- * conteneur, que le domaine n'a pas et ne doit pas avoir.
+ * conteneur, que le domaine n'a pas et ne doit pas avoir. Chacun montre à peu
+ * près le double de l'écart qu'il cadre, d'un quartier jusqu'au pays ; au-delà,
+ * les places sont de part et d'autre d'un océan — l'outre-mer est en France.
  */
 export const zoomForSpan = (spanKm: number): number => {
   if (spanKm === 0) return CITY_ZOOM;
   if (spanKm < 2) return 14;
   if (spanKm < 6) return CITY_ZOOM;
   if (spanKm < 15) return 11;
-  return 10;
+  if (spanKm < 30) return 10;
+  if (spanKm < 60) return 9;
+  if (spanKm < 120) return 8;
+  if (spanKm < 250) return 7;
+  if (spanKm < 500) return 6;
+  if (spanKm < 1300) return COUNTRY_ZOOM;
+  return 2;
 };
+
+export interface MapFrame {
+  center: Coordinates;
+  zoom: number;
+}
+
+/**
+ * Sans aucun point, la carte montre tout le pays : au zoom d'une rue, le centre
+ * de la France n'est qu'un champ du Cher.
+ */
+export const frameOf = (points: readonly Coordinates[]): MapFrame => ({
+  center: centerOf(points),
+  zoom: points.length === 0 ? COUNTRY_ZOOM : zoomForSpan(spanInKilometers(points)),
+});
 
 export const isWithinWalkingDistance = (from: Coordinates, to: Coordinates): boolean =>
   distanceInKilometers(from, to) <= WALKING_RADIUS_KM;

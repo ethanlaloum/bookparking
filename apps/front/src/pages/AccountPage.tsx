@@ -1,27 +1,65 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, Clock3, Euro, LogOut, Moon, SquareParking } from 'lucide-react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import {
+  CheckCircle2,
+  Clock3,
+  Euro,
+  MapPinCheck,
+  LogOut,
+  Moon,
+  SquareParking,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import {
   changePasswordRequested,
   resetChangePasswordState,
 } from '../app/account/domain/use-cases/change-password/changePasswordEpic';
+import {
+  deleteAccountRequested,
+  resetDeleteAccountState,
+} from '../app/account/domain/use-cases/delete-account/deleteAccountEpic';
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
-import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
-import { rentedNightCount } from '../app/rental/domain/entities/RentalRequestView';
+import { readPayoutsRequested } from '../app/payout/domain/use-cases/read-payouts/readPayoutsEpic';
+import {
+  canConfirmArrival,
+  isIssueAnswerable,
+  moneyLabelOf,
+  rentedNightCount,
+} from '../app/rental/domain/entities/RentalRequestView';
+import { answerRentalIssueRequested } from '../app/rental/domain/use-cases/answer-rental-issue/answerRentalIssueEpic';
+import {
+  reportRentalIssueRequested,
+  resetReportRentalIssue,
+} from '../app/rental/domain/use-cases/report-rental-issue/reportRentalIssueEpic';
+import { confirmArrivalRequested } from '../app/rental/domain/use-cases/confirm-arrival/confirmArrivalEpic';
+import { cancellationTermsOf } from '../app/rental/domain/entities/RentalCancellation';
+import type { RentalRequestView } from '../app/rental/domain/entities/RentalRequestView';
+import { cancelRentalRequested } from '../app/rental/domain/use-cases/cancel-rental/cancelRentalEpic';
 import { confirmRentalRequestRequested } from '../app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listMyRentalRequestsRequested } from '../app/rental/domain/use-cases/list-my-rental-requests/listMyRentalRequestsEpic';
 import { listReceivedRentalRequestsRequested } from '../app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
+import {
+  chooseAvatarRequested,
+  resetChooseAvatarState,
+} from '../app/account/domain/use-cases/choose-avatar/chooseAvatarEpic';
+import { Avatar } from '../components/Avatar';
+import { AvatarPicker } from '../components/AvatarPicker';
+import { CancelRentalDialog, type CancelRentalTarget } from '../components/CancelRentalDialog';
+import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { EmptyState } from '../components/EmptyState';
-import { Loader } from '../components/Loader';
 import { MetricTile } from '../components/MetricTile';
 import { Notice } from '../components/Notice';
 import { OwnerListingRow } from '../components/OwnerListingRow';
+import { PayoutsPanel } from '../components/PayoutsPanel';
+import { RentalIssuePanel } from '../components/RentalIssuePanel';
 import { RentalRequestRow } from '../components/RentalRequestRow';
+import { ReportIssueDialog, type ReportIssueTarget } from '../components/ReportIssueDialog';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Card } from '../components/ui/card';
@@ -29,15 +67,28 @@ import { Field } from '../components/ui/field';
 import { Input } from '../components/ui/input';
 import { Skeleton } from '../components/ui/skeleton';
 import { Spinner } from '../components/ui/spinner';
+import { ACCOUNT_TAB_PARAM, accountTabOfSlug } from '../lib/accountTabs';
 import { cn } from '../lib/cn';
-import { formatCents, formatDay } from '../lib/format';
+import { formatCents, formatCentsPrecisely, formatDay } from '../lib/format';
+import {
+  selectMoneyWaitsForBankDetails,
+  selectPayoutSummary,
+  selectPayoutsError,
+  selectPayoutsLoading,
+} from '../selectors/payout/payoutSelectors';
 import {
   selectChangePasswordError,
   selectChangePasswordLoading,
   selectChangePasswordSuccess,
+  selectChooseAvatarError,
+  selectChooseAvatarLoading,
+  selectChooseAvatarSuccess,
+  selectDeleteAccountError,
+  selectDeleteAccountLoading,
+  selectOwnAvatar,
+  selectOwnEmail,
 } from '../selectors/account/accountSelectors';
 import { selectSession } from '../selectors/auth/authSelectors';
-import { selectAdminAccess } from '../selectors/back-office/backOfficeSelectors';
 import {
   selectActiveOwnerListings,
   selectOwnerListings,
@@ -45,6 +96,11 @@ import {
   selectOwnerListingsLoading,
 } from '../selectors/listing/listingSelectors';
 import {
+  answerIssueStateFor,
+  selectAnswerIssue,
+  selectCancelRentalError,
+  selectCancelRentalLoading,
+  selectCancelledRentalRequestId,
   selectConfirmRentalError,
   selectConfirmRentalLoading,
   selectConfirmedRevenueInCents,
@@ -52,54 +108,44 @@ import {
   selectReceivedRentalRequests,
   selectReceivedRentalRequestsError,
   selectReceivedRentalRequestsLoading,
+  selectReportedRentalRequestId,
+  selectReportIssueError,
+  selectReportIssueLoading,
   selectSortedMyRequests,
   selectSortedReceivedRequests,
 } from '../selectors/rental/rentalSelectors';
 import { useAppDispatch, useAppSelector } from '../store/redux';
 import { changePasswordSchema, type ChangePasswordValues } from './changePasswordSchema';
 
-const PERSONAL_TABS = ['overview', 'places', 'received', 'mine', 'settings'] as const;
+const PERSONAL_TABS = ['overview', 'places', 'received', 'mine', 'payouts', 'settings'] as const;
 
-// Les quatre onglets d'administration ne sont montés que pour un compte dont
-// `GET /admin/access` a répondu 204 — et leur code n'est téléchargé qu'à ce
-// moment-là : `lazy` en fait des fragments à part, qui ne pèsent pas sur le
-// chargement du site public.
-const ADMIN_TABS = ['admin-overview', 'admin-accounts', 'admin-listings', 'admin-requests'] as const;
-
-type PersonalTab = (typeof PERSONAL_TABS)[number];
-type AdminTab = (typeof ADMIN_TABS)[number];
-type Tab = PersonalTab | AdminTab;
-
-const ADMIN_TAB_LABEL: Record<AdminTab, string> = {
-  'admin-overview': 'overview',
-  'admin-accounts': 'accounts',
-  'admin-listings': 'listings',
-  'admin-requests': 'requests',
-};
-
-const AdminOverviewPanel = lazy(async () => ({
-  default: (await import('./admin/AdminOverviewPanel')).AdminOverviewPanel,
-}));
-const AdminAccountsPanel = lazy(async () => ({
-  default: (await import('./admin/AdminAccountsPanel')).AdminAccountsPanel,
-}));
-const AdminListingsPanel = lazy(async () => ({
-  default: (await import('./admin/AdminListingsPanel')).AdminListingsPanel,
-}));
-const AdminRequestsPanel = lazy(async () => ({
-  default: (await import('./admin/AdminRequestsPanel')).AdminRequestsPanel,
-}));
+type Tab = (typeof PERSONAL_TABS)[number];
 
 const TAB_CLASS =
-  'cursor-pointer rounded-t-[2px] border-b-2 px-4 py-2.5 text-sm font-medium transition-colors duration-150';
+  'inline-flex min-h-10 cursor-pointer items-center rounded-xl px-4 text-sm font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-200';
 
 export const AccountPage = () => {
-  const { t } = useTranslation(['account', 'common', 'listing', 'admin']);
+  const { t } = useTranslation(['account', 'common', 'listing']);
   const dispatch = useAppDispatch();
-  const [tab, setTab] = useState<Tab>('overview');
+  // Une notification, ou le lien d'un e-mail, ouvre l'onglet qu'elle concerne.
+  const [searchParams] = useSearchParams();
+  const requestedTab = accountTabOfSlug(searchParams.get(ACCOUNT_TAB_PARAM));
+  const [tab, setTab] = useState<Tab>(requestedTab ?? 'overview');
+  const [followedTab, setFollowedTab] = useState(requestedTab);
+  // Déjà sur le compte, suivre une autre notification change l'adresse sans
+  // remonter la page : l'onglet suit l'adresse pendant le rendu, jamais dans
+  // un effet.
+  if (requestedTab !== followedTab) {
+    setFollowedTab(requestedTab);
+    if (requestedTab !== null) setTab(requestedTab);
+  }
 
   const session = useAppSelector(selectSession);
-  const isAdmin = useAppSelector(selectAdminAccess) === 'granted';
+  const avatar = useAppSelector(selectOwnAvatar);
+  const ownEmail = useAppSelector(selectOwnEmail);
+  const avatarSaving = useAppSelector(selectChooseAvatarLoading);
+  const avatarError = useAppSelector(selectChooseAvatarError);
+  const avatarSaved = useAppSelector(selectChooseAvatarSuccess);
   const ownerListings = useAppSelector(selectOwnerListings);
   const activeListings = useAppSelector(selectActiveOwnerListings);
   const listingsLoading = useAppSelector(selectOwnerListingsLoading);
@@ -115,10 +161,69 @@ export const AccountPage = () => {
   const pendingRevenue = useAppSelector(selectPendingRevenueInCents);
   const confirming = useAppSelector(selectConfirmRentalLoading);
   const confirmError = useAppSelector(selectConfirmRentalError);
+  const cancelling = useAppSelector(selectCancelRentalLoading);
+  const cancelError = useAppSelector(selectCancelRentalError);
+  const cancelledId = useAppSelector(selectCancelledRentalRequestId);
+  const [cancelTarget, setCancelTarget] = useState<CancelRentalTarget | null>(null);
+  // Figé pour le rendu : chaque ligne lit la même horloge. Une page restée ouverte peut proposer
+  // une annulation devenue impossible ; l'api reste le juge et le dit en 409.
+  const now = useMemo(() => new Date(), []);
+  // La fenêtre se ferme par dérivation une fois l'annulation faite, jamais par
+  // un setState dans un effet.
+  const openCancelTarget =
+    cancelTarget !== null && cancelTarget.requestId !== cancelledId ? cancelTarget : null;
+
+  const [issueTarget, setIssueTarget] = useState<ReportIssueTarget | null>(null);
+  const reporting = useAppSelector(selectReportIssueLoading);
+  const reportError = useAppSelector(selectReportIssueError);
+  const reportedId = useAppSelector(selectReportedRentalRequestId);
+  // Même règle que la fenêtre d'annulation : elle se ferme par dérivation,
+  // une fois la réclamation enregistrée.
+  const openIssueTarget =
+    issueTarget !== null && issueTarget.requestId !== reportedId ? issueTarget : null;
+  const openIssueDialog = (request: RentalRequestView) => {
+    dispatch(resetReportRentalIssue());
+    setIssueTarget({ requestId: request.id, label: `${request.address} · ${request.box}` });
+  };
+  const answerIssue = useAppSelector(selectAnswerIssue);
+
+  const cancelButtonFor = (request: RentalRequestView, perspective: 'renter' | 'owner') => {
+    const terms = cancellationTermsOf(request, perspective, now);
+    if (terms.kind === 'unavailable') return null;
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() =>
+          setCancelTarget({
+            requestId: request.id,
+            label: `${request.address} · ${request.box}`,
+            terms: t(`account:cancel.terms.${terms.kind}`, { amount: terms.amount }),
+            perspective,
+          })
+        }
+      >
+        {t('account:cancel.action')}
+      </Button>
+    );
+  };
+
+  const payoutSummary = useAppSelector(selectPayoutSummary);
+  const payoutsLoading = useAppSelector(selectPayoutsLoading);
+  const payoutsError = useAppSelector(selectPayoutsError);
+  const moneyWaits = useAppSelector(selectMoneyWaitsForBankDetails);
 
   const passwordLoading = useAppSelector(selectChangePasswordLoading);
   const passwordError = useAppSelector(selectChangePasswordError);
   const passwordSuccess = useAppSelector(selectChangePasswordSuccess);
+
+  const [deletionOpen, setDeletionOpen] = useState(false);
+  const deleting = useAppSelector(selectDeleteAccountLoading);
+  const deletionError = useAppSelector(selectDeleteAccountError);
+  const toggleDeletion = (open: boolean) => {
+    dispatch(resetDeleteAccountState());
+    setDeletionOpen(open);
+  };
 
   const form = useForm<ChangePasswordValues>({
     resolver: zodResolver(changePasswordSchema),
@@ -126,20 +231,27 @@ export const AccountPage = () => {
   });
 
   useEffect(() => {
-    // La sonde d'administration part avec les trois lectures du tableau de
-    // bord : un 403 ne coûte rien, et c'est le seul moyen de savoir si ce
-    // compte administre le site.
-    dispatch(confirmAdminAccessRequested());
     dispatch(listOwnerListingsRequested());
     dispatch(listReceivedRentalRequestsRequested());
     dispatch(listMyRentalRequestsRequested());
+    dispatch(readPayoutsRequested());
   }, [dispatch]);
+
+  // Suivre une notification relit la liste qu'elle concerne : la page déjà
+  // ouverte montrerait sinon la demande d'avant son acceptation.
+  useEffect(() => {
+    if (requestedTab === 'received') dispatch(listReceivedRentalRequestsRequested());
+    if (requestedTab === 'mine') dispatch(listMyRentalRequestsRequested());
+    // Au retour des pages de Stripe (`?onglet=versements&stripe=retour`).
+    if (requestedTab === 'payouts') dispatch(readPayoutsRequested());
+  }, [dispatch, requestedTab]);
 
   useEffect(() => {
     if (passwordSuccess) form.reset();
   }, [form, passwordSuccess]);
 
   useEffect(() => () => void dispatch(resetChangePasswordState()), [dispatch]);
+  useEffect(() => () => void dispatch(resetChooseAvatarState()), [dispatch]);
 
   const confirmedNights = receivedRaw
     .filter((request) => request.status === 'CONFIRMED')
@@ -148,20 +260,39 @@ export const AccountPage = () => {
   const anyError = listingsError ?? receivedError;
 
   return (
-    <div className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6">
-      <h1 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-bold text-fg">
-        {t('account:dashboard.title')}
-      </h1>
-      <p className="mt-2 text-fg-muted">{t('account:dashboard.subtitle')}</p>
+    <div className="mx-auto max-w-[1320px] px-4 pt-8 pb-4 sm:px-6">
+      <div className="animate-rise flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-[clamp(2.25rem,4.5vw,3.5rem)] leading-none font-bold tracking-[-0.035em] text-fg">
+            {t('account:dashboard.title')}
+          </h1>
+          <p className="mt-3 text-lg text-fg-muted">{t('account:dashboard.subtitle')}</p>
+          {avatar !== null && ownEmail !== null && (
+            <div className="mt-5 flex items-center gap-3">
+              <Avatar
+                avatar={avatar}
+                label={t('account:profile.avatar', { name: t(`common:avatar.name.${avatar}`) })}
+                className="size-12 shadow-[var(--shadow-panel)] ring-2 ring-bg"
+              />
+              <p className="min-w-0 truncate text-sm text-fg-muted">
+                {t('account:profile.signedInAs', { email: ownEmail })}
+              </p>
+            </div>
+          )}
+        </div>
+        {session !== null && (
+          <p className="label-ticket tabular inline-flex items-center gap-2 self-start rounded-full border border-line bg-bg-raised px-3 py-2 text-fg-subtle sm:self-auto">
+            <span className="size-1.5 rounded-full bg-ok" aria-hidden="true" />
+            {t('account:session.validUntil', { date: formatDay(session.validUntil) })}
+          </p>
+        )}
+      </div>
 
-      {/* Deux listes d'onglets, et non une seule coupée par une étiquette : un
-          `role="tablist"` n'admet que des onglets pour enfants, et le groupe
-          d'administration mérite son propre nom accessible. */}
-      <div className="mt-8 flex flex-wrap items-end gap-x-2 gap-y-1 border-b border-line">
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         <div
           role="tablist"
           aria-label={t('account:dashboard.title')}
-          className="flex flex-wrap gap-1"
+          className="flex flex-wrap gap-1 rounded-2xl bg-bg-sunken p-1 ring-1 ring-line ring-inset"
         >
           {PERSONAL_TABS.map((name) => (
             <button
@@ -173,63 +304,15 @@ export const AccountPage = () => {
               className={cn(
                 TAB_CLASS,
                 tab === name
-                  ? 'border-accent text-fg'
-                  : 'border-transparent text-fg-subtle hover:text-fg',
+                  ? 'bg-bg-raised font-semibold text-fg shadow-[var(--shadow-panel)] ring-1 ring-line-strong'
+                  : 'text-fg-muted hover:text-fg',
               )}
             >
               {t(`account:dashboard.tab.${name}`)}
             </button>
           ))}
         </div>
-
-        {isAdmin && (
-          <>
-            <span
-              id="groupe-administration"
-              className="mb-2.5 ml-2 rounded-[2px] bg-warn-bg px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-warn uppercase"
-            >
-              {t('admin:group')}
-            </span>
-            <div
-              role="tablist"
-              aria-labelledby="groupe-administration"
-              className="flex flex-wrap gap-1"
-            >
-              {ADMIN_TABS.map((name) => (
-                <button
-                  key={name}
-                  role="tab"
-                  type="button"
-                  aria-selected={tab === name}
-                  onClick={() => setTab(name)}
-                  className={cn(
-                    TAB_CLASS,
-                    tab === name
-                      ? 'border-warn text-fg'
-                      : 'border-transparent text-fg-subtle hover:text-fg',
-                  )}
-                >
-                  {t(`admin:tab.${ADMIN_TAB_LABEL[name]}`)}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
       </div>
-
-      {isAdmin && tab.startsWith('admin-') && (
-        <section className="mt-8">
-          <p className="mb-6 rounded-[2px] border border-warn/30 bg-warn-bg px-3.5 py-2.5 text-center text-xs font-medium text-warn">
-            {t('admin:banner')}
-          </p>
-          <Suspense fallback={<Loader />}>
-            {tab === 'admin-overview' && <AdminOverviewPanel />}
-            {tab === 'admin-accounts' && <AdminAccountsPanel />}
-            {tab === 'admin-listings' && <AdminListingsPanel />}
-            {tab === 'admin-requests' && <AdminRequestsPanel />}
-          </Suspense>
-        </section>
-      )}
 
       {anyError !== null && (
         <Notice tone="error" title={t('common:error.title')} className="mt-6">
@@ -240,7 +323,7 @@ export const AccountPage = () => {
       {tab === 'overview' && (
         <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {listingsLoading || receivedLoading ? (
-            [0, 1, 2, 3].map((slot) => <Skeleton key={slot} className="h-32" />)
+            [0, 1, 2, 3].map((slot) => <Skeleton key={slot} className="h-44" />)
           ) : (
             <>
               <MetricTile
@@ -287,7 +370,7 @@ export const AccountPage = () => {
             />
           )}
           {ownerListings.length > 0 && (
-            <Card className="px-5">
+            <Card className="overflow-hidden">
               <ul>
                 {ownerListings.map((listing) => (
                   <OwnerListingRow key={listing.id} listing={listing} />
@@ -300,7 +383,17 @@ export const AccountPage = () => {
 
       {tab === 'received' && (
         <section className="mt-8">
-          <p className="mb-4 text-sm text-fg-subtle">{t('account:received.hint')}</p>
+          <Notice tone="info" className="mb-4">
+            {t('account:received.hint')}
+          </Notice>
+          {moneyWaits && (
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-warn/30 bg-warn-bg px-4 py-3 sm:flex-row sm:items-center">
+              <p className="flex-1 text-sm font-medium text-warn">{t('account:payouts.waiting')}</p>
+              <Button size="sm" variant="outline" onClick={() => setTab('payouts')}>
+                {t('account:payouts.waitingAction')}
+              </Button>
+            </div>
+          )}
           {confirmError !== null && (
             <Notice tone="error" title={t('common:error.title')} className="mb-4">
               {confirmError}
@@ -311,26 +404,57 @@ export const AccountPage = () => {
             <EmptyState title={t('account:received.empty')} />
           )}
           {received.length > 0 && (
-            <Card className="px-5">
+            <Card className="overflow-hidden">
               <ul>
                 {received.map((request) => (
                   <RentalRequestRow
                     key={request.id}
                     request={request}
-                    action={
-                      request.status === 'PENDING' ? (
-                        <Button
-                          size="sm"
-                          disabled={confirming}
-                          onClick={() =>
-                            dispatch(confirmRentalRequestRequested({ requestId: request.id }))
+                    perspective="owner"
+                    details={
+                      request.issue !== null && (
+                        <RentalIssuePanel
+                          issue={request.issue}
+                          perspective="owner"
+                          answer={
+                            isIssueAnswerable(request)
+                              ? {
+                                  ...answerIssueStateFor(answerIssue, request.id),
+                                  onAnswer: (reply) =>
+                                    dispatch(
+                                      answerRentalIssueRequested({ requestId: request.id, reply }),
+                                    ),
+                                }
+                              : undefined
                           }
-                        >
-                          {confirming && <Spinner />}
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
-                          {t('account:received.confirm')}
-                        </Button>
-                      ) : undefined
+                        />
+                      )
+                    }
+                    moneyLabel={
+                      request.ownerShareInCents === null
+                        ? undefined
+                        : t('account:payouts.receive', {
+                            amount: formatCentsPrecisely(request.ownerShareInCents),
+                            price: formatCentsPrecisely(request.priceInCents),
+                          })
+                    }
+                    action={
+                      <div className="flex flex-wrap items-center gap-2">
+                        {cancelButtonFor(request, 'owner')}
+                        {request.status === 'PENDING' && (
+                          <Button
+                            size="sm"
+                            disabled={confirming}
+                            onClick={() =>
+                              dispatch(confirmRentalRequestRequested({ requestId: request.id }))
+                            }
+                          >
+                            {confirming && <Spinner />}
+                            <CheckCircle2 className="size-4" aria-hidden="true" />
+                            {t('account:received.confirm')}
+                          </Button>
+                        )}
+                      </div>
                     }
                   />
                 ))}
@@ -346,27 +470,112 @@ export const AccountPage = () => {
             <EmptyState
               title={t('account:mine.empty')}
               action={
-                <Link to="/" className={buttonVariants({ variant: 'primary', size: 'sm' })}>
+                <Link to="/recherche" className={buttonVariants({ variant: 'primary', size: 'sm' })}>
                   {t('account:mine.emptyAction')}
                 </Link>
               }
             />
           ) : (
-            <Card className="px-5">
+            <Card className="overflow-hidden">
               <ul>
-                {mine.map((request) => (
-                  <RentalRequestRow key={request.id} request={request} />
-                ))}
+                {mine.map((request) => {
+                  const money = moneyLabelOf(request);
+                  return (
+                    <RentalRequestRow
+                      key={request.id}
+                      request={request}
+                      moneyLabel={t(`account:money.${money.key}`, { amount: money.amount })}
+                      details={
+                        request.issue !== null && (
+                          <RentalIssuePanel issue={request.issue} perspective="renter" />
+                        )
+                      }
+                      action={
+                        <div className="flex flex-wrap items-center gap-2">
+                          {canConfirmArrival(request, now) && (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                dispatch(confirmArrivalRequested({ requestId: request.id }))
+                              }
+                            >
+                              <MapPinCheck className="size-4" aria-hidden="true" />
+                              {t('account:arrival.action')}
+                            </Button>
+                          )}
+                          {request.arrivedAt !== null && (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ok">
+                              <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                              {t('account:arrival.done')}
+                            </span>
+                          )}
+                          {request.issueReportable && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openIssueDialog(request)}
+                            >
+                              <TriangleAlert className="size-4" aria-hidden="true" />
+                              {t('account:issue.report')}
+                            </Button>
+                          )}
+                          {cancelButtonFor(request, 'renter')}
+                        </div>
+                      }
+                    />
+                  );
+                })}
               </ul>
             </Card>
           )}
         </section>
       )}
 
+      {tab === 'payouts' && (
+        <section className="mt-8">
+          {payoutsLoading && <Skeleton className="h-48" />}
+          {payoutsError !== null && payoutSummary === null && (
+            <Notice tone="error" title={t('common:error.title')}>
+              {payoutsError}
+            </Notice>
+          )}
+          {payoutSummary !== null && <PayoutsPanel summary={payoutSummary} />}
+        </section>
+      )}
+
       {tab === 'settings' && (
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
-          <Card className="p-6">
-            <h2 className="font-display text-lg font-semibold text-fg">
+          {avatar !== null && (
+            <Card className="p-6 sm:p-7 lg:col-span-2">
+              <div className="flex items-center gap-4">
+                <Avatar avatar={avatar} className="size-14 ring-2 ring-bg" />
+                <div>
+                  <h2 className="font-display text-xl font-bold text-fg">{t('account:avatar.title')}</h2>
+                  <p className="mt-1 text-sm text-fg-muted">{t('account:avatar.hint')}</p>
+                </div>
+              </div>
+              <div className="mt-5 max-w-xl">
+                <AvatarPicker
+                  name="settings-avatar"
+                  value={avatar}
+                  disabled={avatarSaving}
+                  onChange={(next) => {
+                    if (next !== avatar) dispatch(chooseAvatarRequested(next));
+                  }}
+                />
+              </div>
+              <p role="status" className="mt-3 min-h-5 text-sm">
+                {avatarError !== null ? (
+                  <span className="font-medium text-danger">{avatarError}</span>
+                ) : (
+                  avatarSaved && <span className="font-medium text-ok">{t('account:avatar.saved')}</span>
+                )}
+              </p>
+            </Card>
+          )}
+
+          <Card className="p-6 sm:p-7">
+            <h2 className="font-display text-xl font-bold text-fg">
               {t('account:session.title')}
             </h2>
             {session !== null && (
@@ -385,8 +594,8 @@ export const AccountPage = () => {
             </Button>
           </Card>
 
-          <Card className="p-6">
-            <h2 className="font-display text-lg font-semibold text-fg">
+          <Card className="p-6 sm:p-7">
+            <h2 className="font-display text-xl font-bold text-fg">
               {t('account:password.title')}
             </h2>
             <form
@@ -442,8 +651,49 @@ export const AccountPage = () => {
               </Button>
             </form>
           </Card>
+
+          <Card className="border-danger/30 p-6 sm:p-7 lg:col-span-2">
+            <h2 className="font-display text-xl font-bold text-fg">
+              {t('account:deletion.title')}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-fg-muted">{t('account:deletion.intro')}</p>
+            <p className="mt-2 max-w-2xl text-sm text-fg-muted">
+              {t('account:deletion.blocked')}
+            </p>
+            <Button
+              variant="danger"
+              size="sm"
+              className="mt-4"
+              onClick={() => toggleDeletion(true)}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              {t('account:deletion.action')}
+            </Button>
+          </Card>
         </section>
       )}
+      <DeleteAccountDialog
+        open={deletionOpen}
+        pending={deleting}
+        error={deletionError}
+        onConfirm={(password) => dispatch(deleteAccountRequested({ password }))}
+        onClose={() => toggleDeletion(false)}
+      />
+      <ReportIssueDialog
+        key={openIssueTarget?.requestId ?? 'fermee'}
+        target={openIssueTarget}
+        pending={reporting}
+        error={reportError}
+        onSubmit={(requestId, report) => dispatch(reportRentalIssueRequested({ requestId, report }))}
+        onClose={() => setIssueTarget(null)}
+      />
+      <CancelRentalDialog
+        target={openCancelTarget}
+        pending={cancelling}
+        error={cancelError}
+        onConfirm={(requestId) => dispatch(cancelRentalRequested({ requestId }))}
+        onClose={() => setCancelTarget(null)}
+      />
     </div>
   );
 };

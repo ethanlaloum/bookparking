@@ -1,14 +1,23 @@
 import { Schema } from 'effect/index';
 
-import { isVehicleType } from '../../../domain/entities/Listing';
+import {
+  isVehicleType,
+  MAX_PHOTOS_PER_LISTING,
+} from '../../../domain/entities/Listing';
 
 const VEHICLE_MESSAGE = "Ce type de v\u00e9hicule n'existe pas";
+const PHOTOS_MESSAGE = `Une annonce porte de 1 à ${MAX_PHOTOS_PER_LISTING} photos`;
 
 export const PublishListingSchema = Schema.Struct({
   address: Schema.NonEmptyString,
   box: Schema.NonEmptyString,
   accessDescription: Schema.NonEmptyString,
-  photos: Schema.Array(Schema.NonEmptyString).pipe(Schema.minItems(1)),
+  photos: Schema.Array(Schema.NonEmptyString)
+    .annotations({ message: () => PHOTOS_MESSAGE })
+    .pipe(Schema.minItems(1))
+    .annotations({ message: () => PHOTOS_MESSAGE })
+    .pipe(Schema.maxItems(MAX_PHOTOS_PER_LISTING))
+    .annotations({ message: () => PHOTOS_MESSAGE }),
   // Facultatif dans le contrat, exigé par le formulaire : les annonces
   // publiées avant cette notion restent valides, et un client tiers qui ne
   // déclare rien obtient « non déclaré » plutôt qu'un refus.

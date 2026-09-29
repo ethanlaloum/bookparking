@@ -1,3 +1,5 @@
+import { expect } from 'vitest';
+
 import {
   buildInMemoryDependencies,
   type InMemoryDependencies,
@@ -7,6 +9,7 @@ import {
   selectPublishError,
   selectPublishSuccess,
 } from '../../../../../selectors/listing/listingSelectors';
+import type { LocalPhoto, PublishListingDraft } from '../../entities/ListingPhoto';
 import type { PublishListingPayload } from '../../ports/ListingGateway';
 import { publishListingRequested } from './publishListingEpic';
 
@@ -18,8 +21,17 @@ export const createPublishListingSut = () => {
     givenTheApiRejectsWith(message: string): void {
       dependencies.listingGateway.rejection = message;
     },
-    whenPublishing(payload: PublishListingPayload): void {
-      store.dispatch(publishListingRequested(payload));
+    givenThePhotoUploadsAreRefusedWith(message: string): void {
+      dependencies.listingGateway.uploadRejection = message;
+    },
+    whenPublishing(draft: PublishListingDraft): void {
+      store.dispatch(publishListingRequested(draft));
+    },
+    thenTheUploadedPhotosAre(expected: LocalPhoto[]): void {
+      expect(dependencies.listingGateway.uploadedPhotos).toEqual(expected);
+    },
+    thenThePublishedListingsAre(expected: PublishListingPayload[]): void {
+      expect(dependencies.listingGateway.published).toEqual(expected);
     },
     thenThePublicationSucceeded(): void {
       if (!selectPublishSuccess(store.getState()))

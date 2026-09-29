@@ -1,4 +1,5 @@
-// Couvert ici : publier depuis l'ecran, puis retrouver l'annonce dans la grille.
+// Couvert ici : publier depuis l'ecran avec une vraie photo, retrouver l'annonce
+// dans la grille, puis voir la photo servie par l'api sur la fiche.
 // Ce parcours existe precisement parce que `POST /listing` repond 201 sans
 // corps : le front ne connait pas l'identifiant cree et doit relire
 // `GET /listing`. Aucun rung inferieur ne peut observer que cette relecture a
@@ -8,12 +9,14 @@
 // - les refus de publication (place deja active, periode passee, grille
 //   incomplete) : tous verts au rung `unit` cote api, et leur affichage cote
 //   front est un rendu, pas un cablage.
-// - l'echec du stockage des photos (502) : aucun stockage reel n'est monte dans
-//   cette pile, donc l'exemple n'est pas un exemple e2e.
+// - une photo refusee (format, taille, photo d'un autre compte) : prouvee aux
+//   rungs `unit` et `int-http` de l'api, l'ecran ne fait que relayer le message.
 import { expect, test } from '../../../src/fixtures/test';
 import { HeaderNav } from '../../../src/pages/HeaderNav';
 import { SearchPage } from '../../../src/pages/SearchPage';
 import { PublishPage } from '../../../src/pages/PublishPage';
+import { PLACE_PHOTO } from '../../../src/fixtures/photos';
+import { ListingDetailPage } from '../../../src/pages/ListingDetailPage';
 import { dayInDays, uniqueAddress } from '../../../src/seed/Seeder';
 
 test.describe('Listings', () => {
@@ -29,7 +32,7 @@ test.describe('Listings', () => {
       address,
       box: 'E2E-1',
       accessDescription: 'Digicode 0000, premier sous-sol.',
-      photos: 'e2e-publish-1.jpg',
+      photos: [PLACE_PHOTO],
       vehicles: ['Voiture', 'Vélo'],
       dayInEuros: '18',
       from: dayInDays(1),
@@ -44,5 +47,10 @@ test.describe('Listings', () => {
     await search.open();
     await search.expectListed(address);
     await expect(search.resultCard(address)).toContainText('Vélo');
+
+    await search.openListingFromList(address);
+    const detail = new ListingDetailPage(page);
+    await detail.expectOpen(address);
+    await detail.expectPhotoShown(1, 1);
   });
 });

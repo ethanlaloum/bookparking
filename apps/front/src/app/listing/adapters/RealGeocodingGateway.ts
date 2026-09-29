@@ -2,8 +2,6 @@ import { catchError, map, Observable, of } from 'rxjs';
 
 import {
   isPlaceable,
-  NICE,
-  NICE_INSEE_CODE,
   precisionOfScore,
   type AddressSuggestion,
   type LocatedAddress,
@@ -31,16 +29,12 @@ interface BanResponse {
 export class BanGeocodingGateway implements GeocodingGateway {
   private static readonly ENDPOINT = 'https://api-adresse.data.gouv.fr/search/';
 
-  // `citycode` restreint la recherche à Nice, et la proximité départage deux
-  // voies homonymes du même code INSEE. Le produit ne couvrant que Nice, une
-  // adresse hors de la commune doit rester non située plutôt que d'atterrir à
-  // l'autre bout du pays : c'est ce filtre, et non le score, qui le garantit.
+  // Aucun filtre de commune ni de proximité : le produit couvre toute la
+  // France. C'est le code postal et la ville, que le formulaire de publication
+  // demande, qui départagent deux rues homonymes — et le score qui dit quand
+  // ils manquaient.
   locate(address: string): Observable<LocatedAddress | null> {
-    const url =
-      `${BanGeocodingGateway.ENDPOINT}?q=${encodeURIComponent(address)}` +
-      `&citycode=${NICE_INSEE_CODE}` +
-      `&lat=${String(NICE.latitude)}&lon=${String(NICE.longitude)}` +
-      `&limit=1`;
+    const url = `${BanGeocodingGateway.ENDPOINT}?q=${encodeURIComponent(address)}&limit=1`;
 
     return this.fetchJson(url).pipe(
       map((response): LocatedAddress | null => {
@@ -59,14 +53,12 @@ export class BanGeocodingGateway implements GeocodingGateway {
 
   // `autocomplete=1` fait chercher sur un préfixe plutôt que sur une adresse
   // complète, et les suggestions ne sont pas filtrées par score : c'est
-  // l'utilisateur qui choisit, pas un seuil. Le même `citycode` que `locate`,
-  // pour ne jamais proposer une rue d'une autre commune.
+  // l'utilisateur qui choisit, pas un seuil. À l'échelle du pays, « place
+  // mass » propose d'abord les places Massenet : c'est la ville tapée qui
+  // resserre, et l'aide du champ le dit.
   suggest(query: string): Observable<AddressSuggestion[]> {
     const url =
-      `${BanGeocodingGateway.ENDPOINT}?q=${encodeURIComponent(query)}` +
-      `&autocomplete=1&citycode=${NICE_INSEE_CODE}` +
-      `&lat=${String(NICE.latitude)}&lon=${String(NICE.longitude)}` +
-      `&limit=5`;
+      `${BanGeocodingGateway.ENDPOINT}?q=${encodeURIComponent(query)}` + `&autocomplete=1&limit=5`;
 
     return this.fetchJson(url).pipe(
       map((response) =>

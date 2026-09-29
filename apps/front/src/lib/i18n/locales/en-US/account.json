@@ -16,7 +16,8 @@
   },
   "validation": {
     "current": "Enter your current password.",
-    "next": "The new password must be at least 8 characters."
+    "next": "The new password must be at least 8 characters.",
+    "deletePassword": "Enter your password to confirm."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -26,7 +27,8 @@
       "places": "My spaces",
       "received": "Requests received",
       "mine": "My bookings",
-      "settings": "Settings"
+      "settings": "Settings",
+      "payouts": "Payouts"
     }
   },
   "metric": {
@@ -46,6 +48,8 @@
     "active": "Published",
     "unpublished": "Unpublished",
     "open": "View listing",
+    "edit": "Edit",
+    "editLabel": "Edit the listing {{address}} · {{box}}",
     "count_one": "{{count}} space",
     "count_other": "{{count}} spaces"
   },
@@ -65,14 +69,155 @@
     "awaiting": "Waiting for the owner to answer."
   },
   "status": {
+    "AWAITING_PAYMENT": "To pay",
     "PENDING": "Pending",
     "CONFIRMED": "Confirmed",
-    "EXPIRED": "Expired"
+    "EXPIRED": "Expired",
+    "CANCELLED": "Cancelled",
+    "ABANDONED": "Abandoned",
+    "PAYMENT_FAILED": "Declined"
   },
   "row": {
     "period": "From {{from}} to {{to}}",
     "nights_one": "{{count}} night",
     "nights_other": "{{count}} nights",
-    "requestedOn": "Requested on {{date}}"
+    "requestedOn": "Requested on {{date}}",
+    "answerBy": "The owner answers by {{date}}",
+    "answerByOwner": "Confirm by {{date}}"
+  },
+  "money": {
+    "awaitingPayment": "Payment being verified",
+    "abandoned": "Payment abandoned",
+    "paymentFailed": "Payment declined by the bank",
+    "holdAwaitingOwner": "{{amount}} hold · awaiting the owner",
+    "captured": "Confirmed · {{amount}} charged",
+    "expiredReleasing": "Expired · hold being released",
+    "expiredReleased": "Expired · nothing was charged",
+    "cancelledReleasing": "Cancelled · hold being released",
+    "cancelledReleased": "Cancelled · nothing was charged",
+    "cancelledRefunding": "Cancelled · refund in progress",
+    "cancelledRefunded": "Cancelled · {{amount}} refunded",
+    "pendingWithoutPayment": "Awaiting the owner",
+    "confirmedWithoutPayment": "Confirmed",
+    "expiredWithoutPayment": "Expired",
+    "cancelledWithoutPayment": "Cancelled",
+    "cancelledKept": "Cancelled · {{amount}} not refunded"
+  },
+  "cancel": {
+    "action": "Cancel",
+    "title": "Cancel this booking?",
+    "confirm": "Cancel the booking",
+    "keep": "Keep my booking",
+    "ownerConfirm": "Cancel the rental",
+    "ownerKeep": "Keep the rental",
+    "terms": {
+      "refund": "You will be refunded {{amount}}.",
+      "nonRefundable": "The free-cancellation deadline has passed: the {{amount}} charged will not be refunded.",
+      "release": "The {{amount}} hold will be released: nothing was charged.",
+      "ownerFullReturn": "The driver will get all their money back.",
+      "nothingAtStake": "No payment is involved in this booking."
+    },
+    "deadline": "Free cancellation until {{date}}."
+  },
+  "profile": {
+    "avatar": "Your avatar: {{name}} driver",
+    "signedInAs": "Signed in as {{email}}"
+  },
+  "avatar": {
+    "title": "Your avatar",
+    "hint": "It shows in the header, on the website and in the app.",
+    "saved": "Avatar saved."
+  },
+  "access": {
+    "title": "Access instructions",
+    "hint": "Valid until your rental ends.",
+    "copy": "Copy the instructions",
+    "copied": "Copied"
+  },
+  "payouts": {
+    "missingTitle": "Get paid for your rentals",
+    "missingBody": "Bookparking charges the driver, keeps a {{fee}}% commission and sends you the rest, at the latest {{release}} after each rental starts — as soon as they arrive if they confirm it.",
+    "stripeNote": "Your identity and IBAN are entered at Stripe, our payment provider: Bookparking never sees them.",
+    "add": "Add my bank details",
+    "incompleteTitle": "Stripe is checking your details",
+    "incompleteBody": "Verification often takes a few minutes. If a document is missing, Stripe will ask for it.",
+    "resume": "Continue at Stripe",
+    "readyTitle": "Payouts enabled",
+    "readyBody": "Each rental goes to your bank account, less the {{fee}}% commission.",
+    "dashboard": "Open my Stripe space",
+    "upcoming": "Upcoming",
+    "upcomingHint": "Held until the driver arrives",
+    "sent": "Already paid",
+    "sentHint": "Sent to your bank account",
+    "listTitle": "Rental by rental",
+    "empty": "No paid rental yet.",
+    "receive": "You receive {{amount}} of {{price}}",
+    "status": {
+      "HELD": "Held until {{date}}",
+      "AWAITING_ACCOUNT": "Waiting for your bank details",
+      "SENDING": "Transfer in progress",
+      "SENT": "Paid on {{date}}"
+    },
+    "waiting": "Money is waiting for you: add your bank details to receive it.",
+    "waitingAction": "See my payouts"
+  },
+  "arrival": {
+    "action": "I have arrived",
+    "done": "Arrival confirmed"
+  },
+  "deletion": {
+    "title": "Delete my account",
+    "intro": "Your listings are taken off the site; your email address, your password and your notifications are erased. Your past bookings remain, with no link to you. This is permanent.",
+    "blocked": "Only possible once no request is awaiting an answer, no booking is ongoing or upcoming, and no payout is still owed to you.",
+    "action": "Delete my account",
+    "dialogTitle": "Delete your account?",
+    "dialogBody": "The account cannot be restored. Enter your password to confirm.",
+    "password": "Password",
+    "keep": "Keep my account",
+    "confirm": "Delete permanently",
+    "doneTitle": "Your account is deleted",
+    "done": "Your listings are no longer online and your personal data is erased. Thank you for using bookparking.",
+    "home": "Back to home",
+    "privacy": "What bookparking keeps, and for how long"
+  },
+  "issue": {
+    "report": "Report a problem",
+    "title": "Report a problem",
+    "intro": "Bookparking freezes the money of the rental and reviews your report. The owner is told and can answer you.",
+    "reasonLabel": "What is happening?",
+    "reason": {
+      "NO_ACCESS": "I cannot get in",
+      "PLACE_OCCUPIED": "The space is taken",
+      "OTHER": "Another problem"
+    },
+    "message": "Details",
+    "messageHint": "Optional, except for “Another problem”. The owner and Bookparking will read it.",
+    "messagePlaceholder": "The gate does not open with the code I was given…",
+    "submit": "Send",
+    "close": "Close",
+    "validation": {
+      "message": "Describe the problem in a few words, 10 characters at least.",
+      "tooLong": "2,000 characters at most."
+    },
+    "heading": "Problem reported on {{date}}: {{reason}}",
+    "status": {
+      "renter": {
+        "OPEN": "Bookparking is reviewing your report; the owner has been told.",
+        "REFUNDED": "Bookparking decided: you are fully refunded.",
+        "PARTIALLY_REFUNDED": "Bookparking decided: {{amount}} is refunded to you.",
+        "DISMISSED": "Bookparking dismissed the report."
+      },
+      "owner": {
+        "OPEN": "The driver reports a problem. The money of this rental is frozen until Bookparking decides: answer them.",
+        "REFUNDED": "Bookparking refunded the driver in full: this rental will not be paid out to you.",
+        "PARTIALLY_REFUNDED": "Bookparking refunded {{amount}} to the driver, taken from your share.",
+        "DISMISSED": "Bookparking dismissed the report: your payout goes ahead."
+      }
+    },
+    "ownerReply": "The owner’s answer",
+    "replyLabel": "Your answer to the driver",
+    "replyHint": "A single answer, 10 characters at least. The driver and Bookparking will read it.",
+    "replyPlaceholder": "The gate code changed: …",
+    "replySubmit": "Send the answer"
   }
 }

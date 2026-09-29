@@ -148,6 +148,33 @@ const NOTICES: Record<NotificationKind, NoticeCopy> = {
     action: 'Voir mes versements',
     path: '/compte?onglet=versements',
   },
+  RENTAL_ISSUE_REPORTED: {
+    subject: 'Un conducteur signale un problème sur votre place',
+    lines: [
+      "Le conducteur d'une réservation en cours dit qu'il ne peut pas utiliser votre place.",
+      "Répondez-lui depuis « Demandes reçues » : l'argent de cette location reste gelé jusqu'à ce que Bookparking tranche.",
+    ],
+    action: 'Répondre',
+    path: '/compte?onglet=demandes-recues',
+  },
+  RENTAL_ISSUE_ANSWERED: {
+    subject: 'Le loueur a répondu à votre réclamation',
+    lines: [
+      'Le loueur de la place a répondu au problème que vous avez signalé.',
+      'Bookparking examine la réclamation et vous tient au courant de sa décision.',
+    ],
+    action: 'Lire sa réponse',
+    path: '/compte?onglet=reservations',
+  },
+  RENTAL_ISSUE_RESOLVED: {
+    subject: 'Bookparking a tranché une réclamation',
+    lines: [
+      'Bookparking a examiné le problème signalé sur une réservation qui vous concerne, et a pris sa décision.',
+      "Retrouvez-la sur la réservation, avec ce qu'elle change pour l'argent de la location.",
+    ],
+    action: 'Voir mon espace',
+    path: '/compte',
+  },
   RENTAL_PAYMENT_FAILED: {
     subject: "Votre paiement n'a pas abouti",
     lines: [
@@ -263,6 +290,9 @@ const composers: Record<
   ),
   RENTAL_PAYMENT_FAILED: composeNotice(NOTICES.RENTAL_PAYMENT_FAILED),
   RENTAL_PAYOUT_SENT: composeNotice(NOTICES.RENTAL_PAYOUT_SENT),
+  RENTAL_ISSUE_REPORTED: composeNotice(NOTICES.RENTAL_ISSUE_REPORTED),
+  RENTAL_ISSUE_ANSWERED: composeNotice(NOTICES.RENTAL_ISSUE_ANSWERED),
+  RENTAL_ISSUE_RESOLVED: composeNotice(NOTICES.RENTAL_ISSUE_RESOLVED),
 };
 
 export const composeEmail = (

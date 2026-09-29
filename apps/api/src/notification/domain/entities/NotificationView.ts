@@ -24,6 +24,14 @@ const OWNER_KINDS: NotificationKind[] = [
   'RENTAL_REQUEST_UNANSWERED',
   'RENTAL_CANCELLED_BY_RENTER',
   'RENTAL_PAYOUT_SENT',
+  'RENTAL_ISSUE_REPORTED',
+];
+
+// Ceux qui visent les deux parties : le destinataire dit de quel côté il se
+// tient.
+const BOTH_PARTIES_KINDS: NotificationKind[] = [
+  'RENTAL_CANCELLED_BY_OPERATOR',
+  'RENTAL_ISSUE_RESOLVED',
 ];
 
 // Chaque type vise une partie, sauf l'annulation par Bookparking, qui vise les
@@ -33,7 +41,7 @@ export const audienceOf = (
   kind: NotificationKind,
   recipientIsTheRenter: boolean,
 ): NotificationAudience => {
-  if (kind === 'RENTAL_CANCELLED_BY_OPERATOR')
+  if (BOTH_PARTIES_KINDS.includes(kind))
     return recipientIsTheRenter ? 'RENTER' : 'OWNER';
   return OWNER_KINDS.includes(kind) ? 'OWNER' : 'RENTER';
 };

@@ -17,6 +17,12 @@ export interface OwnerPayoutView {
   arrivedAt: Date | null;
   transferredAt: Date | null;
   transferredAmountInCents: number | null;
+  // Le délai de libération figé sur la demande (back-office, D-14).
+  releaseDelayInHours: number;
+  // Une réclamation ouverte gèle l'argent ; un remboursement partiel accordé
+  // au conducteur se retranche de la part du loueur.
+  disputed: boolean;
+  refundInCents: number;
 }
 
 // HELD : retenu par la plateforme jusqu'à la libération (D-22).
@@ -33,9 +39,11 @@ export const ownerShareOf = (
   priceInCents: number,
   platformFeeInCents: number | null,
   currentFeePercent: number,
+  refundInCents = 0,
 ): number =>
   priceInCents -
-  (platformFeeInCents ?? Math.round((priceInCents * currentFeePercent) / 100));
+  (platformFeeInCents ?? Math.round((priceInCents * currentFeePercent) / 100)) -
+  refundInCents;
 
 // D-22 : l'argent est libéré au premier de deux événements — l'arrivée
 // confirmée par le conducteur, ou le délai après le premier instant loué.
@@ -55,14 +63,14 @@ export const releaseAtOf = (
 export const ownerPayoutStatusOf = (
   view: OwnerPayoutView,
   now: Date,
-  releaseDelayInHours: number,
   accountStatus: PayoutAccountStatus,
 ): OwnerPayoutStatus => {
   if (view.transferredAt !== null) return 'SENT';
+  if (view.disputed) return 'HELD';
   const releaseAt = releaseAtOf(
     view.startsAt,
     view.arrivedAt,
-    releaseDelayInHours,
+    view.releaseDelayInHours,
   );
   if (now.getTime() < releaseAt.getTime()) return 'HELD';
   return accountStatus === 'READY' ? 'SENDING' : 'AWAITING_ACCOUNT';

@@ -97,6 +97,42 @@ export const createKnexAccountFootprintSUT = () => {
       });
     },
 
+    async givenIssueOn(requestId: string) {
+      await connection('rental_issues').insert({
+        id: connection.raw('gen_random_uuid()'),
+        rental_request_id: requestId,
+        reason: 'OTHER',
+        message: 'Le conducteur a écrit ceci',
+        owner_reply: 'Le loueur a répondu cela',
+        reported_at: new Date('2026-10-10T08:00:00.000Z'),
+      });
+    },
+
+    async thenIssueTextsAre(
+      expected: Record<
+        string,
+        { message: string | null; ownerReply: string | null }
+      >,
+    ) {
+      const rows = (await connection('rental_issues').select(
+        'rental_request_id',
+        'message',
+        'owner_reply',
+      )) as {
+        rental_request_id: string;
+        message: string | null;
+        owner_reply: string | null;
+      }[];
+      expect(
+        Object.fromEntries(
+          rows.map((row) => [
+            row.rental_request_id,
+            { message: row.message, ownerReply: row.owner_reply },
+          ]),
+        ),
+      ).toEqual(expected);
+    },
+
     async givenPushDevice(token: string, accountId: string) {
       await connection('push_devices').insert({
         token,

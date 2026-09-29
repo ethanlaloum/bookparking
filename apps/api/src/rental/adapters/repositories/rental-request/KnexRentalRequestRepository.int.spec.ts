@@ -318,7 +318,7 @@ describe('KnexRentalRequestRepository @SPEC-004', () => {
 
     const expired = await sut
       .repository()
-      .expireHoldsPlacedSince(new Date('2026-10-01T07:05:00.000Z'));
+      .expireLapsedHolds(new Date('2026-10-03T07:05:00.000Z'));
 
     expect(expired).toEqual([
       { requestId: id, renterId: 'account-lea', ownerId: 'account-marc' },
@@ -335,6 +335,50 @@ describe('KnexRentalRequestRepository @SPEC-004', () => {
         status: 'EXPIRED',
       },
     ]);
+  });
+
+  it('expires each hold on the answer delay frozen on its own row', async () => {
+    const sut = createKnexRentalRequestRepositorySUT();
+    await sut.givenActiveListing({ owner: 'Marc D.', ...BARLA });
+    await sut.givenBackOfficeSettingsFrom('2026-09-30T00:00:00.000Z', 1);
+    const lea = await sut.whenRequestingWithoutPaying(
+      { renter: 'Léa T.', ...BARLA, ...LEA_DAYS },
+      LEA_ASKS_AT,
+    );
+    await sut.givenBackOfficeSettingsFrom('2026-10-01T07:01:00.000Z', 48);
+    const karim = await sut.whenRequestingWithoutPaying(
+      { renter: 'Karim B.', ...BARLA, from: '2026-10-20', to: '2026-10-21' },
+      new Date('2026-10-01T07:02:00.000Z'),
+    );
+    if (Either.isLeft(lea) || Either.isLeft(karim))
+      throw new Error('arrange failed');
+    const placedAt = new Date('2026-10-01T07:05:00.000Z');
+    await sut
+      .repository()
+      .markHoldPlaced(lea.right.rentalRequest.id, 'pi_lea', placedAt);
+    await sut
+      .repository()
+      .markHoldPlaced(karim.right.rentalRequest.id, 'pi_karim', placedAt);
+
+    const beforeTheHour = await sut
+      .repository()
+      .expireLapsedHolds(new Date('2026-10-01T08:04:59.999Z'));
+    const anHourLater = await sut
+      .repository()
+      .expireLapsedHolds(new Date('2026-10-01T08:05:00.000Z'));
+
+    expect(beforeTheHour).toEqual([]);
+    expect(anHourLater).toEqual([
+      {
+        requestId: lea.right.rentalRequest.id,
+        renterId: 'account-lea',
+        ownerId: 'account-marc',
+      },
+    ]);
+    await sut.thenStoredMoneyRowIs(karim.right.rentalRequest.id, {
+      status: 'PENDING',
+      money: 'AUTHORIZED',
+    });
   });
 
   it('keeps a single row when two writes under one intent arrive at once @EX-004-46', async () => {

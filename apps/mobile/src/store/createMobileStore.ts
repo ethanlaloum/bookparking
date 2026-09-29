@@ -5,13 +5,13 @@ import { BookparkingRxAccountGateway } from '@front/app/account/adapters/RealAcc
 import { isSessionLive } from '@front/app/auth/domain/entities/Session';
 import { BookparkingRxSessionGateway } from '@front/app/auth/adapters/RealSessionGateway';
 import { buildInitialAuthState } from '@front/app/auth/store/AuthSlice';
-import { BookparkingRxBackOfficeGateway } from '@front/app/back-office/adapters/RealBackOfficeGateway';
 import { SystemClock } from '@front/app/consent/adapters/SystemClock';
 import { BanGeocodingGateway } from '@front/app/listing/adapters/RealGeocodingGateway';
 import { BookparkingRxListingGateway } from '@front/app/listing/adapters/RealListingGateway';
 import { BookparkingRxNotificationGateway } from '@front/app/notification/adapters/RealNotificationGateway';
 import { BookparkingRxPayoutGateway } from '@front/app/payout/adapters/RealPayoutGateway';
 import { BookparkingRxRentalGateway } from '@front/app/rental/adapters/RealRentalGateway';
+import { BookparkingRxRentalTermsGateway } from '@front/app/rental-terms/adapters/RealRentalTermsGateway';
 import { FetchHttpClient } from '@front/lib/http/FetchHttpClient';
 import type { AppState } from '@front/store/AppState';
 import { coreReducer } from '@front/store/coreReducer';
@@ -39,7 +39,6 @@ export const buildMobileDependencies = (baseUrl: string): Dependencies => {
 
   return {
     accountGateway: new BookparkingRxAccountGateway(httpClient),
-    backOfficeGateway: new BookparkingRxBackOfficeGateway(httpClient),
     clock: new SystemClock(),
     consentStore: new NoThirdPartyConsentStore(),
     geocodingGateway: new BanGeocodingGateway(),
@@ -48,6 +47,7 @@ export const buildMobileDependencies = (baseUrl: string): Dependencies => {
     paymentPageNavigator: paymentBrowser,
     payoutGateway: new BookparkingRxPayoutGateway(httpClient),
     rentalGateway: new BookparkingRxRentalGateway(httpClient),
+    rentalTermsGateway: new BookparkingRxRentalTermsGateway(httpClient),
     sessionGateway: new BookparkingRxSessionGateway(httpClient),
     sessionStore,
   };

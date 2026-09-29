@@ -127,13 +127,11 @@ Toujours via `--filter` — nécessaire dès qu'une deuxième app rejoint le wor
   minutes ; `RequestRental` garde l'expiration à la demande comme filet, pour libérer des dates échues à
   l'instant précis où quelqu'un les veut. Voir « L'encaissement » plus bas.
 
-- **Le délai d'expiration est un réglage, pas une constante du domaine — et la question qui le fixe est ouverte.**
-  `environment.rentalRequestExpiryInHours()` lit `RENTAL_REQUEST_EXPIRY_IN_HOURS`, 48 h par défaut, et le
-  délai descend jusqu'à `RequestRental` par son constructeur. C'est Q-18 du brainstorm du 10/09
-  (`docs/brainstorm/BR-20260910-reserver-et-louer-une-place/BRAINSTORM.md`), marquée « tranché par JP » et
-  « bloque la règle d'expiration » : le brainstorm la range parmi les réglages du back-office, à côté de la
-  marge et du délai d'annulation.
-  Ne pas figer cette valeur dans le domaine — elle attend le back-office.
+- **Le délai d'expiration est un réglage du back-office, figé sur chaque demande.** Q-18 du brainstorm
+  du 10/09 le rangeait parmi les réglages du back-office : il y est (voir « Les réglages de location »
+  plus bas). `RequestRental` le lit dans `platform_settings` et l'écrit dans
+  `rental_requests.request_expiry_hours` ; le balayage expire chaque ligne selon le sien. Ne pas le
+  refaire descendre par un constructeur.
 
 - **`RentalRequest.request()` engendre son identifiant : le défaut de la colonne `id` ne joue jamais.**
   `RentalRequest.ts` appelle `randomUUID()` et `insertOnActiveListing` écrit toujours `id: state.id` —
@@ -452,10 +450,11 @@ quand le loueur confirme, levée sinon. Le contexte `rental` porte le port `Paym
 - **Stripe refuse une page qui expire moins de trente minutes après sa création, à la seconde près.**
   L'échéance du domaine (`paymentPageExpiryOf`, trente minutes après la demande) part de quelques
   millisecondes plus tôt : `StripePaymentGateway` impose une minute de marge.
-- **Une empreinte de carte ne vit que quelques jours** (sept pour la plupart des cartes). Porter
-  `RENTAL_REQUEST_EXPIRY_IN_HOURS` au-delà de 96 ferait prélever des empreintes déjà mortes.
+- **Une empreinte de carte ne vit que quelques jours** (sept pour la plupart des cartes). Un délai de
+  réponse au-delà de 96 heures ferait prélever des empreintes déjà mortes : c'est la borne haute de
+  `PLATFORM_SETTINGS_BOUNDS.requestExpiryHours`, que le back-office ne peut pas franchir.
 - **Les demandes d'avant l'encaissement ont `money_status = 'NONE'`.** Elles gardent l'expiration de
-  SPEC-002 (depuis `requested_at`, `expireRequestsPendingSince`) et n'ont jamais rien à rendre ; les
+  SPEC-002 (depuis `requested_at`, `expireLapsedPendingRequests`) et n'ont jamais rien à rendre ; les
   demandes payées expirent depuis `hold_placed_at` (`expireHoldsPlacedSince`).
 - **`POST /rental-request` exige l'en-tête `Idempotency-Key` (un UUID), et c'est ce qui empêche un
   double clic de faire deux demandes** (RG-10). `RequestRental` cherche d'abord une demande du même
@@ -489,7 +488,7 @@ règle d'argent : une empreinte est toujours levée ; un prélèvement est rembo
 ou si le conducteur annule jusqu'à l'échéance **incluse** ; au-delà, il est gardé.
 
 - **L'échéance d'annulation gratuite est figée sur la demande** (`free_cancellation_until`), calculée
-  par `RentalRequest.request()` depuis `FREE_CANCELLATION_HOURS_BEFORE_START` (24 par défaut) et le
+  par `RentalRequest.request()` depuis le réglage `freeCancellationHours` du back-office et le
   premier instant de la location, heure de Paris — en heures, jamais en jours locaux. Un délai
   modifié plus tard ne la déplace pas (Q-13 tranchée par JP). `CancelRental` ne relit le délai courant
   que pour une ligne sans échéance, ce que la migration a rendu impossible en la calculant pour les
@@ -593,8 +592,8 @@ cloche dans `src/notification` (`GET /notification`, `POST /notification/read`).
   (`ListRenterRentalRequests`), statut `CONFIRMED`, et tant que `now < period_to`. Annulée, expirée, pas
   encore confirmée ou terminée : `null`. Le loueur ne la reçoit jamais dans `GET /rental-request/received`.
 - **`answerBy` recopie la règle du balayage** : `hold_placed_at` (ou `requested_at` avant l'encaissement)
-  + `RENTAL_REQUEST_EXPIRY_IN_HOURS`. Changer l'expiration dans `SweepRentalRequests` sans toucher
-  `presentRentalRequest` ferait afficher une échéance fausse aux deux parties.
+  + `request_expiry_hours` de la ligne, par `answerDeadlineOf`. Changer l'expiration dans les requêtes
+  `expireLapsed*` sans toucher `presentRentalRequest` ferait afficher une échéance fausse aux deux parties.
 - **`POST /notification/:id/read` marque une seule notification** : c'est ce qui fait qu'une réservation
   confirmée n'est fêtée qu'une fois, sur le site ou dans l'app. Identifiant mal formé, inconnu ou d'un
   autre compte : 204, rien de marqué.
@@ -611,12 +610,13 @@ compte (`payout_accounts`), les virements (`owner_transfers`) et `GET /payout`,
   pages de Stripe (`accountLinks`) ; la base ne garde que `acct_…` et `payouts_enabled`. Ne jamais
   ajouter un champ IBAN à un formulaire du site.
 - **La commission est figée sur la demande** (`rental_requests.platform_fee_in_cents`, Q-13), calculée
-  par `RentalRequest.request()` depuis `PLATFORM_FEE_PERCENT` (15, décidé le 24/09/2026 ; `main.ts` refuse
-  un taux hors de [0, 100[). Les demandes d'avant ont reçu 15 % par la migration. Changer le taux ne
-  touche que les demandes suivantes.
+  par `RentalRequest.request()` depuis le réglage `platformFeePercent` du back-office (15 % décidé le
+  24/09/2026, borné à [0, 50] au centième). Les demandes d'avant ont reçu 15 % par la migration. Changer
+  le taux ne touche que les demandes suivantes.
 - **L'argent est libéré au premier de deux événements** (`releaseAtOf`) : l'arrivée confirmée par le
   conducteur (`POST /rental-request/:id/arrival`, pas avant le premier instant loué), ou le premier
-  instant + `PAYOUT_RELEASE_DELAY_IN_HOURS` (24). Seul l'argent `CAPTURED` est dû : une annulation
+  instant + `rental_requests.payout_release_delay_hours`, figé à la demande (24 par défaut). Seul l'argent
+  `CAPTURED` est dû : une annulation
   remboursée n'est jamais virée ; une annulation tardive dont l'argent est gardé l'est, à la date prévue.
 - **Un virement au plus par demande** : clé primaire `owner_transfers.rental_request_id` et clé
   d'idempotence Stripe `transfer-<demande>`. Un arrêt entre le virement et son écriture est rattrapé au
@@ -630,6 +630,65 @@ compte (`payout_accounts`), les virements (`owner_transfers`) et `GET /payout`,
   vérifie pas le début de la location ; si elle rembourse une demande déjà virée, la plateforme rend
   l'argent au conducteur sans reprendre le virement du loueur (`transfers.createReversal`). À traiter
   avec les litiges (gel avant libération, D-22).
+
+## Les réglages de location (back-office)
+
+La commission, l'annulation gratuite, le délai de réponse du loueur et celui de la libération de
+l'argent ne sont plus des variables d'environnement : ils vivent dans `platform_settings`, que le
+back-office change par `POST /admin/settings`. Le noyau partagé `src/shared/platform-settings/` porte
+l'entité (`PlatformSettings`, ses bornes, `checkPlatformSettings`), le port `PlatformSettingsReader` et
+sa route publique `GET /rental-terms`, que le site lit pour la FAQ, les conditions d'utilisation et
+« Versements ». Le changement et le journal appartiennent à `back-office`.
+
+- **Chaque demande fige les quatre valeurs du jour où elle est faite** (décision du 28/09/2026). La
+  commission et l'échéance d'annulation l'étaient déjà ; `request_expiry_hours` et
+  `payout_release_delay_hours` le sont désormais aussi, et les requêtes d'expiration et de libération
+  lisent la colonne de chaque ligne (`requested_at + request_expiry_hours * interval '1 hour'`). Un
+  réglage raccourci n'expire donc jamais une demande en cours.
+- **La table est un historique, pas une ligne.** Chaque changement insère une version ; la dernière
+  (`effective_from`, puis `id`) est en vigueur. Une base sans version — celle des tests, que
+  `cleanDatabase` vide — applique `DEFAULT_PLATFORM_SETTINGS`, les valeurs d'avant le back-office.
+- **La migration `20260928160000` a lu les anciennes variables une dernière fois** pour écrire la
+  première version et remplir les demandes existantes. `PLATFORM_FEE_PERCENT`,
+  `FREE_CANCELLATION_HOURS_BEFORE_START`, `RENTAL_REQUEST_EXPIRY_IN_HOURS` et
+  `PAYOUT_RELEASE_DELAY_IN_HOURS` ne sont plus lues par l'api : les retirer de Railway une fois la
+  migration passée.
+- **Le lecteur est interrogé à chaque exécution**, jamais au démarrage : un réglage vaut dès la demande
+  suivante, sans redéployer.
+- **`ChangePlatformSettings` écrit la version et sa ligne d'`admin_action_logs` dans une transaction**
+  (`CHANGE_PLATFORM_SETTINGS`, cible `PLATFORM_SETTINGS` = l'identifiant de la version), mêmes gardes
+  que la modération — administrateur, motif, puis valeurs. Une version identique à celle en vigueur est
+  refusée (`PlatformSettingsUnchangedError`, 400) : le journal ne se remplit pas de non-changements.
+- **`GET /admin/journal` lit tout le journal en une requête** (`findJournal`) : la cible est nommée par
+  jointure selon son type (`target_id` est du texte, les identifiants des UUID, d'où les `::text`), et un
+  changement de réglages est lu avec la version précédente (`LEFT JOIN LATERAL`). Une cible supprimée
+  depuis rend `targetLabel: null`.
+
+## Les réclamations
+
+`POST /rental-request/:id/issue` (le conducteur), `POST /rental-request/:id/issue/answer` (le loueur),
+`GET /admin/issues` et `POST /admin/issues/:id/resolution` (le back-office). Table `rental_issues`,
+une ligne au plus par demande (`rental_request_id` unique). Les règles vivent dans
+`rental/domain/entities/RentalIssue.ts`.
+
+- **On ne se plaint que pendant la location** (`reportRefusalOf`) : réservation `CONFIRMED` et
+  `CAPTURED`, entre le premier et le dernier instant loués, avant d'avoir confirmé son arrivée et avant
+  que l'argent parte (`owner_transfers`). Après un virement, rembourser coûterait à Bookparking — c'est
+  le trou connu du reversement. `presentRentalRequest` rejoue la même règle pour `issueReportable`.
+- **Une réclamation ouverte gèle l'argent** : `findDuePayouts` ignore les demandes dont la réclamation
+  est `OPEN`, `ReadPayouts` les montre `HELD`, et `ConfirmArrival` refuse l'arrivée (409) — elle
+  libérerait l'argent.
+- **Trancher** (`ResolveRentalIssue`, mêmes gardes et même journal que la modération, les deux parties
+  prévenues) : `REFUND` passe par `cancelRentalRequest` (annulée par l'exploitant, `REFUND_DUE`, le
+  balayage rend tout) ; `PARTIAL_REFUND` écrit `refund_in_cents`, pris sur la part du loueur et borné
+  à cette part moins un centime, que `SweepRentalRequests` rend chez Stripe
+  (`refund(paymentId, 'issue-refund-<demande>', montant)`, rejoué jusqu'à `refund_id`) et que
+  `SendDuePayouts` retranche du virement ; `DISMISS` rend l'argent au loueur à la date prévue.
+- **Trois notifications** (`RENTAL_ISSUE_REPORTED` au loueur, `RENTAL_ISSUE_ANSWERED` au conducteur,
+  `RENTAL_ISSUE_RESOLVED` aux deux, qui se lit selon le destinataire comme l'annulation par
+  l'exploitant). Le site et l'app les listent aussi (`TONES`, les icônes de la cloche).
+- **La suppression d'un compte efface ce qu'il y a écrit** (`message` du conducteur, `owner_reply` du
+  loueur) ; la réclamation reste, elle explique où est allé l'argent.
 
 ## L'inscription plus sûre (SPEC-007)
 

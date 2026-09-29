@@ -11,15 +11,6 @@ import type { Avatar } from '../../app/account/domain/entities/Avatar';
 import type { HumanChallenge } from '../../app/account/domain/entities/HumanProof';
 import type { Session } from '../../app/auth/domain/entities/Session';
 import type { Credentials, SessionGateway } from '../../app/auth/domain/ports/SessionGateway';
-import type { AdminAccount } from '../../app/back-office/domain/entities/AdminAccount';
-import type { AdminListing } from '../../app/back-office/domain/entities/AdminListing';
-import type { AdminRentalRequest } from '../../app/back-office/domain/entities/AdminRentalRequest';
-import type { Overview } from '../../app/back-office/domain/entities/Overview';
-import {
-  BackOfficeError,
-  type BackOfficeGateway,
-  type FailureKind,
-} from '../../app/back-office/domain/ports/BackOfficeGateway';
 import type { SessionStore } from '../../app/auth/domain/ports/SessionStore';
 import type { Consent } from '../../app/consent/domain/entities/Consent';
 import type { Clock } from '../../app/consent/domain/ports/Clock';
@@ -49,10 +40,13 @@ import type { RentalRequestView } from '../../app/rental/domain/entities/RentalR
 import type { PaymentPageNavigator } from '../../app/rental/domain/ports/PaymentPageNavigator';
 import type {
   CancellationOutcome,
+  IssueReport,
   RentalGateway,
   RequestedRental,
   RequestRentalPayload,
 } from '../../app/rental/domain/ports/RentalGateway';
+import type { RentalTerms } from '../../app/rental-terms/domain/entities/RentalTerms';
+import type { RentalTermsGateway } from '../../app/rental-terms/domain/ports/RentalTermsGateway';
 import type { Dependencies } from '../dependencies.interface';
 
 const fail = <T>(message: string): Observable<T> => throwError(() => new Error(message));
@@ -185,6 +179,8 @@ export class InMemoryRentalGateway implements RentalGateway {
   public readonly abandoned: string[] = [];
   public readonly cancelled: string[] = [];
   public readonly arrivals: string[] = [];
+  public readonly reportedIssues: { requestId: string; report: IssueReport }[] = [];
+  public readonly answeredIssues: { requestId: string; reply: string }[] = [];
   public listMineCallCount = 0;
   public cancellationOutcome: CancellationOutcome = 'REFUNDED';
   public requestedRental: RequestedRental = {
@@ -218,6 +214,16 @@ export class InMemoryRentalGateway implements RentalGateway {
 
   confirmArrival(requestId: string): Observable<void> {
     this.arrivals.push(requestId);
+    return this.rejection === null ? of(undefined) : fail(this.rejection);
+  }
+
+  reportIssue(requestId: string, report: IssueReport): Observable<void> {
+    this.reportedIssues.push({ requestId, report });
+    return this.rejection === null ? of(undefined) : fail(this.rejection);
+  }
+
+  answerIssue(requestId: string, reply: string): Observable<void> {
+    this.answeredIssues.push({ requestId, reply });
     return this.rejection === null ? of(undefined) : fail(this.rejection);
   }
 
@@ -287,6 +293,7 @@ export class InMemoryPayoutGateway implements PayoutGateway {
   public summary: PayoutSummary = {
     accountStatus: 'MISSING',
     feePercent: 15,
+    releaseDelayHours: 24,
     upcomingInCents: 0,
     sentInCents: 0,
     payouts: [],
@@ -306,6 +313,22 @@ export class InMemoryPayoutGateway implements PayoutGateway {
   dashboardLink(): Observable<string> {
     this.linksAsked.push('dashboard');
     return this.rejection === null ? of('https://connect.stripe.com/express/acct_marc') : fail(this.rejection);
+  }
+}
+
+export class InMemoryRentalTermsGateway implements RentalTermsGateway {
+  public terms: RentalTerms = {
+    platformFeePercent: 15,
+    freeCancellationHours: 24,
+    requestExpiryHours: 48,
+    payoutReleaseDelayHours: 24,
+  };
+  public rejection: string | null = null;
+  public reads = 0;
+
+  read(): Observable<RentalTerms> {
+    this.reads += 1;
+    return this.rejection === null ? of(this.terms) : fail(this.rejection);
   }
 }
 
@@ -420,7 +443,6 @@ export class InMemoryGeocodingGateway implements GeocodingGateway {
 
 export interface InMemoryDependencies extends Dependencies {
   accountGateway: InMemoryAccountGateway;
-  backOfficeGateway: InMemoryBackOfficeGateway;
   clock: FixedClock;
   consentStore: InMemoryConsentStore;
   geocodingGateway: InMemoryGeocodingGateway;
@@ -429,13 +451,13 @@ export interface InMemoryDependencies extends Dependencies {
   paymentPageNavigator: InMemoryPaymentPageNavigator;
   payoutGateway: InMemoryPayoutGateway;
   rentalGateway: InMemoryRentalGateway;
+  rentalTermsGateway: InMemoryRentalTermsGateway;
   sessionGateway: InMemorySessionGateway;
   sessionStore: InMemorySessionStore;
 }
 
 export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   accountGateway: new InMemoryAccountGateway(),
-  backOfficeGateway: new InMemoryBackOfficeGateway(),
   clock: new FixedClock(),
   consentStore: new InMemoryConsentStore(),
   geocodingGateway: new InMemoryGeocodingGateway(),
@@ -444,6 +466,7 @@ export const buildInMemoryDependencies = (): InMemoryDependencies => ({
   paymentPageNavigator: new InMemoryPaymentPageNavigator(),
   payoutGateway: new InMemoryPayoutGateway(),
   rentalGateway: new InMemoryRentalGateway(),
+  rentalTermsGateway: new InMemoryRentalTermsGateway(),
   sessionGateway: new InMemorySessionGateway(),
   sessionStore: new InMemorySessionStore(),
 });
@@ -484,6 +507,8 @@ export const aRentalRequestView = (
   ownerShareInCents:
     overrides.ownerShareInCents === undefined ? null : overrides.ownerShareInCents,
   arrivedAt: overrides.arrivedAt === undefined ? null : overrides.arrivedAt,
+  issue: overrides.issue === undefined ? null : overrides.issue,
+  issueReportable: overrides.issueReportable ?? false,
 });
 
 export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerListing => ({
@@ -498,176 +523,3 @@ export const anOwnerListing = (overrides: Partial<OwnerListing> = {}): OwnerList
   ...overrides,
   acceptedVehicles: overrides.acceptedVehicles ?? ['voiture'],
 });
-
-
-/* -------------------------------------------------------------------------- */
-/* Administration du site                                                      */
-/* -------------------------------------------------------------------------- */
-
-const DEFAULT_COUNTS: Overview['counts'] = {
-  accounts: 12,
-  suspendedAccounts: 1,
-  activeListings: 8,
-  unpublishedListings: 2,
-  pendingRequests: 3,
-  confirmedRequests: 5,
-  cancelledRequests: 1,
-  confirmedRevenueInCents: 45_000,
-};
-
-const DEFAULT_ACTIVITY: Overview['activity'] = {
-  accountsLast24h: 1,
-  listingsLast24h: 2,
-  requestsLast24h: 3,
-  accountsLast7d: 4,
-  listingsLast7d: 5,
-  requestsLast7d: 6,
-};
-
-const DEFAULT_ATTENTION: Overview['attention'] = {
-  requestsPendingOverADay: 0,
-  listingsWithoutAnyPrice: 0,
-  accountsWithoutAnyActivity: 0,
-};
-
-// Surcharge bloc par bloc, et non `Partial<Overview>` : un test qui ne
-// s'intéresse qu'aux revenus n'a pas à recopier les sept autres compteurs pour
-// que le type passe.
-export interface OverviewOverrides {
-  counts?: Partial<Overview['counts']>;
-  activity?: Partial<Overview['activity']>;
-  attention?: Partial<Overview['attention']>;
-}
-
-export const anOverview = (overrides: OverviewOverrides = {}): Overview => ({
-  counts: { ...DEFAULT_COUNTS, ...overrides.counts },
-  activity: { ...DEFAULT_ACTIVITY, ...overrides.activity },
-  attention: { ...DEFAULT_ATTENTION, ...overrides.attention },
-});
-
-export const anAdminAccount = (overrides: Partial<AdminAccount> = {}): AdminAccount => ({
-  id: '0b3d1f8a-0000-4000-8000-000000000001',
-  email: 'alice@example.com',
-  registeredAt: '2026-09-01T09:00:00.000Z',
-  suspendedAt: null,
-  listingCount: 1,
-  requestCount: 0,
-  ...overrides,
-});
-
-export const anAdminListing = (overrides: Partial<AdminListing> = {}): AdminListing => ({
-  id: '3f1a9c0e-9c1e-4c5e-8a2b-1f2d3e4a5b6c',
-  address: '12 rue Barla, 06300 Nice',
-  box: 'B12',
-  ownerEmail: 'alice@example.com',
-  status: 'ACTIVE',
-  publishedAt: '2026-09-05T10:00:00.000Z',
-  ...overrides,
-  // Réaffirmés après l'étalement, comme `aListing` : `Partial` rend chaque
-  // champ `undefined`-able, et une surcharge qui ne les mentionne pas les
-  // effacerait.
-  acceptedVehicles: overrides.acceptedVehicles ?? ['voiture'],
-  pricing: overrides.pricing ?? {
-    dayInCents: 1500,
-    weekInCents: 8000,
-    monthInCents: 25_000,
-  },
-});
-
-export const anAdminRentalRequest = (
-  overrides: Partial<AdminRentalRequest> = {},
-): AdminRentalRequest => ({
-  id: '45fed099-ae81-4a57-b24e-7005a96cd4a0',
-  address: '12 rue Barla, 06300 Nice',
-  box: 'B12',
-  ownerEmail: 'alice@example.com',
-  renterEmail: 'bob@example.com',
-  fromDay: '2026-10-10',
-  toDay: '2026-10-12',
-  priceInCents: 4500,
-  status: 'PENDING',
-  requestedAt: '2026-09-20T09:00:00.000Z',
-  confirmedAt: null,
-  ...overrides,
-});
-
-export interface RecordedModeration {
-  action: 'unpublishListing' | 'suspendAccount' | 'liftAccountSuspension' | 'cancelRentalRequest';
-  targetId: string;
-  reason: string;
-}
-
-export class InMemoryBackOfficeGateway implements BackOfficeGateway {
-  public overview: Overview = anOverview();
-  public accounts: AdminAccount[] = [];
-  public listings: AdminListing[] = [];
-  public rentalRequests: AdminRentalRequest[] = [];
-
-  public rejection: BackOfficeError | null = null;
-
-  public confirmAccessCallCount = 0;
-  public readOverviewCallCount = 0;
-  public listAccountsCallCount = 0;
-  public listListingsCallCount = 0;
-  public listRentalRequestsCallCount = 0;
-  public readonly moderated: RecordedModeration[] = [];
-
-  rejectWith(kind: FailureKind, message: string): void {
-    this.rejection = new BackOfficeError(kind, message);
-  }
-
-  confirmAccess(): Observable<void> {
-    this.confirmAccessCallCount += 1;
-    return this.answer(undefined);
-  }
-
-  readOverview(): Observable<Overview> {
-    this.readOverviewCallCount += 1;
-    return this.answer(this.overview);
-  }
-
-  listAccounts(): Observable<AdminAccount[]> {
-    this.listAccountsCallCount += 1;
-    return this.answer(this.accounts);
-  }
-
-  listListings(): Observable<AdminListing[]> {
-    this.listListingsCallCount += 1;
-    return this.answer(this.listings);
-  }
-
-  listRentalRequests(): Observable<AdminRentalRequest[]> {
-    this.listRentalRequestsCallCount += 1;
-    return this.answer(this.rentalRequests);
-  }
-
-  unpublishListing(listingId: string, reason: string): Observable<void> {
-    return this.record('unpublishListing', listingId, reason);
-  }
-
-  suspendAccount(accountId: string, reason: string): Observable<void> {
-    return this.record('suspendAccount', accountId, reason);
-  }
-
-  liftAccountSuspension(accountId: string, reason: string): Observable<void> {
-    return this.record('liftAccountSuspension', accountId, reason);
-  }
-
-  cancelRentalRequest(requestId: string, reason: string): Observable<void> {
-    return this.record('cancelRentalRequest', requestId, reason);
-  }
-
-  private record(
-    action: RecordedModeration['action'],
-    targetId: string,
-    reason: string,
-  ): Observable<void> {
-    this.moderated.push({ action, targetId, reason });
-    return this.answer(undefined);
-  }
-
-  private answer<T>(value: T): Observable<T> {
-    const rejection = this.rejection;
-    return rejection === null ? of(value) : throwError(() => rejection);
-  }
-}

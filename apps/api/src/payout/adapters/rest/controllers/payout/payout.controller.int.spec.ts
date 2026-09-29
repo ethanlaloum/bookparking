@@ -29,6 +29,7 @@ describe('PayoutController', () => {
       Either.right({
         accountStatus: 'READY',
         feePercent: 15,
+        releaseDelayHours: 24,
         upcomingInCents: 3825,
         sentInCents: 0,
         payouts: [
@@ -56,6 +57,7 @@ describe('PayoutController', () => {
     expect(response.body).toEqual({
       accountStatus: 'READY',
       feePercent: 15,
+      releaseDelayHours: 24,
       upcomingInCents: 3825,
       sentInCents: 0,
       payouts: [

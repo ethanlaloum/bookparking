@@ -4,9 +4,17 @@ import knex from 'knex';
 
 import { buildKnexConfig } from './infra/knexfile';
 import { environment } from './infra/config/environment';
+import { KnexPlatformSettingsReader } from './shared/platform-settings/adapters/repositories/KnexPlatformSettingsReader';
+import { RentalTermsController } from './shared/platform-settings/adapters/rest/controllers/rental-terms/rental-terms.controller';
+import { ReadRentalTerms } from './shared/platform-settings/domain/usecases/read-rental-terms/ReadRentalTerms';
 import { KnexBackOfficeRepository } from './back-office/adapters/repositories/back-office/KnexBackOfficeRepository';
 import { BackOfficeController } from './back-office/adapters/rest/controllers/back-office/back-office.controller';
 import { CancelRentalRequest } from './back-office/domain/usecases/cancel-rental-request/CancelRentalRequest';
+import { ChangePlatformSettings } from './back-office/domain/usecases/change-platform-settings/ChangePlatformSettings';
+import { ListRentalIssues } from './back-office/domain/usecases/list-rental-issues/ListRentalIssues';
+import { ResolveRentalIssue } from './back-office/domain/usecases/resolve-rental-issue/ResolveRentalIssue';
+import { ReadAdminJournal } from './back-office/domain/usecases/read-admin-journal/ReadAdminJournal';
+import { ReadPlatformSettings } from './back-office/domain/usecases/read-platform-settings/ReadPlatformSettings';
 import { LiftAccountSuspension } from './back-office/domain/usecases/lift-account-suspension/LiftAccountSuspension';
 import { ListAccounts } from './back-office/domain/usecases/list-accounts/ListAccounts';
 import { ListAllListings } from './back-office/domain/usecases/list-listings/ListAllListings';
@@ -65,6 +73,9 @@ import { StripeWebhookReader } from './rental/adapters/services/stripe-webhook/S
 import { AbandonRentalRequest } from './rental/domain/usecases/abandon-rental-request/AbandonRentalRequest';
 import { CancelRental } from './rental/domain/usecases/cancel-rental/CancelRental';
 import { ConfirmArrival } from './rental/domain/usecases/confirm-arrival/ConfirmArrival';
+import { AnswerRentalIssue } from './rental/domain/usecases/answer-rental-issue/AnswerRentalIssue';
+import { ReportRentalIssue } from './rental/domain/usecases/report-rental-issue/ReportRentalIssue';
+import { KnexRentalIssueRepository } from './rental/adapters/repositories/rental-issue/KnexRentalIssueRepository';
 import { ConfirmRentalRequest } from './rental/domain/usecases/confirm-rental-request/ConfirmRentalRequest';
 import { ListOwnerRentalRequests } from './rental/domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from './rental/domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
@@ -126,6 +137,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
     BackOfficeController,
     NotificationController,
     PayoutController,
+    RentalTermsController,
   ],
   providers: [
     { provide: DATABASE_CONNECTION, useFactory: () => knex(buildKnexConfig()) },
@@ -343,8 +355,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
         new ReadPayouts(
           new KnexPayoutRepository(connection),
           provider,
-          environment.payoutReleaseDelayInHours(),
-          environment.platformFeePercent(),
+          new KnexPlatformSettingsReader(connection),
         ),
       inject: [DATABASE_CONNECTION, PAYOUT_PROVIDER],
     },
@@ -382,8 +393,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
             provider,
             notificationOutboxOn(connection),
             new KnexUnitOfWork(connection),
-            environment.payoutReleaseDelayInHours(),
-            environment.platformFeePercent(),
+            new KnexPlatformSettingsReader(connection),
           ),
           environment.payoutSweepIntervalInSeconds() * 1000,
         ),
@@ -407,9 +417,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
           paymentGateway,
           notificationOutboxOn(connection),
           new KnexUnitOfWork(connection),
-          environment.rentalRequestExpiryInHours(),
-          environment.freeCancellationHoursBeforeStart(),
-          environment.platformFeePercent(),
+          new KnexPlatformSettingsReader(connection),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
     },
@@ -424,7 +432,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
           paymentGateway,
           notificationOutboxOn(connection),
           new KnexUnitOfWork(connection),
-          environment.freeCancellationHoursBeforeStart(),
+          new KnexPlatformSettingsReader(connection),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
     },
@@ -447,6 +455,27 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
       useFactory: (connection: DatabaseConnection) =>
         new ConfirmArrival(
           new KnexRentalRequestRepository(typedAs(connection)),
+          new KnexRentalIssueRepository(connection),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: ReportRentalIssue,
+      useFactory: (connection: DatabaseConnection) =>
+        new ReportRentalIssue(
+          new KnexRentalIssueRepository(connection),
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
+        ),
+      inject: [DATABASE_CONNECTION],
+    },
+    {
+      provide: AnswerRentalIssue,
+      useFactory: (connection: DatabaseConnection) =>
+        new AnswerRentalIssue(
+          new KnexRentalIssueRepository(connection),
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
         ),
       inject: [DATABASE_CONNECTION],
     },
@@ -487,7 +516,7 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
           paymentGateway,
           notificationOutboxOn(connection),
           new KnexUnitOfWork(connection),
-          environment.rentalRequestExpiryInHours(),
+          new KnexRentalIssueRepository(connection),
         ),
       inject: [DATABASE_CONNECTION, PAYMENT_GATEWAY],
     },
@@ -505,7 +534,6 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
       useFactory: (connection: DatabaseConnection) =>
         new ListRenterRentalRequests(
           new KnexRentalRequestRepository(typedAs(connection)),
-          environment.rentalRequestExpiryInHours(),
         ),
       inject: [DATABASE_CONNECTION],
     },
@@ -514,7 +542,6 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
       useFactory: (connection: DatabaseConnection) =>
         new ListOwnerRentalRequests(
           new KnexRentalRequestRepository(typedAs(connection)),
-          environment.rentalRequestExpiryInHours(),
         ),
       inject: [DATABASE_CONNECTION],
     },
@@ -581,6 +608,62 @@ const notificationOutboxOn = (connection: DatabaseConnection) =>
           new KnexUnitOfWork(connection),
         ),
       inject: ['BackOfficeRepository', DATABASE_CONNECTION],
+    },
+    {
+      provide: ReadPlatformSettings,
+      useFactory: (
+        backOfficeRepository: KnexBackOfficeRepository,
+        connection: DatabaseConnection,
+      ) =>
+        new ReadPlatformSettings(
+          backOfficeRepository,
+          new KnexPlatformSettingsReader(connection),
+        ),
+      inject: ['BackOfficeRepository', DATABASE_CONNECTION],
+    },
+    {
+      provide: ChangePlatformSettings,
+      useFactory: (
+        backOfficeRepository: KnexBackOfficeRepository,
+        connection: DatabaseConnection,
+      ) =>
+        new ChangePlatformSettings(
+          backOfficeRepository,
+          new KnexPlatformSettingsReader(connection),
+          new KnexUnitOfWork(connection),
+        ),
+      inject: ['BackOfficeRepository', DATABASE_CONNECTION],
+    },
+    {
+      provide: ReadAdminJournal,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new ReadAdminJournal(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: ListRentalIssues,
+      useFactory: (backOfficeRepository: KnexBackOfficeRepository) =>
+        new ListRentalIssues(backOfficeRepository),
+      inject: ['BackOfficeRepository'],
+    },
+    {
+      provide: ResolveRentalIssue,
+      useFactory: (
+        backOfficeRepository: KnexBackOfficeRepository,
+        connection: DatabaseConnection,
+      ) =>
+        new ResolveRentalIssue(
+          backOfficeRepository,
+          notificationOutboxOn(connection),
+          new KnexUnitOfWork(connection),
+        ),
+      inject: ['BackOfficeRepository', DATABASE_CONNECTION],
+    },
+    {
+      provide: ReadRentalTerms,
+      useFactory: (connection: DatabaseConnection) =>
+        new ReadRentalTerms(new KnexPlatformSettingsReader(connection)),
+      inject: [DATABASE_CONNECTION],
     },
     {
       provide: ListNotifications,

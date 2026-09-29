@@ -1,10 +1,13 @@
+import { DEFAULT_PLATFORM_SETTINGS } from '../../../../shared/platform-settings/domain/entities/PlatformSettings';
 import { ConfirmedRental } from '../../../domain/entities/ConfirmedRental';
 import {
+  answerDeadlineOf,
   MoneyOwed,
   MoneyState,
   RentalRequestStatus,
 } from '../../../domain/entities/RentalMoney';
 import { RentalPlace } from '../../../domain/entities/RentalPlace';
+import { RentalIssueState } from '../../../domain/entities/RentalIssue';
 import { RentalRequest } from '../../../domain/entities/RentalRequest';
 import { RentalPeriod } from '../../../domain/services/computeRentalPrice';
 import { CancellingParty } from '../../../domain/entities/RentalCancellation';
@@ -17,6 +20,12 @@ import {
   RentalRequestView,
 } from '../../../domain/ports/RentalRepository';
 import { DuplicateIdempotencyKeyError } from '../../../domain/usecases/request-rental/errors/DuplicateIdempotencyKeyError';
+
+// Comme la colonne : une demande écrite sans délai prend celui d'avant le
+// back-office.
+const expiryHoursOf = (request: RentalRequest): number =>
+  request.toState().requestExpiryHours ??
+  DEFAULT_PLATFORM_SETTINGS.requestExpiryHours;
 
 export class InMemoryRentalRepository implements RentalRepository {
   public confirmedRentalList: ConfirmedRental[] = [];
@@ -51,6 +60,8 @@ export class InMemoryRentalRepository implements RentalRepository {
   public checkoutUrlById = new Map<string, string>();
   public idempotencyKeyById = new Map<string, string>();
   public arrivedAtById = new Map<string, Date>();
+  public transferredIds = new Set<string>();
+  public issueByRequestId = new Map<string, RentalIssueState>();
   public cancellationById = new Map<
     string,
     { party: CancellingParty; cancelledAt: Date }
@@ -181,6 +192,9 @@ export class InMemoryRentalRepository implements RentalRepository {
         platformFeeInCents: state.platformFeeInCents ?? null,
         arrivedAt: this.arrivedAtById.get(request.id) ?? null,
         freeCancellationUntil: state.freeCancellationUntil ?? null,
+        requestExpiryHours: expiryHoursOf(request),
+        transferred: this.transferredIds.has(request.id),
+        issue: this.issueByRequestId.get(request.id) ?? null,
         confirmedAt:
           this.confirmations.find(
             (confirmation) => confirmation.requestId === request.id,
@@ -189,15 +203,18 @@ export class InMemoryRentalRepository implements RentalRepository {
     });
   }
 
-  public async expireRequestsPendingSince(
-    deadline: Date,
+  public async expireLapsedPendingRequests(
+    now: Date,
   ): Promise<LapsedRentalRequest[]> {
     const expired: LapsedRentalRequest[] = [];
     for (const request of this.rentalRequestList) {
       if (this.statusOf(request.id) !== 'PENDING') continue;
       if (this.moneyOf(request.id) !== 'NONE') continue;
-      if (request.toState().requestedAt.getTime() >= deadline.getTime())
-        continue;
+      const lapsesAt = answerDeadlineOf(
+        request.toState().requestedAt,
+        expiryHoursOf(request),
+      );
+      if (lapsesAt.getTime() >= now.getTime()) continue;
       this.setStatus(request.id, 'EXPIRED');
       expired.push(this.lapsed(request));
     }
@@ -334,15 +351,18 @@ export class InMemoryRentalRepository implements RentalRepository {
     return abandoned;
   }
 
-  public async expireHoldsPlacedSince(
-    deadline: Date,
-  ): Promise<LapsedRentalRequest[]> {
+  public async expireLapsedHolds(now: Date): Promise<LapsedRentalRequest[]> {
     const expired: LapsedRentalRequest[] = [];
     for (const request of this.rentalRequestList) {
       if (this.statusOf(request.id) !== 'PENDING') continue;
       if (this.moneyOf(request.id) !== 'AUTHORIZED') continue;
       const placedAt = this.holdPlacedAtById.get(request.id);
-      if (!placedAt || placedAt.getTime() > deadline.getTime()) continue;
+      if (!placedAt) continue;
+      if (
+        answerDeadlineOf(placedAt, expiryHoursOf(request)).getTime() >
+        now.getTime()
+      )
+        continue;
       this.setStatus(request.id, 'EXPIRED');
       this.moneyById.set(request.id, 'RELEASE_DUE');
       expired.push(this.lapsed(request));

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 // Les moments d'une demande de location dont on prévient quelqu'un. Chaque type
 // désigne son destinataire : le loueur (reçue, restée sans réponse, annulée par
-// le conducteur), le conducteur (acceptée, refusée, expirée, annulée par le
-// loueur, paiement refusé), ou les deux (annulée par Bookparking).
+// le conducteur, réclamation reçue), le conducteur (acceptée, refusée, expirée,
+// annulée par le loueur, paiement refusé, réclamation répondue), ou les deux
+// (annulée par Bookparking, réclamation tranchée).
 //
 // Un type de plus s'ajoute ici, dans `notifications_kind_check`, dans
 // `outgoing_emails_kind_check` et dans `composeEmail` — les quatre ensemble.
@@ -17,7 +18,10 @@ export type NotificationKind =
   | 'RENTAL_CANCELLED_BY_OWNER'
   | 'RENTAL_CANCELLED_BY_OPERATOR'
   | 'RENTAL_PAYMENT_FAILED'
-  | 'RENTAL_PAYOUT_SENT';
+  | 'RENTAL_PAYOUT_SENT'
+  | 'RENTAL_ISSUE_REPORTED'
+  | 'RENTAL_ISSUE_ANSWERED'
+  | 'RENTAL_ISSUE_RESOLVED';
 
 interface Props {
   id: string;

@@ -3,13 +3,18 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { consentSettingsOpened } from '../app/consent/store/consentSettings';
+import { Loader } from '../components/Loader';
+import { Notice } from '../components/Notice';
+import { Button } from '../components/ui/button';
+import { useRentalTerms } from '../hooks/useRentalTerms';
 import { useAppDispatch } from '../store/redux';
 
 const LINK = 'font-medium text-accent underline underline-offset-4';
 
-// Chaque réponse décrit ce que le code fait, comme les pages légales : les
-// 48 heures du loueur, les 30 minutes de la page de paiement et les 24 heures
-// d'annulation gratuite sont ceux de l'api. Une question sans réponse vraie
+// Chaque réponse décrit ce que le code fait, comme les pages légales : le délai
+// du loueur et celui de l'annulation gratuite viennent de l'api
+// (`GET /rental-terms`), réglés depuis le back-office ; les 30 minutes de la
+// page de paiement sont une constante de l'api. Une question sans réponse vraie
 // n'a pas sa place ici — d'où l'absence de « comment accéder à la place » et
 // de « quand suis-je payé », tant que le produit ne sait pas y répondre.
 const SECTIONS = [
@@ -48,8 +53,9 @@ const SECTIONS = [
 ] as const;
 
 export const FaqPage = () => {
-  const { t } = useTranslation('faq');
+  const { t } = useTranslation(['faq', 'common']);
   const dispatch = useAppDispatch();
+  const { texts, error, retry } = useRentalTerms();
 
   // Les réponses n'utilisent chacune qu'une partie de ces balises ; Trans
   // ignore celles qu'une traduction ne cite pas.
@@ -88,7 +94,17 @@ export const FaqPage = () => {
         ))}
       </nav>
 
-      {SECTIONS.map((section) => (
+      {texts === null && error !== null && (
+        <Notice tone="error" title={t('common:error.title')} className="mt-12">
+          {error}
+          <Button size="sm" variant="outline" onClick={retry} className="mt-3">
+            {t('common:action.retry')}
+          </Button>
+        </Notice>
+      )}
+      {texts === null && error === null && <Loader />}
+
+      {texts !== null && SECTIONS.map((section) => (
         <section
           key={section.id}
           id={section.id}
@@ -96,7 +112,7 @@ export const FaqPage = () => {
           className="mt-12 scroll-mt-24"
         >
           <h2 id={`${section.id}-titre`} className="font-display text-xl font-bold tracking-tight text-fg">
-            {t(section.title)}
+            {t(`faq:${section.title}`)}
           </h2>
           <div className="mt-4 flex flex-col gap-2.5">
             {section.questions.map((question) => (
@@ -105,14 +121,19 @@ export const FaqPage = () => {
                 className="group rounded-2xl border border-line bg-bg-raised transition-colors open:border-line-strong"
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-5 py-4 text-base font-medium text-fg [&::-webkit-details-marker]:hidden">
-                  {t(`q.${question}.question`)}
+                  {t(`faq:q.${question}.question`)}
                   <ChevronDown
                     className="size-5 shrink-0 text-fg-subtle transition-transform duration-200 group-open:rotate-180"
                     aria-hidden="true"
                   />
                 </summary>
                 <p className="px-5 pb-5 text-[0.95rem] leading-relaxed text-fg-muted">
-                  <Trans t={t} i18nKey={`q.${question}.answer`} components={components} />
+                  <Trans
+                    t={t}
+                    i18nKey={`faq:q.${question}.answer`}
+                    values={texts}
+                    components={components}
+                  />
                 </p>
               </details>
             ))}

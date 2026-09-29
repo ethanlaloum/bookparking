@@ -39,6 +39,35 @@ describe('SendDuePayouts', () => {
     sut.thenRecordedTransfersAre([{ requestId, amountInCents: 3825 }]);
   });
 
+  it('holds the money while a reported problem is open, whatever the delay', async () => {
+    const sut = createSendDuePayoutsSUT();
+    sut.givenReadyAccount();
+    sut.givenCapturedRental({ disputed: true });
+
+    const report = await sut.whenSweepingAt('2026-10-15T08:00:00.000Z');
+
+    sut.thenTransfersAre([]);
+    sut.thenRecordedTransfersAre([]);
+    expect(report).toEqual({ sent: 0, awaitingAccount: 0, refused: 0 });
+  });
+
+  it('pays the owner his share less what Bookparking refunded the driver', async () => {
+    const sut = createSendDuePayoutsSUT();
+    sut.givenReadyAccount();
+    const requestId = sut.givenCapturedRental({ refundInCents: 1500 });
+
+    await sut.whenSweepingAt(A_DAY_AFTER_THE_START);
+
+    // 38,25 € de part, 15,00 € rendus au conducteur : 23,25 € virés.
+    sut.thenTransfersAre([
+      {
+        stripeAccountId: 'acct_account-marc',
+        amountInCents: 2325,
+        idempotencyKey: `transfer-${requestId}`,
+      },
+    ]);
+  });
+
   it('pays a rental once, however many sweeps pass', async () => {
     const sut = createSendDuePayoutsSUT();
     sut.givenReadyAccount();

@@ -1,4 +1,4 @@
-# Contexte des images Railway (apps/api/Dockerfile, apps/front/Dockerfile).
+# Contexte des images Railway (apps/api/Dockerfile, apps/front/Dockerfile, apps/bo/Dockerfile).
 # Les secrets locaux ne doivent jamais entrer dans une image : Railway fournit
 # les variables à l'exécution.
 .env

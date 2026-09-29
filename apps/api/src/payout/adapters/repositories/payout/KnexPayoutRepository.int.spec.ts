@@ -40,9 +40,54 @@ describe('KnexPayoutRepository', () => {
         paymentId: `pi_${due}`,
         priceInCents: 4500,
         platformFeeInCents: 675,
+        refundInCents: 0,
         account: null,
       },
     ]);
+  });
+
+  it('releases the money on the delay frozen on the request, not on the one in force', async () => {
+    const sut = createKnexPayoutRepositorySUT();
+    const slow = await sut.givenCapturedRental(TEN_TO_TWELVE, 72);
+
+    const aDayAfter = await sut.whenReadingDueAt(A_DAY_AFTER_THE_START);
+    const justBefore = await sut.whenReadingDueAt('2026-10-12T21:59:59.999Z');
+    const threeDaysAfter = await sut.whenReadingDueAt(
+      '2026-10-12T22:00:00.000Z',
+    );
+
+    expect(aDayAfter).toEqual([]);
+    expect(justBefore).toEqual([]);
+    expect(threeDaysAfter.map((payout) => payout.requestId)).toEqual([slow]);
+    expect(
+      (await sut.repository.findPayoutsForOwner(sut.marc)).map(
+        (line) => line.releaseDelayInHours,
+      ),
+    ).toEqual([72]);
+  });
+
+  it('never reads as due the money frozen by an open report, and shows it held', async () => {
+    const sut = createKnexPayoutRepositorySUT();
+    const disputed = await sut.givenCapturedRental(TEN_TO_TWELVE);
+    await sut.givenIssue(disputed, 'OPEN', null);
+
+    const due = await sut.whenReadingDueAt('2026-10-20T08:00:00.000Z');
+    const [line] = await sut.repository.findPayoutsForOwner(sut.marc);
+
+    expect(due).toEqual([]);
+    expect([line.disputed, line.refundInCents]).toEqual([true, 0]);
+  });
+
+  it('reads the refund granted to the driver with what is due', async () => {
+    const sut = createKnexPayoutRepositorySUT();
+    const refunded = await sut.givenCapturedRental(TEN_TO_TWELVE);
+    await sut.givenIssue(refunded, 'PARTIALLY_REFUNDED', 1500);
+
+    const [due] = await sut.whenReadingDueAt(A_DAY_AFTER_THE_START);
+    const [line] = await sut.repository.findPayoutsForOwner(sut.marc);
+
+    expect([due.requestId, due.refundInCents]).toEqual([refunded, 1500]);
+    expect([line.disputed, line.refundInCents]).toEqual([false, 1500]);
   });
 
   it('reads as due at once the money of a rental whose renter has arrived', async () => {
@@ -103,6 +148,9 @@ describe('KnexPayoutRepository', () => {
         arrivedAt: null,
         transferredAt: null,
         transferredAmountInCents: null,
+        releaseDelayInHours: 24,
+        disputed: false,
+        refundInCents: 0,
       },
     ]);
     expect(await sut.repository.findPayoutsForOwner('account-paul')).toEqual(

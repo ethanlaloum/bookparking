@@ -1,0 +1,294 @@
+{
+  "console": {
+    "name": "Administration",
+    "nav": "Sections de l’administration",
+    "signOut": "Se déconnecter",
+    "section": {
+      "overview": "Aperçu",
+      "accounts": "Comptes",
+      "listings": "Annonces",
+      "requests": "Demandes",
+      "settings": "Réglages",
+      "journal": "Journal",
+      "issues": "Réclamations"
+    }
+  },
+  "revoked": {
+    "title": "Accès retiré",
+    "body": "Ce compte n’administre plus Bookparking. Reconnectez-vous avec un compte administrateur."
+  },
+  "banner": "Vous agissez au nom du site. Chaque action est journalisée avec son motif.",
+  "counts": {
+    "title": "L’état du site",
+    "hint": "Tout ce que la base contient aujourd’hui."
+  },
+  "activity": {
+    "title": "Ce qui bouge",
+    "hint": "Les vingt-quatre dernières heures, comparées aux sept derniers jours.",
+    "accelerating": "Plus vite que la semaine",
+    "window": "{{day}} en 24 h · {{week}} en 7 j"
+  },
+  "attention": {
+    "title": "À surveiller",
+    "hint": "Trois questions qui appellent une décision de votre part.",
+    "calm": "Rien ne demande votre attention en ce moment."
+  },
+  "metric": {
+    "accounts": "Comptes",
+    "accountsHint": "Comptes inscrits, suspendus compris.",
+    "suspended": "Comptes suspendus",
+    "suspendedHint": "Ils ne peuvent plus se connecter.",
+    "activeListings": "Annonces actives",
+    "activeListingsHint": "Visibles par les conducteurs.",
+    "unpublishedListings": "Annonces dépubliées",
+    "unpublishedListingsHint": "Retirées par leur propriétaire ou par l’administration.",
+    "pendingRequests": "Demandes en attente",
+    "pendingRequestsHint": "Le propriétaire n’a pas encore répondu.",
+    "confirmedRequests": "Demandes confirmées",
+    "confirmedRequestsHint": "La place est réservée pour ces dates.",
+    "cancelledRequests": "Demandes annulées",
+    "cancelledRequestsHint": "Annulées par l’administration.",
+    "revenue": "Revenus confirmés",
+    "revenueHint": "Somme des demandes confirmées, au prix figé au moment de la demande.",
+    "newAccounts": "Inscriptions",
+    "newListings": "Publications",
+    "newRequests": "Demandes reçues",
+    "staleRequests": "Demandes sans réponse",
+    "staleRequestsHint": "En attente depuis plus de vingt-quatre heures.",
+    "pricelessListings": "Annonces sans tarif",
+    "pricelessListingsHint": "Actives, mais aucun palier renseigné : personne ne peut réserver.",
+    "idleAccounts": "Comptes sans activité",
+    "idleAccountsHint": "Ni annonce ni demande depuis l’inscription.",
+    "openIssues": "Réclamations ouvertes",
+    "openIssuesHint": "L’argent de ces locations est gelé jusqu’à votre décision."
+  },
+  "accounts": {
+    "title": "Comptes",
+    "subtitle": "{{total}} compte(s), dont {{suspended}} suspendu(s).",
+    "caption": "Comptes inscrits sur Bookparking",
+    "empty": "Aucun compte inscrit.",
+    "column": {
+      "email": "Adresse e-mail",
+      "registeredAt": "Inscrit le",
+      "listings": "Annonces",
+      "requests": "Demandes",
+      "status": "État",
+      "action": "Action"
+    },
+    "status": {
+      "active": "Actif",
+      "suspended": "Suspendu"
+    },
+    "suspendedSince": "Suspendu le {{date}}",
+    "noActivity": "Sans activité",
+    "suspend": "Suspendre",
+    "lift": "Lever la suspension"
+  },
+  "listings": {
+    "title": "Annonces",
+    "subtitle": "{{total}} annonce(s), dont {{active}} active(s).",
+    "caption": "Annonces publiées sur Bookparking",
+    "empty": "Aucune annonce publiée.",
+    "column": {
+      "place": "Place",
+      "owner": "Propriétaire",
+      "vehicles": "Véhicules",
+      "pricing": "Tarifs",
+      "publishedAt": "Publiée le",
+      "status": "État",
+      "action": "Action"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "UNPUBLISHED": "Dépubliée"
+    },
+    "box": "Emplacement {{box}}",
+    "noPrice": "Sans tarif",
+    "pricing": {
+      "day": "{{price}} / jour",
+      "week": "{{price}} / semaine",
+      "month": "{{price}} / mois"
+    },
+    "unpublish": "Dépublier"
+  },
+  "requests": {
+    "title": "Demandes de location",
+    "subtitle": "{{total}} demande(s), dont {{waiting}} sans réponse depuis plus d’un jour.",
+    "caption": "Demandes de location reçues sur Bookparking",
+    "empty": "Aucune demande de location.",
+    "column": {
+      "place": "Place",
+      "owner": "Propriétaire",
+      "renter": "Conducteur",
+      "dates": "Dates",
+      "price": "Prix",
+      "status": "État",
+      "requestedAt": "Demandée le",
+      "action": "Action"
+    },
+    "status": {
+      "AWAITING_PAYMENT": "À payer",
+      "ABANDONED": "Abandonnée",
+      "PAYMENT_FAILED": "Paiement refusé",
+      "PENDING": "En attente",
+      "CONFIRMED": "Confirmée",
+      "EXPIRED": "Expirée",
+      "CANCELLED": "Annulée"
+    },
+    "range": "du {{from}} au {{to}}",
+    "waiting": "En souffrance",
+    "cancel": "Annuler la demande"
+  },
+  "moderation": {
+    "reason": "Motif",
+    "reasonHint": "Dix caractères au minimum. Ce texte est conservé : c’est lui qui permettra de répondre, dans six mois, à qui demandera pourquoi.",
+    "reasonPlaceholder": "Ce qui motive cette décision…",
+    "confirm": "Confirmer",
+    "target": "Cible : {{target}}",
+    "validation": {
+      "reason": "Le motif doit faire au moins dix caractères."
+    },
+    "unpublish": {
+      "title": "Dépublier cette annonce",
+      "body": "L’annonce disparaît des recherches. Son propriétaire n’est pas prévenu par l’application."
+    },
+    "suspend": {
+      "title": "Suspendre ce compte",
+      "body": "Le compte ne pourra plus se connecter. Ses annonces, elles, restent en ligne."
+    },
+    "lift": {
+      "title": "Lever la suspension",
+      "body": "Le compte pourra se reconnecter immédiatement."
+    },
+    "cancelRequest": {
+      "title": "Annuler cette demande",
+      "body": "Le conducteur récupère tout son argent : l’empreinte est levée, ou le paiement remboursé s’il a déjà été prélevé."
+    }
+  },
+  "settings": {
+    "subtitle": "Les conditions de location de Bookparking. Un changement ne vaut que pour les demandes faites à partir de maintenant : chaque demande déjà faite garde les conditions de son jour.",
+    "field": {
+      "platformFeePercent": {
+        "label": "Commission",
+        "unit": "% du prix payé",
+        "hint": "Ce que Bookparking garde sur chaque location. Entre {{min}} et {{max}} %, au centième près."
+      },
+      "freeCancellationHours": {
+        "label": "Annulation gratuite",
+        "unit": "heures avant le début",
+        "hint": "Le conducteur est remboursé en totalité s’il annule au moins ce délai avant le début de la location. Entre {{min}} et {{max}} heures."
+      },
+      "requestExpiryHours": {
+        "label": "Délai de réponse du loueur",
+        "unit": "heures après l’empreinte",
+        "hint": "Sans confirmation dans ce délai, la demande expire et l’empreinte est levée. Entre {{min}} et {{max}} heures : une empreinte de carte ne vit que quelques jours."
+      },
+      "payoutReleaseDelayHours": {
+        "label": "Libération de l’argent",
+        "unit": "heures après le début",
+        "hint": "L’argent part vers le loueur dès l’arrivée confirmée du conducteur, ou au plus tard ce délai après le début de la location. Entre {{min}} et {{max}} heures."
+      }
+    },
+    "validation": {
+      "integer": "Un nombre entier, entre {{min}} et {{max}}.",
+      "decimal": "Un nombre entre {{min}} et {{max}}, au centième près.",
+      "reason": "Le motif doit faire au moins 10 caractères."
+    },
+    "reason": "Motif",
+    "reasonHint": "Dix caractères au minimum. Il est inscrit au journal avec les anciennes et les nouvelles valeurs.",
+    "reasonPlaceholder": "Ce qui motive ce changement…",
+    "unchanged": "Aucune valeur n’a changé pour l’instant.",
+    "submit": "Enregistrer les réglages",
+    "saved": "Réglages enregistrés. Ils valent pour les demandes faites à partir de maintenant.",
+    "history": "Voir l’historique dans le journal"
+  },
+  "journal": {
+    "subtitle": "{{total}} action(s), de la plus récente à la plus ancienne.",
+    "filter": {
+      "label": "Filtrer le journal",
+      "all": "Tout",
+      "moderation": "Modération",
+      "settings": "Réglages"
+    },
+    "caption": "Journal des actions de l’administration",
+    "empty": "Aucune action pour l’instant.",
+    "column": {
+      "date": "Date",
+      "admin": "Administrateur",
+      "action": "Action",
+      "target": "Cible",
+      "reason": "Motif"
+    },
+    "kind": {
+      "UNPUBLISH_LISTING": "Annonce dépubliée",
+      "SUSPEND_ACCOUNT": "Compte suspendu",
+      "LIFT_ACCOUNT_SUSPENSION": "Suspension levée",
+      "CANCEL_RENTAL_REQUEST": "Demande annulée",
+      "CHANGE_PLATFORM_SETTINGS": "Réglages modifiés",
+      "RESOLVE_RENTAL_ISSUE": "Réclamation tranchée"
+    },
+    "target": {
+      "gone": "Cible supprimée depuis",
+      "settings": "Conditions de location"
+    },
+    "unknownAdmin": "Compte supprimé",
+    "setting": {
+      "platformFeePercent": "Commission",
+      "freeCancellationHours": "Annulation gratuite",
+      "requestExpiryHours": "Réponse du loueur",
+      "payoutReleaseDelayHours": "Libération de l’argent"
+    },
+    "value": {
+      "percent": "{{value}} %",
+      "hours": "{{value}} h"
+    },
+    "change": "{{from}} → {{to}}"
+  },
+  "issues": {
+    "subtitle": "{{open}} réclamation(s) à trancher, {{total}} en tout. L’argent d’une réclamation ouverte est gelé : aucun versement ne part vers le loueur avant votre décision.",
+    "empty": "Aucune réclamation pour l’instant.",
+    "reason": {
+      "NO_ACCESS": "Le conducteur ne peut pas entrer",
+      "PLACE_OCCUPIED": "La place est occupée",
+      "OTHER": "Autre problème"
+    },
+    "status": {
+      "OPEN": "À trancher",
+      "REFUNDED": "Remboursée en totalité",
+      "PARTIALLY_REFUNDED": "Remboursée en partie",
+      "DISMISSED": "Classée sans suite"
+    },
+    "reportedAt": "Signalée le {{date}}",
+    "period": "Du {{from}} au {{to}}",
+    "parties": "Conducteur : {{renter}} · Loueur : {{owner}}",
+    "unknownAccount": "compte supprimé",
+    "money": "Payé : {{price}} · Part du loueur : {{share}}",
+    "driverSays": "Ce que dit le conducteur",
+    "noMessage": "Le conducteur n’a rien ajouté au motif.",
+    "ownerSays": "Réponse du loueur",
+    "noReply": "Le loueur n’a pas encore répondu.",
+    "decided": "Tranchée le {{date}} : {{reason}}",
+    "refunded": "Rendu au conducteur : {{amount}}",
+    "action": {
+      "REFUND": "Rembourser en totalité",
+      "PARTIAL_REFUND": "Rembourser en partie",
+      "DISMISS": "Classer sans suite"
+    },
+    "dialog": {
+      "title": {
+        "REFUND": "Rembourser le conducteur en totalité",
+        "PARTIAL_REFUND": "Rembourser le conducteur en partie",
+        "DISMISS": "Classer la réclamation sans suite"
+      },
+      "body": {
+        "REFUND": "La réservation est annulée et le conducteur récupère tout ce qu’il a payé, commission comprise. Le loueur ne touche rien.",
+        "PARTIAL_REFUND": "Le montant est rendu au conducteur et pris sur la part du loueur, qui touche le reste à la date prévue.",
+        "DISMISS": "L’argent est libéré vers le loueur à la date prévue. Le conducteur n’est pas remboursé."
+      },
+      "amount": "Montant rendu au conducteur (€)",
+      "amountHint": "De 0,01 € à {{max}}, pris sur la part du loueur.",
+      "amountInvalid": "Un montant de 0,01 € à {{max}}.",
+      "confirm": "Confirmer la décision"
+    }
+  }
+}

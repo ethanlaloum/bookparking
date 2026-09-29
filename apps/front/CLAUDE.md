@@ -24,6 +24,31 @@ change côté api casse la compilation du front plutôt que sa production.
   `import.meta` (seuls les adaptateurs du front y ont droit — le mobile a les siens), et un
   nouveau port exige un adaptateur dans `apps/mobile/src/store/createMobileStore.ts`.
 
+- **Les conditions de location ne s'écrivent jamais en dur.** La FAQ, les conditions d'utilisation et
+  « Versements » citent le délai de réponse du loueur, l'annulation gratuite, la commission et la
+  libération de l'argent : ce sont des réglages du back-office. `useRentalTerms` relit
+  `GET /rental-terms` (hexagone `app/rental-terms/`) à chaque page qui les cite, et la page attend la
+  réponse plutôt que d'afficher un chiffre périmé ; « Versements » les lit dans `GET /payout`
+  (`feePercent`, `releaseDelayHours`). Les heures passent par `common:unit.hour` (pluriel i18next).
+
+- **Une réclamation se fait depuis « Mes réservations », et l'api dit quand.** Le bouton
+  « Signaler un problème » ne s'affiche que si `issueReportable` est vrai : l'écran ne recalcule pas
+  la fenêtre (pendant la location, avant l'arrivée confirmée et avant le virement). `canConfirmArrival`
+  cache « Je suis arrivé » tant qu'une réclamation est ouverte, et le loueur répond une fois
+  (`isIssueAnswerable`). L'état de la réponse est rangé par demande (`answerIssueStateFor`) : ne pas
+  le lire par un sélecteur qui fabrique un objet par ligne, react-redux relancerait le rendu à chaque
+  appel.
+
+- **Le back-office (`apps/bo`) emprunte aussi au front, mais ses composants plutôt que son store.**
+  Il importe `src/components/ui/*`, `Notice`, `EmptyState`, `MetricTile`, `ParkingMark`,
+  `src/lib/{cn,format,http}`, `src/store/CommonState.ts`, `src/api/schema.d.ts`, `src/index.css`,
+  les prédicats de `app/account/domain/entities/Account.ts` et l'hexagone de session de
+  `app/auth` (entité, ports, `BookparkingRxSessionGateway`, `LocalStorageSessionStore`). Après
+  toute modification de ces fichiers, lancer aussi `pnpm --filter bookparking-bo exec tsc -b`.
+  Un composant partagé ne doit jamais importer `lib/i18n` (un `useTranslation` suffit) : chargé
+  depuis le back-office, il y initialiserait une seconde instance d'i18next — voir
+  `apps/bo/CLAUDE.md`.
+
 - **L'avatar est l'un de cinq pilotes, choisi à l'inscription puis dans « Réglages ».**
   L'api garde son nom (`SIGNAL`, `MARKING`, `RIVIERA`, `ASPHALT`, `CHECKERED` ; `SIGNAL` pour les
   comptes d'avant) : `AVATARS` du front doit rester la liste de l'api, dans l'ordre de l'écran.
@@ -532,7 +557,7 @@ prélevé avant que le propriétaire confirme. Le front ne voit jamais une carte
   `requestRentalEpic` le traduit en message, et c'est aussi ce qui se verrait pendant un déploiement
   où le front serait en avance sur l'api.
 - **Sept statuts et sept états d'argent viennent du contrat.** Toute table indexée par statut
-  (`TONE`, `countByStatus`, les libellés `account:status` et `admin:requests.status`) doit les couvrir
+  (`TONE`, `countByStatus`, les libellés `account:status`, et `admin:requests.status` dans `apps/bo`) doit les couvrir
   tous — `tsc` le rappelle, à condition que la table soit typée `Record<RentalRequestStatus, …>`.
 
 ## L'annulation d'une réservation (SPEC-005)
@@ -540,7 +565,7 @@ prélevé avant que le propriétaire confirme. Le front ne voit jamais une carte
 - **`cancellationTermsOf` dit ce que coûte l'annulation avant qu'on la confirme, et l'api reste le
   juge.** Le partage est le même que `moneyAfterCancellation` côté api ; si les deux divergent, la
   fenêtre promettrait un remboursement que l'api refuserait. L'instant de comparaison est figé au
-  montage de la page (`useMemo`, comme `AdminRequestsPanel`) : une page restée ouverte peut proposer
+  montage de la page (`useMemo`, comme `AdminRequestsPanel` d'`apps/bo`) : une page restée ouverte peut proposer
   une annulation devenue impossible, et l'api répond alors 409.
 - **Un seul bouton « Annuler » par ligne, mais deux boutons dont le nom commence par « Annuler »
   quand la fenêtre est ouverte.** Le page object e2e désigne celui de la ligne avec `exact: true`.
@@ -548,94 +573,12 @@ prélevé avant que le propriétaire confirme. Le front ne voit jamais une carte
   que l'effet sur l'argent, jamais la demande. Oublier cette relecture laisse la ligne afficher une
   réservation active — seul le barreau e2e le voit.
 
-## L'administration du site vit ici, et pas ailleurs
+## L'administration du site ne vit plus ici
 
-Une `apps/bo` séparée a existé le temps d'une session, puis a été repliée dans cette app :
-les écrans de modération sont quatre onglets de `/compte`, sous une étiquette ambre
-« Administration du site », et l'hexagone `src/app/back-office/` est un contexte comme
-`listing` ou `rental`. Les quatre panneaux sont chargés par `lazy()` : leur code part dans
-quatre fragments à part, qu'un conducteur ordinaire ne télécharge jamais.
-
-- **L'api ne dit nulle part qu'un compte administre le site.**
-  `POST /session` rend un jeton, rien de plus : pas de rôle, pas de drapeau. Le seul signal
-  est `GET /admin/access`, qui répond 204 ou 403 sans corps — `AdminGuard` relit
-  `back_office_admins` à chaque appel, si bien qu'une révocation prend effet immédiatement.
-  `AccountPage` la sonde au montage, `RealBackOfficeGateway` traduit le statut HTTP en
-  `BackOfficeError` porteuse d'un `kind`, et `BackOfficeSlice` fait basculer `access` en
-  `denied` sur `forbidden` — jamais sur une panne réseau, qui laisse `unknown` : un câble
-  débranché ne doit pas conclure qu'un administrateur n'en est pas un.
-  Ne pas mettre ce droit dans le jeton pour économiser un appel : ce serait exactement le
-  sursis que l'api refuse.
-
-- **`DELETE /admin/accounts/:id/suspension` porte un corps.**
-  Lever une suspension est une action de modération comme les trois autres, et l'api lui
-  demande le même motif. C'est la seule raison pour laquelle `HttpClient.delete` prend un
-  `body` : le retirer rendrait 400 sur la seule action qui lève une sanction.
-
-- **Les quatre epics de modération sont en `concatMap`, et c'est délibéré.**
-  `exhaustMap` — le défaut partout ailleurs — laisserait tomber la seconde dépublication sans
-  rien dire, alors qu'elle porte sur une autre annonce. Prouvé par
-  `unpublishListingEpic.unit.spec.ts` (« honore deux dépublications de suite »).
-
-- **Chaque action de modération relit sa liste *et* le tableau de bord d'administration.**
-  L'api répond 204 sans corps : rien ne revient qu'on puisse insérer. Suspendre un compte
-  change `suspendedAccounts` autant que la ligne du tableau. Oublier `readOverviewRequested`
-  donnerait un aperçu qui ment jusqu'au prochain F5.
-
-- **Trois prédicats sont des reports ligne à ligne de `attentionOverview` côté api.**
-  `hasNoActivity` (`AdminAccount.ts`), `hasNoPrice` (`AdminListing.ts`) et `hasWaitedOverADay`
-  (`AdminRentalRequest.ts`) rejouent en TypeScript les trois sous-requêtes de
-  `KnexBackOfficeRepository.attentionOverview`. L'aperçu affiche les compteurs de l'api, les
-  listes marquent les lignes avec ces prédicats : ils doivent dire la même chose. Si le barème
-  gagne un palier, ou si le seuil des vingt-quatre heures bouge, les deux côtés changent
-  ensemble.
-
-- **`hasWaitedOverADay` compare à un instant figé pour le rendu.**
-  L'api compare à l'instant de la requête, l'écran à l'instant du rendu : les deux peuvent
-  différer d'une demande pendant la minute où elle franchit le seuil, et c'est la seule
-  divergence acceptable. `AdminRequestsPanel` gèle `now` dans un `useMemo` — sans cela, chaque
-  ligne lirait une horloge légèrement différente.
-
-- **Un bouton n'est offert que là où l'api accepterait l'action.**
-  `unpublishListing` filtre sur `status = 'ACTIVE'`, `cancelRentalRequest` sur
-  `PENDING | CONFIRMED` : les deux rendent `false` ailleurs, ce que le cas d'usage traduit en
-  404. `isActive` et `isCancellable` reproduisent ces filtres, et les colonnes « Action »
-  restent vides pour les autres lignes.
-
-- **La modale de modération se ferme par dérivation, jamais par un `setState` dans un `useEffect`.**
-  Même règle que le surlignage du combobox, et pour la même raison : `react-hooks/set-state-in-effect`
-  refuse le second. `useModeration` compare le succès du store à l'identifiant de la cible
-  ouverte, et la remise à zéro appartient aux deux gestes de l'utilisateur — ouvrir une autre
-  modale, ou fermer celle-ci.
-
-- **Un 401 déconnecte une fois, pas quatre.**
-  Un onglet d'administration tire plusieurs lectures d'un coup ; un jeton expiré les renvoie
-  toutes en 401. `dropExpiredSessionEpic` écoute le `kind: 'session-expired'` porté par
-  n'importe quelle action d'échec et dispatche `logoutRequested`. Il ne réagit **qu'aux**
-  échecs du back-office : les epics des autres contextes ne portent pas de `kind`.
-
-- **Annuler une demande confirmée n'émet aucun remboursement**, parce que le produit ne sait
-  pas encore encaisser. `admin:moderation.cancelRequest.body` le dit à celui qui annule.
-
-- **`count` est un mot réservé d'i18next.** Passé en interpolation, il déclenche la recherche
-  des clés plurielles `_one` / `_other` et rend la clé brute quand elles n'existent pas. Les
-  sous-titres des trois listes d'administration interpolent donc `total`.
-
-- **Dans `createReducer`, tout `addCase` doit précéder le premier `addMatcher`.**
-  Le builder de RTK le refuse à l'exécution, et l'erreur ne sort qu'au premier dispatch — pas
-  à la compilation. `BackOfficeSlice` groupe ses quatre actions de modération derrière trois
-  `isAnyOf`, placés en dernier.
-
-- **`MetricTile` prend un `tone`, plus un booléen `accent`.**
-  Trois registres (`plain`, `accent`, `warn`) parce que le bloc « à surveiller » n'allume
-  l'ambre que sur un compteur non nul — trois zéros sont une bonne nouvelle, et les peindre
-  en rouge apprendrait à l'œil à ignorer la couleur.
-
-- **`TableShell` est le seul élément autorisé à déborder horizontalement**, et il le fait dans
-  son propre conteneur. Ses cellules sont en `px-3` et non `px-4` : mesuré à l'écran, la table
-  des demandes — huit colonnes — atteignait 1360 px pour 1338 px de conteneur, et son dernier
-  en-tête « Action » sortait du cadre.
-
+Elle a sa propre app, `apps/bo`, servie sur `admin.bookparking.fr`, avec sa propre connexion :
+le profil d'un administrateur est celui de n'importe quel conducteur, et le site ne sonde plus
+`GET /admin/access`. Ne pas remettre d'onglet d'administration dans `/compte` — voir
+`apps/bo/CLAUDE.md`.
 
 ## Commandes (formes sûres pour un agent)
 

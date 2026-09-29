@@ -65,6 +65,7 @@ export const PayoutsPanel = ({ summary }: { summary: PayoutSummary }) => {
   const opening = useAppSelector(selectStripePagePending);
   const error = useAppSelector(selectStripePageError);
   const fee = summary.feePercent;
+  const release = t('common:unit.hour', { count: summary.releaseDelayHours });
 
   const open = (page: 'onboarding' | 'dashboard') => dispatch(stripePageRequested({ page }));
 
@@ -72,7 +73,7 @@ export const PayoutsPanel = ({ summary }: { summary: PayoutSummary }) => {
     MISSING: {
       icon: Landmark,
       title: t('account:payouts.missingTitle'),
-      body: t('account:payouts.missingBody', { fee }),
+      body: t('account:payouts.missingBody', { fee, release }),
       action: t('account:payouts.add'),
       page: 'onboarding' as const,
       tone: 'border-accent/40 bg-accent-soft/40',

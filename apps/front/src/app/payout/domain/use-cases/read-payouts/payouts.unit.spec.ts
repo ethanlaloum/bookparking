@@ -8,6 +8,7 @@ describe('the payouts of an owner', () => {
     const summary = {
       accountStatus: 'READY' as const,
       feePercent: 15,
+      releaseDelayHours: 72,
       upcomingInCents: 3825,
       sentInCents: 0,
       payouts: [sut.aPayoutLine()],

@@ -6,11 +6,11 @@ import {
   MapPinCheck,
   LogOut,
   Moon,
-  ShieldCheck,
   SquareParking,
   Trash2,
+  TriangleAlert,
 } from 'lucide-react';
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -24,14 +24,19 @@ import {
   resetDeleteAccountState,
 } from '../app/account/domain/use-cases/delete-account/deleteAccountEpic';
 import { logoutRequested } from '../app/auth/domain/use-cases/sign-out/signOutEpic';
-import { confirmAdminAccessRequested } from '../app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '../app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
 import { readPayoutsRequested } from '../app/payout/domain/use-cases/read-payouts/readPayoutsEpic';
 import {
   canConfirmArrival,
+  isIssueAnswerable,
   moneyLabelOf,
   rentedNightCount,
 } from '../app/rental/domain/entities/RentalRequestView';
+import { answerRentalIssueRequested } from '../app/rental/domain/use-cases/answer-rental-issue/answerRentalIssueEpic';
+import {
+  reportRentalIssueRequested,
+  resetReportRentalIssue,
+} from '../app/rental/domain/use-cases/report-rental-issue/reportRentalIssueEpic';
 import { confirmArrivalRequested } from '../app/rental/domain/use-cases/confirm-arrival/confirmArrivalEpic';
 import { cancellationTermsOf } from '../app/rental/domain/entities/RentalCancellation';
 import type { RentalRequestView } from '../app/rental/domain/entities/RentalRequestView';
@@ -48,12 +53,13 @@ import { AvatarPicker } from '../components/AvatarPicker';
 import { CancelRentalDialog, type CancelRentalTarget } from '../components/CancelRentalDialog';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { EmptyState } from '../components/EmptyState';
-import { Loader } from '../components/Loader';
 import { MetricTile } from '../components/MetricTile';
 import { Notice } from '../components/Notice';
 import { OwnerListingRow } from '../components/OwnerListingRow';
 import { PayoutsPanel } from '../components/PayoutsPanel';
+import { RentalIssuePanel } from '../components/RentalIssuePanel';
 import { RentalRequestRow } from '../components/RentalRequestRow';
+import { ReportIssueDialog, type ReportIssueTarget } from '../components/ReportIssueDialog';
 import { Button } from '../components/ui/button';
 import { buttonVariants } from '../components/ui/buttonVariants';
 import { Card } from '../components/ui/card';
@@ -83,7 +89,6 @@ import {
   selectOwnEmail,
 } from '../selectors/account/accountSelectors';
 import { selectSession } from '../selectors/auth/authSelectors';
-import { selectAdminAccess } from '../selectors/back-office/backOfficeSelectors';
 import {
   selectActiveOwnerListings,
   selectOwnerListings,
@@ -91,6 +96,8 @@ import {
   selectOwnerListingsLoading,
 } from '../selectors/listing/listingSelectors';
 import {
+  answerIssueStateFor,
+  selectAnswerIssue,
   selectCancelRentalError,
   selectCancelRentalLoading,
   selectCancelledRentalRequestId,
@@ -101,6 +108,9 @@ import {
   selectReceivedRentalRequests,
   selectReceivedRentalRequestsError,
   selectReceivedRentalRequestsLoading,
+  selectReportedRentalRequestId,
+  selectReportIssueError,
+  selectReportIssueLoading,
   selectSortedMyRequests,
   selectSortedReceivedRequests,
 } from '../selectors/rental/rentalSelectors';
@@ -109,41 +119,13 @@ import { changePasswordSchema, type ChangePasswordValues } from './changePasswor
 
 const PERSONAL_TABS = ['overview', 'places', 'received', 'mine', 'payouts', 'settings'] as const;
 
-// Les quatre onglets d'administration ne sont montés que pour un compte dont
-// `GET /admin/access` a répondu 204 — et leur code n'est téléchargé qu'à ce
-// moment-là : `lazy` en fait des fragments à part, qui ne pèsent pas sur le
-// chargement du site public.
-const ADMIN_TABS = ['admin-overview', 'admin-accounts', 'admin-listings', 'admin-requests'] as const;
-
-type PersonalTab = (typeof PERSONAL_TABS)[number];
-type AdminTab = (typeof ADMIN_TABS)[number];
-type Tab = PersonalTab | AdminTab;
-
-const ADMIN_TAB_LABEL: Record<AdminTab, string> = {
-  'admin-overview': 'overview',
-  'admin-accounts': 'accounts',
-  'admin-listings': 'listings',
-  'admin-requests': 'requests',
-};
-
-const AdminOverviewPanel = lazy(async () => ({
-  default: (await import('./admin/AdminOverviewPanel')).AdminOverviewPanel,
-}));
-const AdminAccountsPanel = lazy(async () => ({
-  default: (await import('./admin/AdminAccountsPanel')).AdminAccountsPanel,
-}));
-const AdminListingsPanel = lazy(async () => ({
-  default: (await import('./admin/AdminListingsPanel')).AdminListingsPanel,
-}));
-const AdminRequestsPanel = lazy(async () => ({
-  default: (await import('./admin/AdminRequestsPanel')).AdminRequestsPanel,
-}));
+type Tab = (typeof PERSONAL_TABS)[number];
 
 const TAB_CLASS =
   'inline-flex min-h-10 cursor-pointer items-center rounded-xl px-4 text-sm font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-200';
 
 export const AccountPage = () => {
-  const { t } = useTranslation(['account', 'common', 'listing', 'admin']);
+  const { t } = useTranslation(['account', 'common', 'listing']);
   const dispatch = useAppDispatch();
   // Une notification, ou le lien d'un e-mail, ouvre l'onglet qu'elle concerne.
   const [searchParams] = useSearchParams();
@@ -164,7 +146,6 @@ export const AccountPage = () => {
   const avatarSaving = useAppSelector(selectChooseAvatarLoading);
   const avatarError = useAppSelector(selectChooseAvatarError);
   const avatarSaved = useAppSelector(selectChooseAvatarSuccess);
-  const isAdmin = useAppSelector(selectAdminAccess) === 'granted';
   const ownerListings = useAppSelector(selectOwnerListings);
   const activeListings = useAppSelector(selectActiveOwnerListings);
   const listingsLoading = useAppSelector(selectOwnerListingsLoading);
@@ -184,14 +165,27 @@ export const AccountPage = () => {
   const cancelError = useAppSelector(selectCancelRentalError);
   const cancelledId = useAppSelector(selectCancelledRentalRequestId);
   const [cancelTarget, setCancelTarget] = useState<CancelRentalTarget | null>(null);
-  // Figé pour le rendu, comme dans le panneau des demandes de l'administration :
-  // chaque ligne lit la même horloge. Une page restée ouverte peut proposer
+  // Figé pour le rendu : chaque ligne lit la même horloge. Une page restée ouverte peut proposer
   // une annulation devenue impossible ; l'api reste le juge et le dit en 409.
   const now = useMemo(() => new Date(), []);
   // La fenêtre se ferme par dérivation une fois l'annulation faite, jamais par
-  // un setState dans un effet — même règle que la modale de modération.
+  // un setState dans un effet.
   const openCancelTarget =
     cancelTarget !== null && cancelTarget.requestId !== cancelledId ? cancelTarget : null;
+
+  const [issueTarget, setIssueTarget] = useState<ReportIssueTarget | null>(null);
+  const reporting = useAppSelector(selectReportIssueLoading);
+  const reportError = useAppSelector(selectReportIssueError);
+  const reportedId = useAppSelector(selectReportedRentalRequestId);
+  // Même règle que la fenêtre d'annulation : elle se ferme par dérivation,
+  // une fois la réclamation enregistrée.
+  const openIssueTarget =
+    issueTarget !== null && issueTarget.requestId !== reportedId ? issueTarget : null;
+  const openIssueDialog = (request: RentalRequestView) => {
+    dispatch(resetReportRentalIssue());
+    setIssueTarget({ requestId: request.id, label: `${request.address} · ${request.box}` });
+  };
+  const answerIssue = useAppSelector(selectAnswerIssue);
 
   const cancelButtonFor = (request: RentalRequestView, perspective: 'renter' | 'owner') => {
     const terms = cancellationTermsOf(request, perspective, now);
@@ -237,10 +231,6 @@ export const AccountPage = () => {
   });
 
   useEffect(() => {
-    // La sonde d'administration part avec les trois lectures du tableau de
-    // bord : un 403 ne coûte rien, et c'est le seul moyen de savoir si ce
-    // compte administre le site.
-    dispatch(confirmAdminAccessRequested());
     dispatch(listOwnerListingsRequested());
     dispatch(listReceivedRentalRequestsRequested());
     dispatch(listMyRentalRequestsRequested());
@@ -298,9 +288,6 @@ export const AccountPage = () => {
         )}
       </div>
 
-      {/* Deux listes d'onglets, et non une seule coupée par une étiquette : un
-          `role="tablist"` n'admet que des onglets pour enfants, et le groupe
-          d'administration mérite son propre nom accessible. */}
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <div
           role="tablist"
@@ -325,56 +312,7 @@ export const AccountPage = () => {
             </button>
           ))}
         </div>
-
-        {isAdmin && (
-          <div className="flex flex-wrap items-center gap-1 rounded-2xl bg-warn-bg/60 p-1 ring-1 ring-warn/25 ring-inset">
-            <span
-              id="groupe-administration"
-              className="label-ticket inline-flex items-center gap-1.5 px-3 text-warn"
-            >
-              <ShieldCheck className="size-3.5" aria-hidden="true" />
-              {t('admin:group')}
-            </span>
-            <div
-              role="tablist"
-              aria-labelledby="groupe-administration"
-              className="flex flex-wrap gap-1"
-            >
-              {ADMIN_TABS.map((name) => (
-                <button
-                  key={name}
-                  role="tab"
-                  type="button"
-                  aria-selected={tab === name}
-                  onClick={() => setTab(name)}
-                  className={cn(
-                    TAB_CLASS,
-                    tab === name
-                      ? 'bg-bg-raised text-fg shadow-[var(--shadow-panel)] ring-1 ring-warn/40'
-                      : 'text-warn hover:text-fg',
-                  )}
-                >
-                  {t(`admin:tab.${ADMIN_TAB_LABEL[name]}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
-
-      {isAdmin && tab.startsWith('admin-') && (
-        <section className="mt-8">
-          <p className="mb-6 rounded-xl border border-warn/30 bg-warn-bg px-3.5 py-2.5 text-center text-xs font-medium text-warn">
-            {t('admin:banner')}
-          </p>
-          <Suspense fallback={<Loader />}>
-            {tab === 'admin-overview' && <AdminOverviewPanel />}
-            {tab === 'admin-accounts' && <AdminAccountsPanel />}
-            {tab === 'admin-listings' && <AdminListingsPanel />}
-            {tab === 'admin-requests' && <AdminRequestsPanel />}
-          </Suspense>
-        </section>
-      )}
 
       {anyError !== null && (
         <Notice tone="error" title={t('common:error.title')} className="mt-6">
@@ -473,6 +411,25 @@ export const AccountPage = () => {
                     key={request.id}
                     request={request}
                     perspective="owner"
+                    details={
+                      request.issue !== null && (
+                        <RentalIssuePanel
+                          issue={request.issue}
+                          perspective="owner"
+                          answer={
+                            isIssueAnswerable(request)
+                              ? {
+                                  ...answerIssueStateFor(answerIssue, request.id),
+                                  onAnswer: (reply) =>
+                                    dispatch(
+                                      answerRentalIssueRequested({ requestId: request.id, reply }),
+                                    ),
+                                }
+                              : undefined
+                          }
+                        />
+                      )
+                    }
                     moneyLabel={
                       request.ownerShareInCents === null
                         ? undefined
@@ -528,6 +485,11 @@ export const AccountPage = () => {
                       key={request.id}
                       request={request}
                       moneyLabel={t(`account:money.${money.key}`, { amount: money.amount })}
+                      details={
+                        request.issue !== null && (
+                          <RentalIssuePanel issue={request.issue} perspective="renter" />
+                        )
+                      }
                       action={
                         <div className="flex flex-wrap items-center gap-2">
                           {canConfirmArrival(request, now) && (
@@ -546,6 +508,16 @@ export const AccountPage = () => {
                               <CheckCircle2 className="size-3.5" aria-hidden="true" />
                               {t('account:arrival.done')}
                             </span>
+                          )}
+                          {request.issueReportable && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openIssueDialog(request)}
+                            >
+                              <TriangleAlert className="size-4" aria-hidden="true" />
+                              {t('account:issue.report')}
+                            </Button>
                           )}
                           {cancelButtonFor(request, 'renter')}
                         </div>
@@ -706,6 +678,14 @@ export const AccountPage = () => {
         error={deletionError}
         onConfirm={(password) => dispatch(deleteAccountRequested({ password }))}
         onClose={() => toggleDeletion(false)}
+      />
+      <ReportIssueDialog
+        key={openIssueTarget?.requestId ?? 'fermee'}
+        target={openIssueTarget}
+        pending={reporting}
+        error={reportError}
+        onSubmit={(requestId, report) => dispatch(reportRentalIssueRequested({ requestId, report }))}
+        onClose={() => setIssueTarget(null)}
       />
       <CancelRentalDialog
         target={openCancelTarget}

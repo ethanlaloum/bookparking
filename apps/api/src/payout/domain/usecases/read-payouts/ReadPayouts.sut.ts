@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { InMemoryPlatformSettingsReader } from '../../../../shared/platform-settings/adapters/repositories/InMemoryPlatformSettingsReader';
 import {
   InMemoryPayoutRepository,
   RentalForPayout,
@@ -16,7 +17,11 @@ const STARTS_AT = new Date('2026-10-09T22:00:00.000Z');
 export const createOwnerPayoutsSUT = () => {
   const repository = new InMemoryPayoutRepository();
   const provider = new InMemoryPayoutProvider();
-  const readPayouts = new ReadPayouts(repository, provider, 24, 15);
+  const readPayouts = new ReadPayouts(
+    repository,
+    provider,
+    new InMemoryPlatformSettingsReader(),
+  );
   const startOnboarding = new StartPayoutOnboarding(repository, provider);
   const openDashboard = new OpenPayoutDashboard(repository, provider);
   let sequence = 0;

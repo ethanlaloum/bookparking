@@ -60,10 +60,14 @@ Pour le push, il faut l'app compilée par EAS, qui porte la clé Apple du projet
   réservations, compte), la fiche `place/[id]`, l'écran `paiement/[requestId]`, et quatre
   feuilles modales (`connexion`, `inscription`, `publier`, `modifier/[id]`), plus `notifications`, ouverte par la cloche
   de Réservations et Compte. La barre d'onglets relit la cloche toutes les minutes et au retour au
-  premier plan ; une notification de loueur ouvre Compte sur « Demandes reçues » (`?onglet=`). Les quatre onglets
-  d'administration du site n'existent pas ici : l'app le dit au compte administrateur.
+  premier plan ; une notification de loueur ouvre Compte sur « Demandes reçues » (`?onglet=`). L'administration du
+  site n'existe pas ici : elle vit dans `apps/bo`, sur `admin.bookparking.fr`, et l'app n'en dit rien.
 
 ## Things that will bite you
+
+- **Les réclamations se déplient dans la carte** (`components/RentalIssue.tsx`), comme la
+  suppression du compte : l'app n'importe pas `@front/pages/rentalIssueSchemas`, qui charge l'i18n du
+  site, et recopie sa règle de longueur depuis `RentalRequestView` (`ISSUE_TEXT_*`).
 
 - **Publier et modifier une annonce partagent `components/ListingForm`**, et la conversion
   formulaire ↔ charge vient du front (`@front/lib/listingFormValues`). `modifier/[id]` lit l'annonce

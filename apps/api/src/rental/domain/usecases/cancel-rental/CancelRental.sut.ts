@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { InMemoryPlatformSettingsReader } from '../../../../shared/platform-settings/adapters/repositories/InMemoryPlatformSettingsReader';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
 import { InMemoryNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/InMemoryNotificationOutbox';
@@ -24,7 +25,9 @@ export const createCancelRentalSUT = (
     paymentGateway,
     notificationOutbox,
     new InMemoryUnitOfWork(),
-    options.freeCancellationHoursNow ?? 24,
+    new InMemoryPlatformSettingsReader().given({
+      freeCancellationHours: options.freeCancellationHoursNow ?? 24,
+    }),
   );
 
   const arrange = async (freeCancellationHours = 24): Promise<string> => {

@@ -31,8 +31,14 @@ import {
   RentalRequestStatus,
   SchemaRentalRequestRepository,
 } from './SchemaRentalRequestRepository';
+import {
+  ISSUE_COLUMNS,
+  IssueRow,
+  RENTAL_ISSUES_TABLE,
+  toIssueState,
+} from '../rental-issue/KnexRentalIssueRepository';
 
-interface ViewRow {
+interface ViewRow extends IssueRow {
   id: string;
   listing_id: string;
   renter_id: string;
@@ -53,6 +59,8 @@ interface ViewRow {
   access_description: string;
   platform_fee_in_cents: number | null;
   arrived_at: Date | string | null;
+  request_expiry_hours: number | string;
+  transferred: boolean;
 }
 
 interface ExpiredRow {
@@ -157,6 +165,14 @@ export class KnexRentalRequestRepository implements RentalRepository {
         idempotency_key: state.idempotencyKey ?? null,
         free_cancellation_until: state.freeCancellationUntil ?? null,
         platform_fee_in_cents: state.platformFeeInCents ?? null,
+        // Absents, la base applique ses défauts : seules les fixtures des
+        // tests écrivent une demande sans les délais du back-office.
+        ...(state.requestExpiryHours == null
+          ? {}
+          : { request_expiry_hours: state.requestExpiryHours }),
+        ...(state.payoutReleaseDelayHours == null
+          ? {}
+          : { payout_release_delay_hours: state.payoutReleaseDelayHours }),
       });
     } catch (error: unknown) {
       if (isIntentUniqueViolation(error))
@@ -256,15 +272,19 @@ export class KnexRentalRequestRepository implements RentalRepository {
   // an already expired row would keep rewriting updated_at for nothing. The
   // partial exclusion constraint added in 20260922130000 is what makes this
   // status change actually free the place — without it the row would still
-  // collide with every overlapping request.
-  public async expireRequestsPendingSince(
-    deadline: Date,
+  // collide with every overlapping request. Each row lapses on the delay
+  // frozen on it, never on today's setting.
+  public async expireLapsedPendingRequests(
+    now: Date,
     trx?: GenericTransaction,
   ): Promise<LapsedRentalRequest[]> {
     const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
       .where('status', RentalRequestStatus.PENDING)
       .andWhere('money_status', 'NONE')
-      .andWhere('requested_at', '<', deadline)
+      .andWhereRaw(
+        "requested_at + request_expiry_hours * interval '1 hour' < ?",
+        [now],
+      )
       .update({
         status: RentalRequestStatus.EXPIRED,
         updated_at: new Date(),
@@ -330,6 +350,16 @@ export class KnexRentalRequestRepository implements RentalRepository {
         `${this.tableName}.listing_id`,
         `${LISTINGS_TABLE}.id`,
       )
+      .leftJoin(
+        `${RENTAL_ISSUES_TABLE} as issue`,
+        'issue.rental_request_id',
+        `${this.tableName}.id`,
+      )
+      .leftJoin(
+        'owner_transfers as transfer',
+        'transfer.rental_request_id',
+        `${this.tableName}.id`,
+      )
       .where(column, value)
       .orderBy(`${this.tableName}.requested_at`, 'desc')
       .select(
@@ -353,6 +383,11 @@ export class KnexRentalRequestRepository implements RentalRepository {
         `${LISTINGS_TABLE}.access_description as access_description`,
         `${this.tableName}.platform_fee_in_cents as platform_fee_in_cents`,
         `${this.tableName}.arrived_at as arrived_at`,
+        `${this.tableName}.request_expiry_hours as request_expiry_hours`,
+        this.connection.raw(
+          '(transfer.rental_request_id IS NOT NULL) as transferred',
+        ),
+        ...ISSUE_COLUMNS('issue'),
       );
     if (trx) query.transacting(trx);
 
@@ -386,6 +421,9 @@ export class KnexRentalRequestRepository implements RentalRepository {
           ? null
           : Number(row.platform_fee_in_cents),
       arrivedAt: row.arrived_at === null ? null : new Date(row.arrived_at),
+      requestExpiryHours: Number(row.request_expiry_hours),
+      transferred: row.transferred,
+      issue: toIssueState(row, row.id),
     }));
   }
 
@@ -625,14 +663,17 @@ export class KnexRentalRequestRepository implements RentalRepository {
   // Le statut et la dette envers le conducteur changent dans le même UPDATE :
   // aucune lecture, pas même celle d'un balayage concurrent, ne peut trouver
   // une demande expirée dont l'empreinte ne serait pas marquée à lever.
-  public async expireHoldsPlacedSince(
-    deadline: Date,
+  public async expireLapsedHolds(
+    now: Date,
     trx?: GenericTransaction,
   ): Promise<LapsedRentalRequest[]> {
     const query = this.connection<SchemaRentalRequestRepository>(this.tableName)
       .where('status', RentalRequestStatus.PENDING)
       .andWhere('money_status', 'AUTHORIZED')
-      .andWhere('hold_placed_at', '<=', deadline)
+      .andWhereRaw(
+        "hold_placed_at + request_expiry_hours * interval '1 hour' <= ?",
+        [now],
+      )
       .update({
         status: RentalRequestStatus.EXPIRED,
         money_status: 'RELEASE_DUE',

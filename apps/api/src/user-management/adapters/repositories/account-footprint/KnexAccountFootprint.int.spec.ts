@@ -135,6 +135,9 @@ describe('KnexAccountFootprint', () => {
     await sut.givenPayoutAccount(PAUL.id);
     await sut.givenListingPhoto(MARC.id);
     await sut.givenListingPhoto(PAUL.id);
+    await sut.givenIssueOn(leaOnMarc);
+    await sut.givenIssueOn(marcOnPaul);
+    await sut.givenIssueOn(leaOnPaul);
 
     await sut.whenErasing(MARC);
 
@@ -153,6 +156,22 @@ describe('KnexAccountFootprint', () => {
       emailRecipients: [LEA.email],
       payoutAccounts: [PAUL.id],
       photoOwners: [PAUL.id],
+    });
+    // Marc loueur perd sa réponse, Marc conducteur son message ; ce que Léa
+    // et Paul ont écrit reste.
+    await sut.thenIssueTextsAre({
+      [leaOnMarc]: {
+        message: 'Le conducteur a écrit ceci',
+        ownerReply: null,
+      },
+      [marcOnPaul]: {
+        message: null,
+        ownerReply: 'Le loueur a répondu cela',
+      },
+      [leaOnPaul]: {
+        message: 'Le conducteur a écrit ceci',
+        ownerReply: 'Le loueur a répondu cela',
+      },
     });
   });
 });

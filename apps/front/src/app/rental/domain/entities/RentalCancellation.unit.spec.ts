@@ -27,6 +27,8 @@ const aReservation = (overrides: Partial<RentalRequestView> = {}): RentalRequest
   ownerShareInCents:
     overrides.ownerShareInCents === undefined ? null : overrides.ownerShareInCents,
   arrivedAt: overrides.arrivedAt === undefined ? null : overrides.arrivedAt,
+  issue: overrides.issue === undefined ? null : overrides.issue,
+  issueReportable: overrides.issueReportable ?? false,
 });
 
 const FIVE_DAYS_BEFORE = new Date('2026-10-05T08:00:00.000Z');

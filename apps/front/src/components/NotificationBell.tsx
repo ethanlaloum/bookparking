@@ -7,6 +7,9 @@ import {
   CreditCard,
   Hourglass,
   Inbox,
+  MessageSquareReply,
+  Scale,
+  TriangleAlert,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -51,6 +54,9 @@ const ICON: Record<NotificationKind, LucideIcon> = {
   RENTAL_CANCELLED_BY_OPERATOR: Ban,
   RENTAL_PAYMENT_FAILED: CreditCard,
   RENTAL_PAYOUT_SENT: Banknote,
+  RENTAL_ISSUE_REPORTED: TriangleAlert,
+  RENTAL_ISSUE_ANSWERED: MessageSquareReply,
+  RENTAL_ISSUE_RESOLVED: Scale,
 };
 
 const TONE_CHIP: Record<NotificationTone, string> = {

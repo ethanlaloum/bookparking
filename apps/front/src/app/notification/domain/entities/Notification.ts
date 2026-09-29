@@ -48,6 +48,9 @@ const TONES: Record<NotificationKind, NotificationTone> = {
   RENTAL_CANCELLED_BY_OPERATOR: 'negative',
   RENTAL_PAYMENT_FAILED: 'negative',
   RENTAL_PAYOUT_SENT: 'positive',
+  RENTAL_ISSUE_REPORTED: 'negative',
+  RENTAL_ISSUE_ANSWERED: 'neutral',
+  RENTAL_ISSUE_RESOLVED: 'neutral',
 };
 
 export const toneOf = (notification: Notification): NotificationTone => TONES[notification.kind];

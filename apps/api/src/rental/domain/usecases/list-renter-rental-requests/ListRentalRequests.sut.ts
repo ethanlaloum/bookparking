@@ -31,12 +31,8 @@ export const createListRentalRequestsSUT = () => {
   const rentalRepository = new InMemoryRentalRepository();
   const listRenterRentalRequests = new ListRenterRentalRequests(
     rentalRepository,
-    48,
   );
-  const listOwnerRentalRequests = new ListOwnerRentalRequests(
-    rentalRepository,
-    48,
-  );
+  const listOwnerRentalRequests = new ListOwnerRentalRequests(rentalRepository);
   let now = new Date('2026-10-05T09:00:00.000Z');
 
   const context = {

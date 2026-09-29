@@ -28,11 +28,14 @@ export const RentalRequestRow = ({
   action,
   moneyLabel,
   perspective = 'renter',
+  details,
 }: {
   request: RentalRequestView;
   action?: ReactNode;
   moneyLabel?: string;
   perspective?: 'renter' | 'owner';
+  // Sous la ligne, sur toute sa largeur : la réclamation, s'il y en a une.
+  details?: ReactNode;
 }) => {
   const { t } = useTranslation('account');
   const nights = rentedNightCount(request);
@@ -85,6 +88,8 @@ export const RentalRequestRow = ({
       {request.accessInstructions !== null && (
         <AccessInstructions instructions={request.accessInstructions} className="sm:basis-full" />
       )}
+
+      {details}
     </li>
   );
 };

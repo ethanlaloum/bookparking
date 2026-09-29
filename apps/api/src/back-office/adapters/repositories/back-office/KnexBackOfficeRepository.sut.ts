@@ -5,6 +5,7 @@ import { KnexListingRepository } from '../../../../listing/adapters/repositories
 import { ListingBuilder } from '../../../../listing/domain/builders/ListingBuilder';
 import { KnexRentalRequestRepository } from '../../../../rental/adapters/repositories/rental-request/KnexRentalRequestRepository';
 import { RentalRequest } from '../../../../rental/domain/entities/RentalRequest';
+import { KnexPlatformSettingsReader } from '../../../../shared/platform-settings/adapters/repositories/KnexPlatformSettingsReader';
 import { KnexBackOfficeRepository } from './KnexBackOfficeRepository';
 
 const BARLA = { address: '12 rue Barla, 06300 Nice', box: '12' };
@@ -41,6 +42,79 @@ export const createKnexBackOfficeRepositorySUT = () => {
   };
 
   return {
+    repository: new KnexBackOfficeRepository(connection),
+    settingsReader: new KnexPlatformSettingsReader(connection),
+
+    async givenAccount(email: string): Promise<string> {
+      const [row] = (await connection('accounts')
+        .insert({
+          email,
+          password_hash: 'stub-password-hash',
+          registered_at: new Date('2026-09-01T09:00:00.000Z'),
+        })
+        .returning('id')) as { id: string }[];
+      return row.id;
+    },
+
+    // Une réservation confirmée entre deux vrais comptes, et la réclamation du
+    // conducteur : le back-office lit leurs adresses e-mail.
+    async givenReportedRental(
+      renterId: string,
+      ownerId: string,
+      reportedAt: string,
+    ): Promise<{ requestId: string; issueId: string }> {
+      const count = (await connection('listings').count('id as n')) as {
+        n: string;
+      }[];
+      const box = `B${Number(count[0].n) + 1}`;
+      await new KnexListingRepository(connection).create(
+        new ListingBuilder()
+          .withOwnerId(ownerId)
+          .withAddress(BARLA.address)
+          .withBox(box)
+          .withAvailability({
+            from: new Date('2026-10-01T00:00:00.000Z'),
+            to: new Date('2026-12-31T00:00:00.000Z'),
+          })
+          .build(),
+      );
+      const request = RentalRequest.request({
+        renterId,
+        address: BARLA.address,
+        box,
+        days: { from: '2026-10-10', to: '2026-10-12' },
+        pricing: { dayInCents: 1500, weekInCents: null, monthInCents: null },
+        requestedAt: new Date('2026-10-01T07:00:00.000Z'),
+        platformFeePercent: 15,
+      });
+      if (Either.isLeft(request)) throw new Error('arrange failed');
+      await rentals.createRequest(request.right);
+      await rentals.markHoldPlaced(
+        request.right.id,
+        `pi_${box}`,
+        new Date('2026-10-01T07:05:00.000Z'),
+      );
+      await rentals.confirmRequest(
+        request.right.id,
+        new Date('2026-10-02T09:00:00.000Z'),
+      );
+      const [issue] = (await connection('rental_issues')
+        .insert({
+          id: connection.raw('gen_random_uuid()'),
+          rental_request_id: request.right.id,
+          reason: 'PLACE_OCCUPIED',
+          message: 'Une Clio grise est garée sur la place',
+          reported_at: new Date(reportedAt),
+        })
+        .returning('id')) as { id: string }[];
+      return { requestId: request.right.id, issueId: issue.id };
+    },
+
+    async theListingId(): Promise<string> {
+      const row = (await connection('listings').first('id')) as { id: string };
+      return row.id;
+    },
+
     async givenLeaRequestWithHoldPlaced(): Promise<string> {
       const id = await arrangeRequest();
       await rentals.markHoldPlaced(

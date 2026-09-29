@@ -66,11 +66,14 @@ export const RentalRequestRow = ({
   moneyLabel,
   action,
   perspective = 'renter',
+  details,
 }: {
   request: RentalRequestView;
   moneyLabel?: string;
   action?: ReactNode;
   perspective?: 'renter' | 'owner';
+  // Sous la ligne : la réclamation, ou le formulaire qui la fait.
+  details?: ReactNode;
 }) => {
   const { t } = useTranslation('account');
   const { colors } = useTheme();
@@ -127,6 +130,8 @@ export const RentalRequestRow = ({
       {request.accessInstructions !== null && <AccessInstructions instructions={request.accessInstructions} />}
 
       {action !== undefined && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{action}</View>}
+
+      {details}
     </View>
   );
 };

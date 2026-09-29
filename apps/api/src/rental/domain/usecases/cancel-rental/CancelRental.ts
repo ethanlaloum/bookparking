@@ -1,6 +1,7 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { PlatformSettingsReader } from '../../../../shared/platform-settings/domain/ports/PlatformSettingsReader';
 import { Notification } from '../../../../shared/notification-outbox/domain/entities/Notification';
 import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
 import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
@@ -43,7 +44,7 @@ export class CancelRental implements UseCase<
     private readonly paymentGateway: PaymentGateway,
     private readonly notificationOutbox: NotificationOutbox,
     private readonly unitOfWork: UnitOfWork,
-    private readonly freeCancellationHours: number,
+    private readonly platformSettingsReader: PlatformSettingsReader,
   ) {}
 
   public async execute(
@@ -68,7 +69,7 @@ export class CancelRental implements UseCase<
         party,
         money: summary.money,
         cancelledAt: props.cancelledAt,
-        freeCancellationUntil: this.freeCancellationUntilOf(summary),
+        freeCancellationUntil: await this.freeCancellationUntilOf(summary),
       });
 
       // L'autre partie est prévenue dans la transaction de l'annulation, et
@@ -159,13 +160,15 @@ export class CancelRental implements UseCase<
 
   // Une demande faite avant cette règle, sans échéance écrite, reçoit celle du
   // délai en vigueur ; toute autre garde celle figée à sa création.
-  private freeCancellationUntilOf(summary: RentalRequestSummary): Date {
-    return (
-      summary.freeCancellationUntil ??
-      new Date(
-        summary.startsAt.getTime() -
-          this.freeCancellationHours * 60 * 60 * 1000,
-      )
+  private async freeCancellationUntilOf(
+    summary: RentalRequestSummary,
+  ): Promise<Date> {
+    if (summary.freeCancellationUntil !== null)
+      return summary.freeCancellationUntil;
+    const { freeCancellationHours } =
+      await this.platformSettingsReader.current();
+    return new Date(
+      summary.startsAt.getTime() - freeCancellationHours * 60 * 60 * 1000,
     );
   }
 

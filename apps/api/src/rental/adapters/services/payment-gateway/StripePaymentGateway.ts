@@ -121,10 +121,13 @@ export class StripePaymentGateway implements PaymentGateway {
   public async refund(
     paymentId: string,
     idempotencyKey: string,
+    amountInCents?: number,
   ): Promise<{ refundId: string }> {
     const refund = await this.call(() =>
       this.stripe.refunds.create(
-        { payment_intent: paymentId },
+        amountInCents === undefined
+          ? { payment_intent: paymentId }
+          : { payment_intent: paymentId, amount: amountInCents },
         { idempotencyKey },
       ),
     );

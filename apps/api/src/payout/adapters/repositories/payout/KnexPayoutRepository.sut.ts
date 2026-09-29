@@ -18,10 +18,13 @@ export const createKnexPayoutRepositorySUT = () => {
   const repository = new KnexPayoutRepository(connection);
   let listed = false;
 
-  const request = async (days: {
-    from: string;
-    to: string;
-  }): Promise<string> => {
+  const request = async (
+    days: {
+      from: string;
+      to: string;
+    },
+    payoutReleaseDelayHours?: number,
+  ): Promise<string> => {
     if (!listed) {
       await new KnexListingRepository(connection).create(
         new ListingBuilder()
@@ -44,6 +47,7 @@ export const createKnexPayoutRepositorySUT = () => {
       pricing: { dayInCents: 1500, weekInCents: null, monthInCents: null },
       requestedAt: new Date('2026-10-01T07:00:00.000Z'),
       platformFeePercent: 15,
+      payoutReleaseDelayHours,
     });
     if (Either.isLeft(created)) throw new Error('arrange failed');
     await rentals.createRequest(created.right);
@@ -59,11 +63,14 @@ export const createKnexPayoutRepositorySUT = () => {
     marc: MARC,
     repository,
 
-    async givenCapturedRental(days: {
-      from: string;
-      to: string;
-    }): Promise<string> {
-      const id = await request(days);
+    async givenCapturedRental(
+      days: {
+        from: string;
+        to: string;
+      },
+      payoutReleaseDelayHours?: number,
+    ): Promise<string> {
+      const id = await request(days, payoutReleaseDelayHours);
       await rentals.confirmRequest(id, new Date('2026-10-02T09:00:00.000Z'));
       return id;
     },
@@ -73,6 +80,21 @@ export const createKnexPayoutRepositorySUT = () => {
       to: string;
     }): Promise<string> {
       return request(days);
+    },
+
+    async givenIssue(
+      requestId: string,
+      status: 'OPEN' | 'PARTIALLY_REFUNDED',
+      refundInCents: number | null,
+    ) {
+      await connection('rental_issues').insert({
+        id: `${requestId.slice(0, 24)}ffffffffffff`,
+        rental_request_id: requestId,
+        reason: 'PLACE_OCCUPIED',
+        reported_at: new Date('2026-10-10T08:00:00.000Z'),
+        status,
+        refund_in_cents: refundInCents,
+      });
     },
 
     async givenArrived(requestId: string, at: string) {
@@ -91,7 +113,7 @@ export const createKnexPayoutRepositorySUT = () => {
     },
 
     async whenReadingDueAt(now: string) {
-      return repository.findDuePayouts(new Date(now), 24, 50);
+      return repository.findDuePayouts(new Date(now), 50);
     },
   };
 };

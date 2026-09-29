@@ -11,11 +11,11 @@
   "q": {
     "howToBook": {
       "question": "How do I book a space?",
-      "answer": "Search for an address, open a space, pick your dates and continue to payment. You then place a card hold on a Stripe page, and the owner receives your request: they have 48 hours to confirm it."
+      "answer": "Search for an address, open a space, pick your dates and continue to payment. You then place a card hold on a Stripe page, and the owner receives your request: they have {{expiry}} to confirm it."
     },
     "whenCharged": {
       "question": "When is my money taken?",
-      "answer": "Only when the owner confirms. Until then, the amount is reserved on your card, not charged. If the owner does not confirm within 48 hours, the request expires, the hold is released and you pay nothing."
+      "answer": "Only when the owner confirms. Until then, the amount is reserved on your card, not charged. If the owner does not confirm within {{expiry}}, the request expires, the hold is released and you pay nothing."
     },
     "finalPrice": {
       "question": "Is the price shown the price I will pay?",
@@ -27,7 +27,7 @@
     },
     "driverCancels": {
       "question": "Can I cancel?",
-      "answer": "Yes, from “My bookings”, as long as the rental has not started. Up to 24 hours before it starts, you are refunded in full; after that, you can still cancel, but the amount charged is not refunded. Before you confirm, the cancellation window tells you what will happen."
+      "answer": "Yes, from “My bookings”, as long as the rental has not started. Up to {{freeCancellation}} before it starts, you are refunded in full; after that, you can still cancel, but the amount charged is not refunded. Before you confirm, the cancellation window tells you what will happen."
     },
     "ownerCancelsForDriver": {
       "question": "What if the owner cancels?",
@@ -55,7 +55,7 @@
     },
     "acceptRequests": {
       "question": "Do I have to accept every request?",
-      "answer": "No. You confirm the ones that suit you, from “Requests received”. A request you do not confirm expires after 48 hours, and the driver pays nothing."
+      "answer": "No. You confirm the ones that suit you, from “Requests received”. A request you do not confirm expires after {{expiry}}, and the driver pays nothing."
     },
     "ownerCancels": {
       "question": "Can I cancel a rental I already confirmed?",

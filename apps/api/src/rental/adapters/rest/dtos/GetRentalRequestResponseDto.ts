@@ -19,4 +19,19 @@ export interface GetRentalRequestResponseDto {
   // Pour le seul loueur : le prix moins la commission figée à la demande.
   ownerShareInCents: number | null;
   arrivedAt: string | null;
+  issue: RentalIssueDto | null;
+  issueReportable: boolean;
+}
+
+// Ce que les deux parties voient d'une réclamation. Le motif de la décision de
+// Bookparking reste au journal d'administration.
+export interface RentalIssueDto {
+  reason: string;
+  message: string | null;
+  reportedAt: string;
+  status: string;
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
+  refundInCents: number | null;
+  resolvedAt: string | null;
 }

@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CircleCheck, Clock3, Euro, LogOut, Moon, Plus, ShieldCheck, SquareParking, Trash2 } from 'lucide-react-native';
+import { CircleCheck, Clock3, Euro, LogOut, Moon, Plus, SquareParking, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, View } from 'react-native';
@@ -19,9 +19,8 @@ import {
   resetDeleteAccountState,
 } from '@front/app/account/domain/use-cases/delete-account/deleteAccountEpic';
 import { logoutRequested } from '@front/app/auth/domain/use-cases/sign-out/signOutEpic';
-import { confirmAdminAccessRequested } from '@front/app/back-office/domain/use-cases/confirm-admin-access/confirmAdminAccessEpic';
 import { listOwnerListingsRequested } from '@front/app/listing/domain/use-cases/list-owner-listings/listOwnerListingsEpic';
-import { rentedNightCount } from '@front/app/rental/domain/entities/RentalRequestView';
+import { isIssueAnswerable, rentedNightCount } from '@front/app/rental/domain/entities/RentalRequestView';
 import { confirmRentalRequestRequested } from '@front/app/rental/domain/use-cases/confirm-rental-request/confirmRentalRequestEpic';
 import { listReceivedRentalRequestsRequested } from '@front/app/rental/domain/use-cases/list-received-rental-requests/listReceivedRentalRequestsEpic';
 import { readPayoutsRequested } from '@front/app/payout/domain/use-cases/read-payouts/readPayoutsEpic';
@@ -46,7 +45,6 @@ import {
   selectOwnEmail,
 } from '@front/selectors/account/accountSelectors';
 import { selectIsAuthenticated, selectSession } from '@front/selectors/auth/authSelectors';
-import { selectAdminAccess } from '@front/selectors/back-office/backOfficeSelectors';
 import {
   selectActiveOwnerListings,
   selectOwnerListings,
@@ -71,6 +69,7 @@ import { ApiUnreachable } from '../../components/ApiUnreachable';
 import { Avatar } from '../../components/Avatar';
 import { AvatarPicker } from '../../components/AvatarPicker';
 import { MetricTile } from '../../components/MetricTile';
+import { RentalIssuePanel } from '../../components/RentalIssue';
 import { PayoutsSection } from '../../components/PayoutsSection';
 import { NotificationBell } from '../../components/NotificationBell';
 import { OwnerListingRow, RentalRequestRow, RowList } from '../../components/RequestRows';
@@ -90,9 +89,8 @@ const TABS = ['overview', 'places', 'received', 'payouts', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
 /**
- * Le tableau de bord du site, moins « Mes réservations » (devenu un onglet de
- * l'app) et moins les quatre onglets d'administration : la modération se fait
- * au clavier, sur le site, et l'app le dit au compte qui en a le droit.
+ * Le tableau de bord du site, moins « Mes réservations », devenu un onglet de
+ * l'app.
  */
 export default function AccountScreen() {
   const { t } = useTranslation(['account', 'common', 'mobile']);
@@ -117,7 +115,6 @@ export default function AccountScreen() {
   const session = useAppSelector(selectSession);
   const avatar = useAppSelector(selectOwnAvatar);
   const ownEmail = useAppSelector(selectOwnEmail);
-  const isAdmin = useAppSelector(selectAdminAccess) === 'granted';
   const ownerListings = useAppSelector(selectOwnerListings);
   const activeListings = useAppSelector(selectActiveOwnerListings);
   const listingsLoading = useAppSelector(selectOwnerListingsLoading);
@@ -139,9 +136,6 @@ export default function AccountScreen() {
   const moneyWaits = useAppSelector(selectMoneyWaitsForBankDetails);
 
   const refresh = useCallback(() => {
-    // La sonde d'administration part avec les lectures du tableau de bord : un
-    // 403 ne coûte rien, et c'est le seul moyen de savoir ce que peut ce compte.
-    dispatch(confirmAdminAccessRequested());
     dispatch(listOwnerListingsRequested());
     dispatch(listReceivedRentalRequestsRequested());
     dispatch(readPayoutsRequested());
@@ -318,6 +312,16 @@ export default function AccountScreen() {
                 <RentalRequestRow
                   request={request}
                   perspective="owner"
+                  details={
+                    request.issue !== null ? (
+                      <RentalIssuePanel
+                        requestId={request.id}
+                        issue={request.issue}
+                        perspective="owner"
+                        answerable={isIssueAnswerable(request)}
+                      />
+                    ) : undefined
+                  }
                   moneyLabel={
                     request.ownerShareInCents === null
                       ? undefined
@@ -357,12 +361,12 @@ export default function AccountScreen() {
         </>
       )}
 
-      {tab === 'settings' && <Settings isAdmin={isAdmin} />}
+      {tab === 'settings' && <Settings />}
     </ScrollView>
   );
 }
 
-const Settings = ({ isAdmin }: { isAdmin: boolean }) => {
+const Settings = () => {
   const { t } = useTranslation(['account', 'common', 'mobile']);
   const dispatch = useAppDispatch();
   const session = useAppSelector(selectSession);
@@ -472,9 +476,6 @@ const Settings = ({ isAdmin }: { isAdmin: boolean }) => {
       </Card>
 
       <DeleteAccount />
-
-      {/* L'étiquette ambre du site, pour le seul compte que `GET /admin/access` reconnaît. */}
-      {isAdmin && <AdminNote label={t('mobile:account.admin')} />}
     </View>
   );
 };
@@ -559,29 +560,5 @@ const DeleteAccount = () => {
         />
       )}
     </Card>
-  );
-};
-
-const AdminNote = ({ label }: { label: string }) => {
-  const { colors } = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.warnLine,
-        backgroundColor: colors.warnBg,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-      }}
-    >
-      <ShieldCheck size={16} color={colors.warn} />
-      <Text size={13} weight="medium" tone="warn" style={{ flex: 1 }}>
-        {label}
-      </Text>
-    </View>
   );
 };

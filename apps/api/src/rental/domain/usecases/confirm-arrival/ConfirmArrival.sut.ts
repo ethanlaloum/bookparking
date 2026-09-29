@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { InMemoryRentalIssueRepository } from '../../../adapters/repositories/rental-issue/InMemoryRentalIssueRepository';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { RentalRequest } from '../../entities/RentalRequest';
 import { ConfirmArrival } from './ConfirmArrival';
@@ -9,7 +10,11 @@ const LEA = 'account-lea';
 // La location du 10/10/2026 commence à 00:00, heure de Paris : 09/10 22:00 UTC.
 export const createConfirmArrivalSUT = () => {
   const rentalRepository = new InMemoryRentalRepository();
-  const confirmArrival = new ConfirmArrival(rentalRepository);
+  const rentalIssueRepository = new InMemoryRentalIssueRepository();
+  const confirmArrival = new ConfirmArrival(
+    rentalRepository,
+    rentalIssueRepository,
+  );
 
   const arrange = async (): Promise<string> => {
     const request = RentalRequest.request({
@@ -37,6 +42,34 @@ export const createConfirmArrivalSUT = () => {
         new Date('2026-10-02T09:00:00.000Z'),
       );
       return id;
+    },
+
+    givenIssue(requestId: string, status: 'OPEN' | 'DISMISSED') {
+      rentalIssueRepository.givenRental({
+        requestId,
+        renterId: LEA,
+        ownerId: 'account-marc',
+        status: 'CONFIRMED',
+        money: 'CAPTURED',
+        startsAt: new Date('2026-10-09T22:00:00.000Z'),
+        endsAt: new Date('2026-10-12T21:59:59.999Z'),
+        arrivedAt: null,
+        transferred: false,
+        paymentId: 'pi_lea',
+      });
+      rentalIssueRepository.issues.set('issue-1', {
+        id: 'issue-1',
+        requestId,
+        reason: 'NO_ACCESS',
+        message: null,
+        reportedAt: new Date('2026-10-10T08:00:00.000Z'),
+        status,
+        ownerReply: null,
+        ownerRepliedAt: null,
+        refundInCents: null,
+        resolvedAt:
+          status === 'OPEN' ? null : new Date('2026-10-10T10:00:00.000Z'),
+      });
     },
 
     async givenPendingRequest(): Promise<string> {

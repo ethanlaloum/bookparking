@@ -14,6 +14,7 @@ export interface PayoutLineResponseDto {
 export interface PayoutSummaryResponseDto {
   accountStatus: string;
   feePercent: number;
+  releaseDelayHours: number;
   upcomingInCents: number;
   sentInCents: number;
   payouts: PayoutLineResponseDto[];

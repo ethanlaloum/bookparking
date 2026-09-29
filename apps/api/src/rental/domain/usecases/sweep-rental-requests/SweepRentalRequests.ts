@@ -4,11 +4,10 @@ import { UnknownError } from '../../../../shared/error/errors/UnknownError';
 import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
 import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
-import {
-  holdExpiryDeadlineAt,
-  unpaidAbandonDeadlineAt,
-} from '../../entities/RentalMoney';
+import { unpaidAbandonDeadlineAt } from '../../entities/RentalMoney';
+import { PaymentUnavailableError } from '../../errors/PaymentUnavailableError';
 import { PaymentGateway } from '../../ports/PaymentGateway';
+import { RentalIssueRepository } from '../../ports/RentalIssueRepository';
 import { RentalRepository } from '../../ports/RentalRepository';
 import { expireLapsedRequests } from '../../services/expireLapsedRequests';
 import { settleMoneyOwed } from '../../services/settleMoneyOwed';
@@ -33,7 +32,7 @@ export class SweepRentalRequests implements UseCase<
     private readonly paymentGateway: PaymentGateway,
     private readonly notificationOutbox: NotificationOutbox,
     private readonly unitOfWork: UnitOfWork,
-    private readonly requestExpiryInHours: number,
+    private readonly rentalIssueRepository: RentalIssueRepository,
   ) {}
 
   // Les dettes sont relues après les expirations, dans le même passage : une
@@ -47,12 +46,7 @@ export class SweepRentalRequests implements UseCase<
       const abandoned = await this.rentalRepository.abandonUnpaidRequestsSince(
         unpaidAbandonDeadlineAt(props.now),
       );
-      const deadline = holdExpiryDeadlineAt(
-        props.now,
-        this.requestExpiryInHours,
-      );
       const expired = await expireLapsedRequests(
-        deadline,
         props.now,
         this.rentalRepository,
         this.notificationOutbox,
@@ -70,6 +64,23 @@ export class SweepRentalRequests implements UseCase<
         );
         if (settlement === 'SETTLED') settled += 1;
         else stillOwed += 1;
+      }
+
+      // Les remboursements partiels décidés sur une réclamation : même clé à
+      // chaque passage, jusqu'à ce que Stripe réponde.
+      for (const due of await this.rentalIssueRepository.findRefundsDue()) {
+        try {
+          const { refundId } = await this.paymentGateway.refund(
+            due.paymentId,
+            `issue-refund-${due.requestId}`,
+            due.amountInCents,
+          );
+          await this.rentalIssueRepository.markRefunded(due.issueId, refundId);
+          settled += 1;
+        } catch (error: unknown) {
+          if (!(error instanceof PaymentUnavailableError)) throw error;
+          stillOwed += 1;
+        }
       }
 
       return Either.right({ abandoned, expired, settled, stillOwed });

@@ -9,7 +9,7 @@
 // global sur environnement partagé — parce que le propriétaire est amorcé par
 // ce test seul et n'a reçu aucune autre demande. Ce sont les revenus du loueur,
 // pas le prix payé : 45 € réglés par le conducteur, moins la commission de 15 %
-// (`PLATFORM_FEE_PERCENT`, laissé à sa valeur par défaut dans la pile e2e),
+// (réglage du back-office, laissé à sa valeur par défaut dans la pile e2e),
 // soit 38,25 €.
 //
 // Sans équivalent ici, et pourquoi :

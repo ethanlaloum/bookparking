@@ -3,6 +3,10 @@ import * as request from 'supertest';
 
 import { createControllerTestApp } from '../../../../../shared/test/http/createControllerTestApp';
 import { ArrivalNotYetPossibleError } from '../../../../domain/usecases/confirm-arrival/errors/ArrivalNotYetPossibleError';
+import { InvalidIssueMessageError } from '../../../../domain/errors/InvalidIssueMessageError';
+import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequestNotFoundError';
+import { RentalIssueNotAnswerableError } from '../../../../domain/usecases/answer-rental-issue/errors/RentalIssueNotAnswerableError';
+import { RentalIssueNotReportableError } from '../../../../domain/usecases/report-rental-issue/errors/RentalIssueNotReportableError';
 import {
   A_CHECKOUT_URL,
   A_REQUEST_ID,
@@ -274,6 +278,19 @@ describe('RentalRequestController @SPEC-005', () => {
             answerBy: null,
             ownerShareInCents: null,
             arrivedAt: null,
+            issue: {
+              id: 'issue-1',
+              requestId: A_REQUEST_ID,
+              reason: 'NO_ACCESS',
+              message: null,
+              reportedAt: new Date('2026-10-10T08:00:00.000Z'),
+              status: 'OPEN',
+              ownerReply: 'Le code du portail est 4821B.',
+              ownerRepliedAt: new Date('2026-10-10T08:10:00.000Z'),
+              refundInCents: null,
+              resolvedAt: null,
+            },
+            issueReportable: false,
           },
         ]),
       );
@@ -287,6 +304,17 @@ describe('RentalRequestController @SPEC-005', () => {
       expect(response.body[0]).toMatchObject({
         accessInstructions: 'Portail 4821B, deuxième sous-sol.',
         answerBy: null,
+        issueReportable: false,
+      });
+      expect(response.body[0].issue).toEqual({
+        reason: 'NO_ACCESS',
+        message: null,
+        reportedAt: '2026-10-10T08:00:00.000Z',
+        status: 'OPEN',
+        ownerReply: 'Le code du portail est 4821B.',
+        ownerRepliedAt: '2026-10-10T08:10:00.000Z',
+        refundInCents: null,
+        resolvedAt: null,
       });
       expect(response.body[0]).not.toHaveProperty('ownerId');
       expect(sut.listRenterRentalRequests.lastCall?.renterId).toEqual(
@@ -336,6 +364,115 @@ describe('RentalRequestController @SPEC-005', () => {
 
       expect(response.status).toEqual(404);
       expect(sut.confirmArrival.calls).toHaveLength(0);
+    });
+  });
+
+  describe('POST /rental-request/:id/issue', () => {
+    it('records the report of the signed-in driver and answers 201', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      sut.reportRentalIssue.willResolve(Either.right(undefined));
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/issue`)
+        .set('Authorization', 'Bearer token')
+        .send({ reason: 'PLACE_OCCUPIED', message: 'Une voiture est garée' });
+
+      expect(response.status).toEqual(201);
+      expect(
+        sut.reportRentalIssue.calls.map(({ reportedAt: _at, ...call }) => call),
+      ).toEqual([
+        {
+          requestId: A_REQUEST_ID,
+          renterId: LEA_ACCOUNT_ID,
+          reason: 'PLACE_OCCUPIED',
+          message: 'Une voiture est garée',
+        },
+      ]);
+    });
+
+    it('answers 400 on an unknown reason, without calling the use case', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/issue`)
+        .set('Authorization', 'Bearer token')
+        .send({ reason: 'TOO_EXPENSIVE' });
+
+      expect(response.status).toEqual(400);
+      expect(sut.reportRentalIssue.calls).toHaveLength(0);
+    });
+
+    it.each([
+      [
+        new RentalIssueNotReportableError('NOT_STARTED'),
+        409,
+        'Vous pourrez signaler un problème à partir du début de la location',
+      ],
+      [
+        new InvalidIssueMessageError('required'),
+        400,
+        'Décrivez le problème en quelques mots, 10 caractères au moins',
+      ],
+      [
+        new RentalRequestNotFoundError(),
+        404,
+        "Cette demande de location n'existe pas",
+      ],
+    ])('turns %s into %s', async (error, status, message) => {
+      sut = createRentalRequestControllerSUT({ user: { id: LEA_ACCOUNT_ID } });
+      sut.reportRentalIssue.willResolve(Either.left(error));
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/issue`)
+        .set('Authorization', 'Bearer token')
+        .send({ reason: 'OTHER', message: 'court' });
+
+      expect({
+        status: response.status,
+        message: response.body.message,
+      }).toEqual({ status, message });
+    });
+  });
+
+  describe('POST /rental-request/:id/issue/answer', () => {
+    it('records the answer of the signed-in owner', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: MARC_ACCOUNT_ID } });
+      sut.answerRentalIssue.willResolve(Either.right(undefined));
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/issue/answer`)
+        .set('Authorization', 'Bearer token')
+        .send({ reply: 'Le code du portail est 4821B.' });
+
+      expect(response.status).toEqual(204);
+      expect(
+        sut.answerRentalIssue.calls.map(({ answeredAt: _at, ...call }) => call),
+      ).toEqual([
+        {
+          requestId: A_REQUEST_ID,
+          ownerId: MARC_ACCOUNT_ID,
+          reply: 'Le code du portail est 4821B.',
+        },
+      ]);
+    });
+
+    it('answers 409 when no open report awaits an answer', async () => {
+      sut = createRentalRequestControllerSUT({ user: { id: MARC_ACCOUNT_ID } });
+      sut.answerRentalIssue.willResolve(
+        Either.left(new RentalIssueNotAnswerableError()),
+      );
+      testApp = await createControllerTestApp(sut.metadata, sut.authState);
+
+      const response = await http()
+        .post(`/rental-request/${A_REQUEST_ID}/issue/answer`)
+        .set('Authorization', 'Bearer token')
+        .send({ reply: 'Le code du portail est 4821B.' });
+
+      expect(response.status).toEqual(409);
     });
   });
 });

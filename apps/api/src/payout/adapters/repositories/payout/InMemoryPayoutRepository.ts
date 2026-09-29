@@ -1,3 +1,4 @@
+import { DEFAULT_PLATFORM_SETTINGS } from '../../../../shared/platform-settings/domain/entities/PlatformSettings';
 import { OwnerPayoutView } from '../../../domain/entities/OwnerPayout';
 import { releaseAtOf } from '../../../domain/entities/OwnerPayout';
 import { PayoutAccount } from '../../../domain/entities/PayoutAccount';
@@ -22,7 +23,15 @@ export interface RentalForPayout {
   box: string;
   fromDay: string;
   toDay: string;
+  // Absent, le délai d'avant le back-office, comme le défaut de la colonne.
+  releaseDelayInHours?: number;
+  disputed?: boolean;
+  refundInCents?: number;
 }
+
+const releaseDelayOf = (rental: RentalForPayout): number =>
+  rental.releaseDelayInHours ??
+  DEFAULT_PLATFORM_SETTINGS.payoutReleaseDelayHours;
 
 export class InMemoryPayoutRepository implements PayoutRepository {
   public accounts = new Map<string, PayoutAccount>();
@@ -72,23 +81,23 @@ export class InMemoryPayoutRepository implements PayoutRepository {
           arrivedAt: rental.arrivedAt,
           transferredAt: transfer?.transferredAt ?? null,
           transferredAmountInCents: transfer?.amountInCents ?? null,
+          releaseDelayInHours: releaseDelayOf(rental),
+          disputed: rental.disputed ?? false,
+          refundInCents: rental.refundInCents ?? 0,
         };
       });
   }
 
-  public async findDuePayouts(
-    now: Date,
-    releaseDelayInHours: number,
-    limit: number,
-  ): Promise<DuePayout[]> {
+  public async findDuePayouts(now: Date, limit: number): Promise<DuePayout[]> {
     return this.rentals
       .filter((rental) => rental.captured && !this.transferOf(rental.requestId))
+      .filter((rental) => rental.disputed !== true)
       .filter(
         (rental) =>
           releaseAtOf(
             rental.startsAt,
             rental.arrivedAt,
-            releaseDelayInHours,
+            releaseDelayOf(rental),
           ).getTime() <= now.getTime(),
       )
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
@@ -101,6 +110,7 @@ export class InMemoryPayoutRepository implements PayoutRepository {
           paymentId: rental.paymentId,
           priceInCents: rental.priceInCents,
           platformFeeInCents: rental.platformFeeInCents,
+          refundInCents: rental.refundInCents ?? 0,
           account: account === undefined ? null : { ...account },
         };
       });

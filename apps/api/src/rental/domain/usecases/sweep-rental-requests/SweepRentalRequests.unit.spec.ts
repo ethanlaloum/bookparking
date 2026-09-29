@@ -1,3 +1,5 @@
+import { Either } from 'effect/index';
+
 import { createSweepRentalRequestsSUT } from './SweepRentalRequests.sut';
 
 describe('SweepRentalRequests @SPEC-004', () => {
@@ -100,6 +102,33 @@ describe('SweepRentalRequests @SPEC-004', () => {
     sut.givenStripeAnswersAgain();
     await sut.whenSweepingAt('2026-10-03T07:10:00.000Z');
     sut.thenRequestStateIs(requestId, { status: 'EXPIRED', money: 'RELEASED' });
+  });
+
+  it('refunds the part Bookparking granted on a reported problem, once, replaying the same key after an outage', async () => {
+    const sut = createSweepRentalRequestsSUT();
+    sut.givenPartialRefundDecided('request-lea', 1500);
+    sut.givenStripeDoesNotAnswer();
+
+    const duringTheOutage = await sut.whenSweepingAt(
+      '2026-10-10T10:05:00.000Z',
+    );
+    sut.thenIssueRefundIdIs(null);
+
+    sut.givenStripeAnswersAgain();
+    await sut.whenSweepingAt('2026-10-10T10:10:00.000Z');
+    await sut.whenSweepingAt('2026-10-10T10:15:00.000Z');
+
+    expect(duringTheOutage).toEqual(
+      Either.right({ abandoned: 0, expired: 0, settled: 0, stillOwed: 1 }),
+    );
+    sut.thenIssueRefundsAre([
+      {
+        paymentId: 'pi_lea',
+        idempotencyKey: 'issue-refund-request-lea',
+        amountInCents: 1500,
+      },
+    ]);
+    sut.thenIssueRefundIdIs('re_pi_lea');
   });
 
   it('sends the same idempotency key on every attempt @EX-004-34', async () => {

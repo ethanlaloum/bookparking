@@ -9,8 +9,6 @@ import {
   PayoutRepository,
 } from '../../../domain/ports/PayoutRepository';
 
-const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
-
 interface AccountRow {
   account_id: string;
   stripe_account_id: string;
@@ -78,6 +76,7 @@ export class KnexPayoutRepository implements PayoutRepository {
     const rows = (await this.connection('rental_requests as r')
       .join('listings as l', 'l.id', 'r.listing_id')
       .leftJoin('owner_transfers as t', 't.rental_request_id', 'r.id')
+      .leftJoin('rental_issues as i', 'i.rental_request_id', 'r.id')
       .where('l.owner_id', ownerId)
       .andWhere((query) =>
         query
@@ -98,6 +97,9 @@ export class KnexPayoutRepository implements PayoutRepository {
         'r.platform_fee_in_cents as platform_fee_in_cents',
         'r.period_from as period_from',
         'r.arrived_at as arrived_at',
+        'r.payout_release_delay_hours as payout_release_delay_hours',
+        'i.status as issue_status',
+        'i.refund_in_cents as refund_in_cents',
         't.transferred_at as transferred_at',
         't.amount_in_cents as transferred_amount_in_cents',
       )) as {
@@ -112,6 +114,9 @@ export class KnexPayoutRepository implements PayoutRepository {
       arrived_at: Date | string | null;
       transferred_at: Date | string | null;
       transferred_amount_in_cents: number | null;
+      payout_release_delay_hours: number | string;
+      issue_status: string | null;
+      refund_in_cents: number | string | null;
     }[];
     return rows.map((row) => ({
       requestId: row.id,
@@ -131,30 +136,34 @@ export class KnexPayoutRepository implements PayoutRepository {
         row.transferred_amount_in_cents === null
           ? null
           : Number(row.transferred_amount_in_cents),
+      releaseDelayInHours: Number(row.payout_release_delay_hours),
+      disputed: row.issue_status === 'OPEN',
+      refundInCents: Number(row.refund_in_cents ?? 0),
     }));
   }
 
   // Libérée au premier de deux événements (D-22) : l'arrivée, ou le premier
-  // instant loué plus le délai. `releaseAtOf` dit la même chose en mémoire.
-  public async findDuePayouts(
-    now: Date,
-    releaseDelayInHours: number,
-    limit: number,
-  ): Promise<DuePayout[]> {
-    const releasedIfStartedBefore = new Date(
-      now.getTime() - releaseDelayInHours * MILLISECONDS_PER_HOUR,
-    );
+  // instant loué plus le délai figé sur la demande. `releaseAtOf` dit la même
+  // chose en mémoire.
+  public async findDuePayouts(now: Date, limit: number): Promise<DuePayout[]> {
     const rows = (await this.connection('rental_requests as r')
       .join('listings as l', 'l.id', 'r.listing_id')
       .leftJoin('payout_accounts as pa', 'pa.account_id', 'l.owner_id')
       .leftJoin('owner_transfers as t', 't.rental_request_id', 'r.id')
+      .leftJoin('rental_issues as i', 'i.rental_request_id', 'r.id')
       .where('r.money_status', 'CAPTURED')
+      .andWhere((issue) =>
+        issue.whereNull('i.id').orWhereNot('i.status', 'OPEN'),
+      )
       .whereNotNull('r.payment_id')
       .whereNull('t.rental_request_id')
       .andWhere((released) =>
         released
           .where('r.arrived_at', '<=', now)
-          .orWhere('r.period_from', '<=', releasedIfStartedBefore),
+          .orWhereRaw(
+            "r.period_from + r.payout_release_delay_hours * interval '1 hour' <= ?",
+            [now],
+          ),
       )
       .orderBy([
         { column: 'r.period_from', order: 'asc' },
@@ -167,6 +176,7 @@ export class KnexPayoutRepository implements PayoutRepository {
         'r.payment_id as payment_id',
         'r.price_in_cents as price_in_cents',
         'r.platform_fee_in_cents as platform_fee_in_cents',
+        'i.refund_in_cents as refund_in_cents',
         'pa.account_id as account_id',
         'pa.stripe_account_id as stripe_account_id',
         'pa.payouts_enabled as payouts_enabled',
@@ -176,6 +186,7 @@ export class KnexPayoutRepository implements PayoutRepository {
       payment_id: string;
       price_in_cents: number | string;
       platform_fee_in_cents: number | null;
+      refund_in_cents: number | string | null;
       account_id: string | null;
       stripe_account_id: string | null;
       payouts_enabled: boolean | null;
@@ -189,6 +200,7 @@ export class KnexPayoutRepository implements PayoutRepository {
         row.platform_fee_in_cents === null
           ? null
           : Number(row.platform_fee_in_cents),
+      refundInCents: Number(row.refund_in_cents ?? 0),
       account:
         row.account_id === null || row.stripe_account_id === null
           ? null

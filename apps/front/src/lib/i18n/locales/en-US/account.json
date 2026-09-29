@@ -136,7 +136,7 @@
   },
   "payouts": {
     "missingTitle": "Get paid for your rentals",
-    "missingBody": "Bookparking charges the driver, keeps a {{fee}}% commission and sends you the rest, at the latest 24 hours after each rental starts — as soon as they arrive if they confirm it.",
+    "missingBody": "Bookparking charges the driver, keeps a {{fee}}% commission and sends you the rest, at the latest {{release}} after each rental starts — as soon as they arrive if they confirm it.",
     "stripeNote": "Your identity and IBAN are entered at Stripe, our payment provider: Bookparking never sees them.",
     "add": "Add my bank details",
     "incompleteTitle": "Stripe is checking your details",
@@ -179,5 +179,45 @@
     "done": "Your listings are no longer online and your personal data is erased. Thank you for using bookparking.",
     "home": "Back to home",
     "privacy": "What bookparking keeps, and for how long"
+  },
+  "issue": {
+    "report": "Report a problem",
+    "title": "Report a problem",
+    "intro": "Bookparking freezes the money of the rental and reviews your report. The owner is told and can answer you.",
+    "reasonLabel": "What is happening?",
+    "reason": {
+      "NO_ACCESS": "I cannot get in",
+      "PLACE_OCCUPIED": "The space is taken",
+      "OTHER": "Another problem"
+    },
+    "message": "Details",
+    "messageHint": "Optional, except for “Another problem”. The owner and Bookparking will read it.",
+    "messagePlaceholder": "The gate does not open with the code I was given…",
+    "submit": "Send",
+    "close": "Close",
+    "validation": {
+      "message": "Describe the problem in a few words, 10 characters at least.",
+      "tooLong": "2,000 characters at most."
+    },
+    "heading": "Problem reported on {{date}}: {{reason}}",
+    "status": {
+      "renter": {
+        "OPEN": "Bookparking is reviewing your report; the owner has been told.",
+        "REFUNDED": "Bookparking decided: you are fully refunded.",
+        "PARTIALLY_REFUNDED": "Bookparking decided: {{amount}} is refunded to you.",
+        "DISMISSED": "Bookparking dismissed the report."
+      },
+      "owner": {
+        "OPEN": "The driver reports a problem. The money of this rental is frozen until Bookparking decides: answer them.",
+        "REFUNDED": "Bookparking refunded the driver in full: this rental will not be paid out to you.",
+        "PARTIALLY_REFUNDED": "Bookparking refunded {{amount}} to the driver, taken from your share.",
+        "DISMISSED": "Bookparking dismissed the report: your payout goes ahead."
+      }
+    },
+    "ownerReply": "The owner’s answer",
+    "replyLabel": "Your answer to the driver",
+    "replyHint": "A single answer, 10 characters at least. The driver and Bookparking will read it.",
+    "replyPlaceholder": "The gate code changed: …",
+    "replySubmit": "Send the answer"
   }
 }

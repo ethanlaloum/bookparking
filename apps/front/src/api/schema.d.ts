@@ -776,6 +776,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire les réglages de location
+         * @description Les valeurs en vigueur et les bornes que l'api fait respecter.
+         */
+        get: operations["readPlatformSettings"];
+        put?: never;
+        /**
+         * Changer les réglages de location
+         * @description Écrit une nouvelle version, qui vaut pour les demandes faites à partir de maintenant ; les demandes déjà faites gardent les valeurs figées sur elles. Le changement est inscrit au journal d'administration avec son motif.
+         */
+        post: operations["changePlatformSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire le journal d'administration
+         * @description Les 200 dernières actions de l'administration, de la plus récente à la plus ancienne : modérations et changements de réglages, avec leur auteur, leur cible et leur motif.
+         */
+        get: operations["readAdminJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lire les conditions de location en vigueur
+         * @description Public. Les valeurs qu'une demande faite maintenant figerait : la FAQ, les conditions d'utilisation et « Versements » les citent.
+         */
+        get: operations["readRentalTerms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signaler un problème sur une réservation
+         * @description Le conducteur ne peut pas entrer, ou la place est occupée. Possible pendant la location, avant d'avoir confirmé son arrivée et avant que l'argent parte vers le loueur ; l'argent est gelé jusqu'à la décision de Bookparking, et le loueur est prévenu.
+         */
+        post: operations["reportRentalIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rental-request/{id}/issue/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Répondre à une réclamation, comme loueur
+         * @description Une seule réponse, tant que la réclamation est ouverte. Le conducteur est prévenu.
+         */
+        post: operations["answerRentalIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister les réclamations
+         * @description Les ouvertes d'abord, puis les plus récentes ; 200 au plus.
+         */
+        get: operations["listRentalIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/issues/{id}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trancher une réclamation
+         * @description Écrit la décision, inscrite au journal avec son motif, et prévient les deux parties.
+         */
+        post: operations["resolveRentalIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1001,6 +1145,9 @@ export interface components {
              * @description L'instant où le conducteur a confirmé son arrivée (`POST /rental-request/{id}/arrival`), qui libère l'argent vers le loueur.
              */
             arrivedAt: string | null;
+            issue: null | components["schemas"]["RentalIssue"];
+            /** @description Vrai pour le seul conducteur, pendant une location payée qu'il n'a pas déclarée commencée et dont l'argent n'est pas parti : il peut signaler un problème. */
+            issueReportable: boolean;
         };
         /** @description Trois blocs : les cumuls, l'activité récente, et ce qui demande une attention. */
         Overview: {
@@ -1026,6 +1173,8 @@ export interface components {
                 requestsPendingOverADay: number;
                 listingsWithoutAnyPrice: number;
                 accountsWithoutAnyActivity: number;
+                /** @description Réclamations qui attendent une décision. */
+                openRentalIssues: number;
             };
         };
         AdminAccount: {
@@ -1138,7 +1287,7 @@ export interface components {
          * @description Le moment notifié. Reçue, restée sans réponse et annulée par le conducteur vont au loueur ; acceptée, refusée, expirée, annulée par le loueur et paiement refusé vont au conducteur ; annulée par Bookparking va aux deux. Le virement parti vers son compte Stripe va au loueur.
          * @enum {string}
          */
-        NotificationKind: "RENTAL_REQUEST_RECEIVED" | "RENTAL_REQUEST_ACCEPTED" | "RENTAL_REQUEST_DECLINED" | "RENTAL_REQUEST_EXPIRED" | "RENTAL_REQUEST_UNANSWERED" | "RENTAL_CANCELLED_BY_RENTER" | "RENTAL_CANCELLED_BY_OWNER" | "RENTAL_CANCELLED_BY_OPERATOR" | "RENTAL_PAYMENT_FAILED" | "RENTAL_PAYOUT_SENT";
+        NotificationKind: "RENTAL_REQUEST_RECEIVED" | "RENTAL_REQUEST_ACCEPTED" | "RENTAL_REQUEST_DECLINED" | "RENTAL_REQUEST_EXPIRED" | "RENTAL_REQUEST_UNANSWERED" | "RENTAL_CANCELLED_BY_RENTER" | "RENTAL_CANCELLED_BY_OWNER" | "RENTAL_CANCELLED_BY_OPERATOR" | "RENTAL_PAYMENT_FAILED" | "RENTAL_PAYOUT_SENT" | "RENTAL_ISSUE_REPORTED" | "RENTAL_ISSUE_ANSWERED" | "RENTAL_ISSUE_RESOLVED";
         Notification: {
             /** Format: uuid */
             id: string;
@@ -1214,6 +1363,8 @@ export interface components {
             accountStatus: "MISSING" | "INCOMPLETE" | "READY";
             /** @description La commission en vigueur pour les nouvelles demandes. */
             feePercent: number;
+            /** @description Délai de libération en vigueur, en heures après le premier instant loué, pour les locations à venir ; chaque ligne porte déjà sa date de libération. */
+            releaseDelayHours: number;
             upcomingInCents: number;
             sentInCents: number;
             payouts: components["schemas"]["PayoutLine"][];
@@ -1238,6 +1389,119 @@ export interface components {
              * @description À recopier dans `photos` de `POST /listing` ou `PATCH /listing/{id}`.
              */
             id: string;
+        };
+        /** @description Les quatre conditions de location réglées depuis le back-office. Chacune est figée sur une demande au moment où elle est faite : une valeur changée ne vaut que pour les demandes suivantes. */
+        PlatformSettings: {
+            /** @description Commission de la plateforme, en pourcentage du prix payé par le conducteur, au centième près. */
+            platformFeePercent: number;
+            /** @description Le conducteur annule sans frais jusqu'à ce nombre d'heures avant le premier instant loué. */
+            freeCancellationHours: number;
+            /** @description Délai de réponse du loueur, compté depuis l'empreinte ; au-delà, la demande expire et l'empreinte est levée. */
+            requestExpiryHours: number;
+            /** @description L'argent est libéré vers le loueur à l'arrivée confirmée du conducteur, ou au plus tard ce nombre d'heures après le premier instant loué. */
+            payoutReleaseDelayHours: number;
+        };
+        SettingBounds: {
+            min: number;
+            max: number;
+            /** @description Décimales admises : 2 pour la commission, 0 pour les délais. */
+            decimals: number;
+        };
+        PlatformSettingsForm: {
+            settings: components["schemas"]["PlatformSettings"];
+            bounds: {
+                platformFeePercent: components["schemas"]["SettingBounds"];
+                freeCancellationHours: components["schemas"]["SettingBounds"];
+                requestExpiryHours: components["schemas"]["SettingBounds"];
+                payoutReleaseDelayHours: components["schemas"]["SettingBounds"];
+            };
+        };
+        ChangePlatformSettingsRequest: components["schemas"]["PlatformSettings"] & {
+            /** @description Motif, inscrit au journal d'administration. */
+            reason: string;
+        };
+        AdminJournalEntry: {
+            id: string;
+            /** Format: date-time */
+            actedAt: string;
+            /** @description `null` quand le compte de l'administrateur a été supprimé. */
+            adminEmail: string | null;
+            /** @enum {string} */
+            kind: "UNPUBLISH_LISTING" | "SUSPEND_ACCOUNT" | "LIFT_ACCOUNT_SUSPENSION" | "CANCEL_RENTAL_REQUEST" | "CHANGE_PLATFORM_SETTINGS" | "RESOLVE_RENTAL_ISSUE";
+            /** @enum {string} */
+            targetType: "LISTING" | "ACCOUNT" | "RENTAL_REQUEST" | "PLATFORM_SETTINGS";
+            targetId: string;
+            /** @description L'adresse d'une annonce, l'e-mail d'un compte, la place et les jours d'une demande ; `null` pour des réglages, ou quand la cible a disparu. */
+            targetLabel: string | null;
+            reason: string | null;
+            /** @description Pour un changement de réglages : la version écrite, et celle qu'elle a remplacée. */
+            settingsChange: null | {
+                before: null | components["schemas"]["PlatformSettings"];
+                after: components["schemas"]["PlatformSettings"];
+            };
+        };
+        /** @description La réclamation du conducteur sur une réservation en cours. Tant qu'elle est `OPEN`, l'argent du loueur est gelé. */
+        RentalIssue: {
+            /** @enum {string} */
+            reason: "NO_ACCESS" | "PLACE_OCCUPIED" | "OTHER";
+            message: string | null;
+            /** Format: date-time */
+            reportedAt: string;
+            /** @enum {string} */
+            status: "OPEN" | "REFUNDED" | "PARTIALLY_REFUNDED" | "DISMISSED";
+            ownerReply: string | null;
+            /** Format: date-time */
+            ownerRepliedAt: string | null;
+            /** @description Ce qui est rendu au conducteur : le prix entier pour `REFUNDED`, une part pour `PARTIALLY_REFUNDED`. */
+            refundInCents: number | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+        };
+        ReportRentalIssueRequest: {
+            /** @enum {string} */
+            reason: "NO_ACCESS" | "PLACE_OCCUPIED" | "OTHER";
+            /** @description Facultatif, sauf pour `OTHER` (10 caractères au moins). */
+            message?: string | null;
+        };
+        AnswerRentalIssueRequest: {
+            reply: string;
+        };
+        AdminRentalIssue: {
+            id: string;
+            requestId: string;
+            /** @enum {string} */
+            reason: "NO_ACCESS" | "PLACE_OCCUPIED" | "OTHER";
+            message: string | null;
+            /** Format: date-time */
+            reportedAt: string;
+            /** @enum {string} */
+            status: "OPEN" | "REFUNDED" | "PARTIALLY_REFUNDED" | "DISMISSED";
+            ownerReply: string | null;
+            /** Format: date-time */
+            ownerRepliedAt: string | null;
+            refundInCents: number | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolutionReason: string | null;
+            address: string;
+            box: string;
+            fromDay: string;
+            toDay: string;
+            priceInCents: number;
+            /** @description Le prix moins la commission : un remboursement partiel en est pris, et lui laisse au moins un centime. */
+            ownerShareInCents: number;
+            renterEmail: string | null;
+            ownerEmail: string | null;
+        };
+        ResolveRentalIssueRequest: {
+            /**
+             * @description `REFUND` annule la réservation et rend tout ; `PARTIAL_REFUND` rend `refundInCents`, pris sur la part du loueur ; `DISMISS` libère l'argent vers le loueur.
+             * @enum {string}
+             */
+            decision: "REFUND" | "PARTIAL_REFUND" | "DISMISS";
+            /** @description Pour `PARTIAL_REFUND` seulement : de 1 à la part du loueur moins un centime. */
+            refundInCents?: number | null;
+            reason: string;
         };
     };
     responses: {
@@ -2771,6 +3035,290 @@ export interface operations {
                 };
             };
             /** @description Réservation pas encore confirmée, ou location pas encore commencée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readPlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les réglages. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsForm"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    changePlatformSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePlatformSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Fait. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Champ absent, valeur hors bornes, motif trop court, ou aucune valeur changée. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readAdminJournal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le journal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminJournalEntry"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    readRentalTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les conditions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettings"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    reportRentalIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportRentalIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Enregistrée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Motif inconnu, ou message absent pour `OTHER`, ou trop long. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Aucune réservation de ce conducteur sous cet identifiant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Déjà signalée, pas encore commencée, terminée, arrivée confirmée, argent déjà versé, ou réservation non confirmée. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    answerRentalIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerRentalIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Enregistrée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Réponse trop courte ou trop longue. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Aucune réservation de ce loueur sous cet identifiant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Aucune réclamation ouverte n'attend de réponse. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    listRentalIssues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Les réclamations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRentalIssue"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    resolveRentalIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveRentalIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Tranchée. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Décision inconnue, montant hors bornes, ou motif trop court. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Réclamation inconnue. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Déjà tranchée, ou réservation déjà annulée pour un remboursement total. */
             409: {
                 headers: {
                     [name: string]: unknown;

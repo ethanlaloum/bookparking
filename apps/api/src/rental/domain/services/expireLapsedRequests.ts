@@ -9,7 +9,6 @@ import { RentalRepository } from '../ports/RentalRepository';
 // demande n'aboutira pas, le loueur qu'il a laissé passer une réservation.
 // Rend le nombre de demandes expirées.
 export const expireLapsedRequests = async (
-  deadline: Date,
   now: Date,
   rentalRepository: RentalRepository,
   notificationOutbox: NotificationOutbox,
@@ -17,8 +16,8 @@ export const expireLapsedRequests = async (
 ): Promise<number> =>
   unitOfWork.process(async (trx) => {
     const lapsed = [
-      ...(await rentalRepository.expireHoldsPlacedSince(deadline, trx)),
-      ...(await rentalRepository.expireRequestsPendingSince(deadline, trx)),
+      ...(await rentalRepository.expireLapsedHolds(now, trx)),
+      ...(await rentalRepository.expireLapsedPendingRequests(now, trx)),
     ];
     for (const request of lapsed) {
       await notificationOutbox.notify(

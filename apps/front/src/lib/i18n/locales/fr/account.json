@@ -136,7 +136,7 @@
   },
   "payouts": {
     "missingTitle": "Recevez l’argent de vos locations",
-    "missingBody": "Bookparking encaisse le conducteur, garde {{fee}} % de commission et vous vire le reste, au plus tard 24 heures après le début de chaque location — dès son arrivée s’il la confirme.",
+    "missingBody": "Bookparking encaisse le conducteur, garde {{fee}} % de commission et vous vire le reste, au plus tard {{release}} après le début de chaque location — dès son arrivée s’il la confirme.",
     "stripeNote": "Votre identité et votre IBAN se saisissent chez Stripe, notre prestataire de paiement : Bookparking ne les voit jamais.",
     "add": "Ajouter mes coordonnées bancaires",
     "incompleteTitle": "Stripe vérifie vos informations",
@@ -179,5 +179,45 @@
     "done": "Vos annonces ne sont plus en ligne et vos données personnelles sont effacées. Merci d’avoir utilisé bookparking.",
     "home": "Revenir à l’accueil",
     "privacy": "Ce que bookparking conserve, et combien de temps"
+  },
+  "issue": {
+    "report": "Signaler un problème",
+    "title": "Signaler un problème",
+    "intro": "Bookparking gèle l’argent de la location et examine votre réclamation. Le loueur est prévenu et peut vous répondre.",
+    "reasonLabel": "Que se passe-t-il ?",
+    "reason": {
+      "NO_ACCESS": "Je ne peux pas entrer",
+      "PLACE_OCCUPIED": "La place est occupée",
+      "OTHER": "Autre problème"
+    },
+    "message": "Précisions",
+    "messageHint": "Facultatif, sauf pour « Autre problème ». Le loueur et Bookparking le liront.",
+    "messagePlaceholder": "Le portail ne s’ouvre pas avec le code donné…",
+    "submit": "Envoyer",
+    "close": "Fermer",
+    "validation": {
+      "message": "Décrivez le problème en quelques mots, 10 caractères au moins.",
+      "tooLong": "2 000 caractères au plus."
+    },
+    "heading": "Problème signalé le {{date}} : {{reason}}",
+    "status": {
+      "renter": {
+        "OPEN": "Bookparking examine votre réclamation ; le loueur est prévenu.",
+        "REFUNDED": "Bookparking a tranché : vous êtes remboursé en totalité.",
+        "PARTIALLY_REFUNDED": "Bookparking a tranché : {{amount}} vous sont remboursés.",
+        "DISMISSED": "Bookparking a classé la réclamation sans suite."
+      },
+      "owner": {
+        "OPEN": "Le conducteur signale un problème. L’argent de cette location est gelé jusqu’à la décision de Bookparking : répondez-lui.",
+        "REFUNDED": "Bookparking a remboursé le conducteur en totalité : cette location ne vous sera pas versée.",
+        "PARTIALLY_REFUNDED": "Bookparking a remboursé {{amount}} au conducteur, pris sur votre part.",
+        "DISMISSED": "Bookparking a classé la réclamation sans suite : votre versement suit son cours."
+      }
+    },
+    "ownerReply": "Réponse du loueur",
+    "replyLabel": "Votre réponse au conducteur",
+    "replyHint": "Une seule réponse, 10 caractères au moins. Le conducteur et Bookparking la liront.",
+    "replyPlaceholder": "Le code du portail a changé : …",
+    "replySubmit": "Envoyer la réponse"
   }
 }

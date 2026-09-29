@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { InMemoryRentalIssueRepository } from '../../../adapters/repositories/rental-issue/InMemoryRentalIssueRepository';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
 import { InMemoryNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/InMemoryNotificationOutbox';
@@ -14,15 +15,21 @@ export const createSweepRentalRequestsSUT = () => {
   const rentalRepository = new InMemoryRentalRepository();
   const paymentGateway = new InMemoryPaymentGateway();
   const notificationOutbox = new InMemoryNotificationOutbox();
+  const rentalIssueRepository = new InMemoryRentalIssueRepository();
   const sweepRentalRequests = new SweepRentalRequests(
     rentalRepository,
     paymentGateway,
     notificationOutbox,
     new InMemoryUnitOfWork(),
-    48,
+    rentalIssueRepository,
   );
 
-  const context = { rentalRepository, paymentGateway, sweepRentalRequests };
+  const context = {
+    rentalRepository,
+    paymentGateway,
+    sweepRentalRequests,
+    rentalIssueRepository,
+  };
 
   const arrange = async (requestedAt: string): Promise<string> => {
     const request = RentalRequest.request({
@@ -74,6 +81,53 @@ export const createSweepRentalRequestsSUT = () => {
     ) {
       rentalRepository.statusById.set(requestId, 'CANCELLED');
       rentalRepository.moneyById.set(requestId, money);
+    },
+
+    givenPartialRefundDecided(requestId: string, amountInCents: number) {
+      rentalIssueRepository.givenRental({
+        requestId,
+        renterId: 'account-lea',
+        ownerId: 'account-marc',
+        status: 'CONFIRMED',
+        money: 'CAPTURED',
+        startsAt: new Date('2026-10-09T22:00:00.000Z'),
+        endsAt: new Date('2026-10-12T21:59:59.999Z'),
+        arrivedAt: null,
+        transferred: false,
+        paymentId: LEA_PAYMENT,
+      });
+      rentalIssueRepository.issues.set('issue-1', {
+        id: 'issue-1',
+        requestId,
+        reason: 'PLACE_OCCUPIED',
+        message: null,
+        reportedAt: new Date('2026-10-10T08:00:00.000Z'),
+        status: 'PARTIALLY_REFUNDED',
+        ownerReply: null,
+        ownerRepliedAt: null,
+        refundInCents: amountInCents,
+        resolvedAt: new Date('2026-10-10T10:00:00.000Z'),
+      });
+    },
+
+    thenIssueRefundsAre(
+      expected: {
+        paymentId: string;
+        idempotencyKey: string;
+        amountInCents: number;
+      }[],
+    ) {
+      expect(
+        paymentGateway.refunds.filter(
+          (refund) => refund.amountInCents !== undefined,
+        ),
+      ).toEqual(expected);
+    },
+
+    thenIssueRefundIdIs(expected: string | null) {
+      expect(rentalIssueRepository.refunds.get('issue-1') ?? null).toEqual(
+        expected,
+      );
     },
 
     givenStripeDoesNotAnswer() {

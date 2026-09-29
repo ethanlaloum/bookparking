@@ -4,11 +4,13 @@ import { i18n } from '../../../../lib/i18n';
 
 import {
   canConfirmArrival,
+  isIssueAnswerable,
   confirmedRevenueInCents,
   countByStatus,
   moneyLabelOf,
   pendingRevenueInCents,
   rentedNightCount,
+  type RentalIssue,
   type RentalRequestView,
 } from './RentalRequestView';
 
@@ -34,6 +36,8 @@ const aRequest = (overrides: Partial<RentalRequestView> = {}): RentalRequestView
   ownerShareInCents:
     overrides.ownerShareInCents === undefined ? null : overrides.ownerShareInCents,
   arrivedAt: overrides.arrivedAt === undefined ? null : overrides.arrivedAt,
+  issue: overrides.issue === undefined ? null : overrides.issue,
+  issueReportable: overrides.issueReportable ?? false,
 });
 
 describe('the owner revenue', () => {
@@ -159,4 +163,36 @@ describe('what the owner earns and when the renter says she arrived', () => {
       canConfirmArrival({ ...booking, status: 'PENDING' }, new Date('2026-10-10T08:00:00.000Z')),
     ).toEqual(false);
   });
+
+  it('hides the arrival while a reported problem freezes the money, and gives it back once dismissed', () => {
+    const booking = aRequest({ status: 'CONFIRMED', startsAt: '2026-10-09T22:00:00.000Z' });
+    const now = new Date('2026-10-10T08:00:00.000Z');
+
+    expect(canConfirmArrival({ ...booking, issue: anIssue('OPEN') }, now)).toEqual(false);
+    expect(canConfirmArrival({ ...booking, issue: anIssue('DISMISSED') }, now)).toEqual(true);
+  });
+
+  it('lets the owner answer an open report once', () => {
+    const booking = aRequest({ status: 'CONFIRMED' });
+
+    expect(isIssueAnswerable({ ...booking, issue: anIssue('OPEN') })).toEqual(true);
+    expect(
+      isIssueAnswerable({ ...booking, issue: { ...anIssue('OPEN'), ownerReply: 'Code 4821B.' } }),
+    ).toEqual(false);
+    expect(isIssueAnswerable({ ...booking, issue: anIssue('REFUNDED') })).toEqual(false);
+    expect(isIssueAnswerable(booking)).toEqual(false);
+  });
 });
+
+function anIssue(status: RentalIssue['status']): RentalIssue {
+  return {
+    reason: 'NO_ACCESS',
+    message: null,
+    reportedAt: '2026-10-10T08:00:00.000Z',
+    status,
+    ownerReply: null,
+    ownerRepliedAt: null,
+    refundInCents: status === 'REFUNDED' ? 4500 : null,
+    resolvedAt: status === 'OPEN' ? null : '2026-10-10T10:00:00.000Z',
+  };
+}

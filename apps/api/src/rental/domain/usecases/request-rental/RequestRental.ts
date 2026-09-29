@@ -1,6 +1,7 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { PlatformSettingsReader } from '../../../../shared/platform-settings/domain/ports/PlatformSettingsReader';
 import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
 import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
 import { UseCase } from '../../../../shared/use-case/UseCase';
@@ -28,8 +29,6 @@ import { DuplicateIdempotencyKeyError } from './errors/DuplicateIdempotencyKeyEr
 import { IdempotencyKeyReusedError } from './errors/IdempotencyKeyReusedError';
 import { ListingNotPublishedError } from './errors/ListingNotPublishedError';
 import { RentalRequestBeingCreatedError } from './errors/RentalRequestBeingCreatedError';
-
-const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
 
 export interface RequestedRental {
   rentalRequest: RentalRequest;
@@ -71,9 +70,7 @@ export class RequestRental implements UseCase<
     private readonly paymentGateway: PaymentGateway,
     private readonly notificationOutbox: NotificationOutbox,
     private readonly unitOfWork: UnitOfWork,
-    private readonly requestExpiryInHours: number,
-    private readonly freeCancellationHours: number,
-    private readonly platformFeePercent: number,
+    private readonly platformSettingsReader: PlatformSettingsReader,
   ) {}
 
   public async execute(
@@ -115,6 +112,9 @@ export class RequestRental implements UseCase<
       // before it means feeding a NaN period to overlaps(), where every
       // comparison is false: the place reads as free whatever is booked, and
       // the priceless request that follows is recorded.
+      // Les quatre réglages du back-office sont lus ici et figés sur la
+      // demande : un réglage changé demain ne touchera pas celle-ci.
+      const settings = await this.platformSettingsReader.current();
       const rentalRequest = RentalRequest.request({
         renterId: props.renterId,
         address: publishedListing.address,
@@ -123,8 +123,10 @@ export class RequestRental implements UseCase<
         pricing: publishedListing.pricing,
         requestedAt: props.requestedAt,
         idempotencyKey: props.idempotencyKey,
-        freeCancellationHours: this.freeCancellationHours,
-        platformFeePercent: this.platformFeePercent,
+        freeCancellationHours: settings.freeCancellationHours,
+        platformFeePercent: settings.platformFeePercent,
+        requestExpiryHours: settings.requestExpiryHours,
+        payoutReleaseDelayHours: settings.payoutReleaseDelayHours,
       });
       if (Either.isLeft(rentalRequest)) return Either.left(rentalRequest.left);
       if (
@@ -143,12 +145,7 @@ export class RequestRental implements UseCase<
       // Le balayage périodique fait déjà ce travail ; le refaire ici libère des
       // dates échues à l'instant précis où quelqu'un les veut, sans attendre
       // son prochain passage. L'argent dû, lui, reste au balayage.
-      const expiryDeadline = new Date(
-        props.requestedAt.getTime() -
-          this.requestExpiryInHours * MILLISECONDS_PER_HOUR,
-      );
       await expireLapsedRequests(
-        expiryDeadline,
         props.requestedAt,
         this.rentalRepository,
         this.notificationOutbox,

@@ -45,6 +45,18 @@ const PUSHES: Record<NotificationKind, ComposedPush> = {
     title: 'Votre versement est parti',
     body: "L'argent d'une location, commission déduite, part vers votre compte bancaire.",
   },
+  RENTAL_ISSUE_REPORTED: {
+    title: 'Un problème est signalé sur votre place',
+    body: "Le conducteur dit qu'il ne peut pas l'utiliser. Répondez-lui : l'argent reste gelé en attendant.",
+  },
+  RENTAL_ISSUE_ANSWERED: {
+    title: 'Le loueur vous a répondu',
+    body: 'Il a répondu au problème que vous avez signalé. Bookparking examine la réclamation.',
+  },
+  RENTAL_ISSUE_RESOLVED: {
+    title: 'Votre réclamation est tranchée',
+    body: 'Bookparking a pris sa décision sur le problème signalé.',
+  },
   RENTAL_PAYMENT_FAILED: {
     title: "Votre paiement n'a pas abouti",
     body: "Votre banque a refusé le paiement : la réservation n'a pas pu être confirmée.",

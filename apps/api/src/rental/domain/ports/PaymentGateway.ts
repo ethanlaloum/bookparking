@@ -23,8 +23,11 @@ export interface PaymentGateway {
   closePaymentPage(checkoutSessionId: string): Promise<void>;
   capture(paymentId: string, idempotencyKey: string): Promise<CaptureOutcome>;
   release(paymentId: string, idempotencyKey: string): Promise<ReleaseOutcome>;
+  // Sans montant, tout ce qui a été prélevé ; avec, une partie seulement — le
+  // geste que Bookparking accorde en tranchant une réclamation.
   refund(
     paymentId: string,
     idempotencyKey: string,
+    amountInCents?: number,
   ): Promise<{ refundId: string }>;
 }

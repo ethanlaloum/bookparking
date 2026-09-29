@@ -14,6 +14,8 @@ import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-re
 import { ListOwnerRentalRequests } from '../../../../domain/usecases/list-owner-rental-requests/ListOwnerRentalRequests';
 import { ListRenterRentalRequests } from '../../../../domain/usecases/list-renter-rental-requests/ListRenterRentalRequests';
 import { ConfirmArrival } from '../../../../domain/usecases/confirm-arrival/ConfirmArrival';
+import { AnswerRentalIssue } from '../../../../domain/usecases/answer-rental-issue/AnswerRentalIssue';
+import { ReportRentalIssue } from '../../../../domain/usecases/report-rental-issue/ReportRentalIssue';
 import { PresentedRentalRequest } from '../../../../domain/services/presentRentalRequest';
 import { RequestRental } from '../../../../domain/usecases/request-rental/RequestRental';
 import { RentalRequestController } from './rental-request.controller';
@@ -57,6 +59,20 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     { requestId: string; renterId: string; arrivedAt: Date },
     Either.Either<void, Error>
   >();
+  const reportRentalIssue = new UseCaseDouble<
+    {
+      requestId: string;
+      renterId: string;
+      reason: string;
+      message: string | null;
+      reportedAt: Date;
+    },
+    Either.Either<void, Error>
+  >();
+  const answerRentalIssue = new UseCaseDouble<
+    { requestId: string; ownerId: string; reply: string; answeredAt: Date },
+    Either.Either<void, Error>
+  >();
   const cancelRental = new UseCaseDouble<
     { requestId: string; accountId: string; cancelledAt: Date },
     Either.Either<string, Error>
@@ -72,6 +88,8 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
       { provide: AbandonRentalRequest, useValue: abandonRentalRequest },
       { provide: CancelRental, useValue: cancelRental },
       { provide: ConfirmArrival, useValue: confirmArrival },
+      { provide: ReportRentalIssue, useValue: reportRentalIssue },
+      { provide: AnswerRentalIssue, useValue: answerRentalIssue },
     ],
   };
 
@@ -82,6 +100,8 @@ export const createRentalRequestControllerSUT = (authState: TestAuthState) => {
     confirmRentalRequest,
     listRenterRentalRequests,
     confirmArrival,
+    reportRentalIssue,
+    answerRentalIssue,
 
     givenTheCancellationRefunds() {
       cancelRental.willResolve(Either.right('REFUNDED'));

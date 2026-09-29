@@ -50,8 +50,9 @@ export const PayoutsSection = ({ summary }: { summary: PayoutSummary }) => {
   }, [browserOpen, dispatch]);
 
   const fee = summary.feePercent;
+  const release = t('common:unit.hour', { count: summary.releaseDelayHours });
   const account = {
-    MISSING: { icon: Landmark, title: t('account:payouts.missingTitle'), body: t('account:payouts.missingBody', { fee }), action: t('account:payouts.add'), page: 'onboarding' as const },
+    MISSING: { icon: Landmark, title: t('account:payouts.missingTitle'), body: t('account:payouts.missingBody', { fee, release }), action: t('account:payouts.add'), page: 'onboarding' as const },
     INCOMPLETE: { icon: Clock3, title: t('account:payouts.incompleteTitle'), body: t('account:payouts.incompleteBody'), action: t('account:payouts.resume'), page: 'onboarding' as const },
     READY: { icon: CircleCheck, title: t('account:payouts.readyTitle'), body: t('account:payouts.readyBody', { fee }), action: t('account:payouts.dashboard'), page: 'dashboard' as const },
   }[summary.accountStatus];

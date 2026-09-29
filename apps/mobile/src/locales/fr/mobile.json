@@ -44,8 +44,7 @@
     "backToListing": "Revenir à la place"
   },
   "account": {
-    "publish": "Publier une place",
-    "admin": "L’administration du site reste sur le site web."
+    "publish": "Publier une place"
   },
   "offline": {
     "title": "L’api ne répond pas",

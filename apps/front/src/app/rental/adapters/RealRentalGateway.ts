@@ -4,6 +4,7 @@ import type { HttpClient, HttpResponse } from '../../../lib/http/HttpClient';
 import type { RentalRequestView } from '../domain/entities/RentalRequestView';
 import type {
   CancellationOutcome,
+  IssueReport,
   RentalGateway,
   RequestedRental,
   RequestRentalPayload,
@@ -47,6 +48,18 @@ export class BookparkingRxRentalGateway implements RentalGateway {
   confirmArrival(requestId: string): Observable<void> {
     return this.httpClient
       .post<void>(`/rental-request/${encodeURIComponent(requestId)}/arrival`)
+      .pipe(map(() => undefined));
+  }
+
+  reportIssue(requestId: string, report: IssueReport): Observable<void> {
+    return this.httpClient
+      .post<void>(`/rental-request/${encodeURIComponent(requestId)}/issue`, report)
+      .pipe(map(() => undefined));
+  }
+
+  answerIssue(requestId: string, reply: string): Observable<void> {
+    return this.httpClient
+      .post<void>(`/rental-request/${encodeURIComponent(requestId)}/issue/answer`, { reply })
       .pipe(map(() => undefined));
   }
 

@@ -17,10 +17,7 @@ export class ListOwnerRentalRequests implements UseCase<
   Props,
   Promise<Either.Either<PresentedRentalRequest[], UnknownError>>
 > {
-  constructor(
-    private readonly rentalRepository: RentalRepository,
-    private readonly requestExpiryInHours: number,
-  ) {}
+  constructor(private readonly rentalRepository: RentalRepository) {}
 
   public async execute(
     props: Props,
@@ -31,9 +28,7 @@ export class ListOwnerRentalRequests implements UseCase<
       return Either.right(
         views
           .filter((view) => hasReachedTheOwner(view.status))
-          .map((view) =>
-            presentRentalRequest(view, 'OWNER', now, this.requestExpiryInHours),
-          ),
+          .map((view) => presentRentalRequest(view, 'OWNER', now)),
       );
     } catch (error: unknown) {
       return Either.left(

@@ -20,10 +20,7 @@ export const createRecordPaymentEventSUT = () => {
     notificationOutbox,
     new InMemoryUnitOfWork(),
   );
-  const listOwnerRentalRequests = new ListOwnerRentalRequests(
-    rentalRepository,
-    48,
-  );
+  const listOwnerRentalRequests = new ListOwnerRentalRequests(rentalRepository);
 
   const testConstants = {
     ownerId: 'account-marc',

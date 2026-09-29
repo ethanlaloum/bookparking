@@ -30,6 +30,26 @@ export class RentalRequestMapper {
       accessInstructions: view.accessInstructions,
       ownerShareInCents: view.ownerShareInCents,
       arrivedAt: view.arrivedAt === null ? null : view.arrivedAt.toISOString(),
+      issue:
+        view.issue === null
+          ? null
+          : {
+              reason: view.issue.reason,
+              message: view.issue.message,
+              reportedAt: view.issue.reportedAt.toISOString(),
+              status: view.issue.status,
+              ownerReply: view.issue.ownerReply,
+              ownerRepliedAt:
+                view.issue.ownerRepliedAt === null
+                  ? null
+                  : view.issue.ownerRepliedAt.toISOString(),
+              refundInCents: view.issue.refundInCents,
+              resolvedAt:
+                view.issue.resolvedAt === null
+                  ? null
+                  : view.issue.resolvedAt.toISOString(),
+            },
+      issueReportable: view.issueReportable,
     };
   }
 }

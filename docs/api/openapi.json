@@ -2456,6 +2456,389 @@
           }
         }
       }
+    },
+    "/admin/settings": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "readPlatformSettings",
+        "summary": "Lire les réglages de location",
+        "description": "Les valeurs en vigueur et les bornes que l'api fait respecter.",
+        "responses": {
+          "200": {
+            "description": "Les réglages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettingsForm"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "changePlatformSettings",
+        "summary": "Changer les réglages de location",
+        "description": "Écrit une nouvelle version, qui vaut pour les demandes faites à partir de maintenant ; les demandes déjà faites gardent les valeurs figées sur elles. Le changement est inscrit au journal d'administration avec son motif.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePlatformSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Fait."
+          },
+          "400": {
+            "description": "Champ absent, valeur hors bornes, motif trop court, ou aucune valeur changée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/journal": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "readAdminJournal",
+        "summary": "Lire le journal d'administration",
+        "description": "Les 200 dernières actions de l'administration, de la plus récente à la plus ancienne : modérations et changements de réglages, avec leur auteur, leur cible et leur motif.",
+        "responses": {
+          "200": {
+            "description": "Le journal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminJournalEntry"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-terms": {
+      "get": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "readRentalTerms",
+        "summary": "Lire les conditions de location en vigueur",
+        "description": "Public. Les valeurs qu'une demande faite maintenant figerait : la FAQ, les conditions d'utilisation et « Versements » les citent.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Les conditions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettings"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-request/{id}/issue": {
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "reportRentalIssue",
+        "summary": "Signaler un problème sur une réservation",
+        "description": "Le conducteur ne peut pas entrer, ou la place est occupée. Possible pendant la location, avant d'avoir confirmé son arrivée et avant que l'argent parte vers le loueur ; l'argent est gelé jusqu'à la décision de Bookparking, et le loueur est prévenu.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRentalIssueRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Enregistrée."
+          },
+          "400": {
+            "description": "Motif inconnu, ou message absent pour `OTHER`, ou trop long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Aucune réservation de ce conducteur sous cet identifiant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà signalée, pas encore commencée, terminée, arrivée confirmée, argent déjà versé, ou réservation non confirmée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/rental-request/{id}/issue/answer": {
+      "post": {
+        "tags": [
+          "rental-request"
+        ],
+        "operationId": "answerRentalIssue",
+        "summary": "Répondre à une réclamation, comme loueur",
+        "description": "Une seule réponse, tant que la réclamation est ouverte. Le conducteur est prévenu.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRentalIssueRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Enregistrée."
+          },
+          "400": {
+            "description": "Réponse trop courte ou trop longue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Aucune réservation de ce loueur sous cet identifiant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Aucune réclamation ouverte n'attend de réponse.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/issues": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "listRentalIssues",
+        "summary": "Lister les réclamations",
+        "description": "Les ouvertes d'abord, puis les plus récentes ; 200 au plus.",
+        "responses": {
+          "200": {
+            "description": "Les réclamations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminRentalIssue"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/admin/issues/{id}/resolution": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "operationId": "resolveRentalIssue",
+        "summary": "Trancher une réclamation",
+        "description": "Écrit la décision, inscrite au journal avec son motif, et prévient les deux parties.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRentalIssueRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Tranchée."
+          },
+          "400": {
+            "description": "Décision inconnue, montant hors bornes, ou motif trop court.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Réclamation inconnue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà tranchée, ou réservation déjà annulée pour un remboursement total.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3067,7 +3450,9 @@
           "answerBy",
           "accessInstructions",
           "ownerShareInCents",
-          "arrivedAt"
+          "arrivedAt",
+          "issue",
+          "issueReportable"
         ],
         "properties": {
           "id": {
@@ -3176,6 +3561,20 @@
             ],
             "format": "date-time",
             "description": "L'instant où le conducteur a confirmé son arrivée (`POST /rental-request/{id}/arrival`), qui libère l'argent vers le loueur."
+          },
+          "issue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RentalIssue"
+              }
+            ]
+          },
+          "issueReportable": {
+            "type": "boolean",
+            "description": "Vrai pour le seul conducteur, pendant une location payée qu'il n'a pas déclarée commencée et dont l'argent n'est pas parti : il peut signaler un problème."
           }
         }
       },
@@ -3263,7 +3662,8 @@
             "required": [
               "requestsPendingOverADay",
               "listingsWithoutAnyPrice",
-              "accountsWithoutAnyActivity"
+              "accountsWithoutAnyActivity",
+              "openRentalIssues"
             ],
             "properties": {
               "requestsPendingOverADay": {
@@ -3274,6 +3674,10 @@
               },
               "accountsWithoutAnyActivity": {
                 "type": "integer"
+              },
+              "openRentalIssues": {
+                "type": "integer",
+                "description": "Réclamations qui attendent une décision."
               }
             }
           }
@@ -3612,7 +4016,10 @@
           "RENTAL_CANCELLED_BY_OWNER",
           "RENTAL_CANCELLED_BY_OPERATOR",
           "RENTAL_PAYMENT_FAILED",
-          "RENTAL_PAYOUT_SENT"
+          "RENTAL_PAYOUT_SENT",
+          "RENTAL_ISSUE_REPORTED",
+          "RENTAL_ISSUE_ANSWERED",
+          "RENTAL_ISSUE_RESOLVED"
         ],
         "description": "Le moment notifié. Reçue, restée sans réponse et annulée par le conducteur vont au loueur ; acceptée, refusée, expirée, annulée par le loueur et paiement refusé vont au conducteur ; annulée par Bookparking va aux deux. Le virement parti vers son compte Stripe va au loueur."
       },
@@ -3786,6 +4193,7 @@
         "required": [
           "accountStatus",
           "feePercent",
+          "releaseDelayHours",
           "upcomingInCents",
           "sentInCents",
           "payouts"
@@ -3803,6 +4211,10 @@
           "feePercent": {
             "type": "number",
             "description": "La commission en vigueur pour les nouvelles demandes."
+          },
+          "releaseDelayHours": {
+            "type": "integer",
+            "description": "Délai de libération en vigueur, en heures après le premier instant loué, pour les locations à venir ; chaque ligne porte déjà sa date de libération."
           },
           "upcomingInCents": {
             "type": "integer"
@@ -3873,6 +4285,482 @@
             "type": "string",
             "format": "uuid",
             "description": "À recopier dans `photos` de `POST /listing` ou `PATCH /listing/{id}`."
+          }
+        }
+      },
+      "PlatformSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "platformFeePercent",
+          "freeCancellationHours",
+          "requestExpiryHours",
+          "payoutReleaseDelayHours"
+        ],
+        "description": "Les quatre conditions de location réglées depuis le back-office. Chacune est figée sur une demande au moment où elle est faite : une valeur changée ne vaut que pour les demandes suivantes.",
+        "properties": {
+          "platformFeePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50,
+            "description": "Commission de la plateforme, en pourcentage du prix payé par le conducteur, au centième près."
+          },
+          "freeCancellationHours": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 336,
+            "description": "Le conducteur annule sans frais jusqu'à ce nombre d'heures avant le premier instant loué."
+          },
+          "requestExpiryHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 96,
+            "description": "Délai de réponse du loueur, compté depuis l'empreinte ; au-delà, la demande expire et l'empreinte est levée."
+          },
+          "payoutReleaseDelayHours": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 720,
+            "description": "L'argent est libéré vers le loueur à l'arrivée confirmée du conducteur, ou au plus tard ce nombre d'heures après le premier instant loué."
+          }
+        }
+      },
+      "SettingBounds": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "min",
+          "max",
+          "decimals"
+        ],
+        "properties": {
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "decimals": {
+            "type": "integer",
+            "description": "Décimales admises : 2 pour la commission, 0 pour les délais."
+          }
+        }
+      },
+      "PlatformSettingsForm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "settings",
+          "bounds"
+        ],
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/PlatformSettings"
+          },
+          "bounds": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platformFeePercent",
+              "freeCancellationHours",
+              "requestExpiryHours",
+              "payoutReleaseDelayHours"
+            ],
+            "properties": {
+              "platformFeePercent": {
+                "$ref": "#/components/schemas/SettingBounds"
+              },
+              "freeCancellationHours": {
+                "$ref": "#/components/schemas/SettingBounds"
+              },
+              "requestExpiryHours": {
+                "$ref": "#/components/schemas/SettingBounds"
+              },
+              "payoutReleaseDelayHours": {
+                "$ref": "#/components/schemas/SettingBounds"
+              }
+            }
+          }
+        }
+      },
+      "ChangePlatformSettingsRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PlatformSettings"
+          },
+          {
+            "type": "object",
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 10,
+                "description": "Motif, inscrit au journal d'administration."
+              }
+            }
+          }
+        ]
+      },
+      "AdminJournalEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "actedAt",
+          "adminEmail",
+          "kind",
+          "targetType",
+          "targetId",
+          "targetLabel",
+          "reason",
+          "settingsChange"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "actedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "adminEmail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`null` quand le compte de l'administrateur a été supprimé."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "UNPUBLISH_LISTING",
+              "SUSPEND_ACCOUNT",
+              "LIFT_ACCOUNT_SUSPENSION",
+              "CANCEL_RENTAL_REQUEST",
+              "CHANGE_PLATFORM_SETTINGS",
+              "RESOLVE_RENTAL_ISSUE"
+            ]
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "LISTING",
+              "ACCOUNT",
+              "RENTAL_REQUEST",
+              "PLATFORM_SETTINGS"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "targetLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "L'adresse d'une annonce, l'e-mail d'un compte, la place et les jours d'une demande ; `null` pour des réglages, ou quand la cible a disparu."
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "settingsChange": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "before",
+                  "after"
+                ],
+                "properties": {
+                  "before": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "$ref": "#/components/schemas/PlatformSettings"
+                      }
+                    ]
+                  },
+                  "after": {
+                    "$ref": "#/components/schemas/PlatformSettings"
+                  }
+                }
+              }
+            ],
+            "description": "Pour un changement de réglages : la version écrite, et celle qu'elle a remplacée."
+          }
+        }
+      },
+      "RentalIssue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "message",
+          "reportedAt",
+          "status",
+          "ownerReply",
+          "ownerRepliedAt",
+          "refundInCents",
+          "resolvedAt"
+        ],
+        "description": "La réclamation du conducteur sur une réservation en cours. Tant qu'elle est `OPEN`, l'argent du loueur est gelé.",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NO_ACCESS",
+              "PLACE_OCCUPIED",
+              "OTHER"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REFUNDED",
+              "PARTIALLY_REFUNDED",
+              "DISMISSED"
+            ]
+          },
+          "ownerReply": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerRepliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "refundInCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ce qui est rendu au conducteur : le prix entier pour `REFUNDED`, une part pour `PARTIALLY_REFUNDED`."
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ReportRentalIssueRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NO_ACCESS",
+              "PLACE_OCCUPIED",
+              "OTHER"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Facultatif, sauf pour `OTHER` (10 caractères au moins)."
+          }
+        }
+      },
+      "AnswerRentalIssueRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reply"
+        ],
+        "properties": {
+          "reply": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          }
+        }
+      },
+      "AdminRentalIssue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "requestId",
+          "reason",
+          "message",
+          "reportedAt",
+          "status",
+          "ownerReply",
+          "ownerRepliedAt",
+          "refundInCents",
+          "resolvedAt",
+          "resolutionReason",
+          "address",
+          "box",
+          "fromDay",
+          "toDay",
+          "priceInCents",
+          "ownerShareInCents",
+          "renterEmail",
+          "ownerEmail"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NO_ACCESS",
+              "PLACE_OCCUPIED",
+              "OTHER"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REFUNDED",
+              "PARTIALLY_REFUNDED",
+              "DISMISSED"
+            ]
+          },
+          "ownerReply": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerRepliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "refundInCents": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resolutionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": "string"
+          },
+          "box": {
+            "type": "string"
+          },
+          "fromDay": {
+            "type": "string"
+          },
+          "toDay": {
+            "type": "string"
+          },
+          "priceInCents": {
+            "type": "integer"
+          },
+          "ownerShareInCents": {
+            "type": "integer",
+            "description": "Le prix moins la commission : un remboursement partiel en est pris, et lui laisse au moins un centime."
+          },
+          "renterEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ResolveRentalIssueRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "REFUND",
+              "PARTIAL_REFUND",
+              "DISMISS"
+            ],
+            "description": "`REFUND` annule la réservation et rend tout ; `PARTIAL_REFUND` rend `refundInCents`, pris sur la part du loueur ; `DISMISS` libère l'argent vers le loueur."
+          },
+          "refundInCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Pour `PARTIAL_REFUND` seulement : de 1 à la part du loueur moins un centime."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10
           }
         }
       }

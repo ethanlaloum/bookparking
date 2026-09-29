@@ -44,8 +44,7 @@
     "backToListing": "Back to the space"
   },
   "account": {
-    "publish": "List a space",
-    "admin": "Site administration stays on the website."
+    "publish": "List a space"
   },
   "offline": {
     "title": "The api is not answering",

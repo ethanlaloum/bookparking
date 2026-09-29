@@ -1,6 +1,7 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { PlatformSettingsReader } from '../../../../shared/platform-settings/domain/ports/PlatformSettingsReader';
 import { Notification } from '../../../../shared/notification-outbox/domain/entities/Notification';
 import { NotificationOutbox } from '../../../../shared/notification-outbox/domain/ports/NotificationOutbox';
 import { UnitOfWork } from '../../../../shared/unit-of-work/UnitOfWork';
@@ -45,8 +46,7 @@ export class SendDuePayouts implements UseCase<
     private readonly payoutProvider: PayoutProvider,
     private readonly notificationOutbox: NotificationOutbox,
     private readonly unitOfWork: UnitOfWork,
-    private readonly releaseDelayInHours: number,
-    private readonly currentFeePercent: number,
+    private readonly platformSettingsReader: PlatformSettingsReader,
   ) {}
 
   public async execute(
@@ -61,9 +61,10 @@ export class SendDuePayouts implements UseCase<
     try {
       const due = await this.payoutRepository.findDuePayouts(
         props.now,
-        this.releaseDelayInHours,
         PAYOUTS_PER_SWEEP,
       );
+      const { platformFeePercent } =
+        await this.platformSettingsReader.current();
       for (const payout of due) {
         const account = await this.readyAccountOf(payout, checked, props.now);
         if (account === null) {
@@ -73,7 +74,8 @@ export class SendDuePayouts implements UseCase<
         const amountInCents = ownerShareOf(
           payout.priceInCents,
           payout.platformFeeInCents,
-          this.currentFeePercent,
+          platformFeePercent,
+          payout.refundInCents,
         );
         let stripeTransferId: string;
         try {

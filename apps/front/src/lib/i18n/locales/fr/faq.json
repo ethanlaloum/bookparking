@@ -11,11 +11,11 @@
   "q": {
     "howToBook": {
       "question": "Comment réserver une place ?",
-      "answer": "Cherchez une adresse, ouvrez la fiche d’une place, choisissez vos dates et continuez vers le paiement. Vous posez alors une empreinte bancaire sur une page de Stripe, et le loueur reçoit votre demande : il a 48 heures pour la confirmer."
+      "answer": "Cherchez une adresse, ouvrez la fiche d’une place, choisissez vos dates et continuez vers le paiement. Vous posez alors une empreinte bancaire sur une page de Stripe, et le loueur reçoit votre demande : il a {{expiry}} pour la confirmer."
     },
     "whenCharged": {
       "question": "Quand mon argent est-il prélevé ?",
-      "answer": "Seulement quand le loueur confirme. Avant, la somme est réservée sur votre carte, pas prélevée. Si le loueur ne confirme pas dans les 48 heures, la demande expire, l’empreinte est levée et vous ne payez rien."
+      "answer": "Seulement quand le loueur confirme. Avant, la somme est réservée sur votre carte, pas prélevée. Si le loueur ne confirme pas dans les {{expiry}}, la demande expire, l’empreinte est levée et vous ne payez rien."
     },
     "finalPrice": {
       "question": "Le prix affiché est-il celui que je paierai ?",
@@ -27,7 +27,7 @@
     },
     "driverCancels": {
       "question": "Puis-je annuler ?",
-      "answer": "Oui, depuis « Mes réservations », tant que la location n’a pas commencé. Jusqu’à 24 heures avant son début, vous êtes remboursé en totalité ; après, vous pouvez toujours annuler, mais la somme prélevée n’est pas remboursée. Avant de confirmer, la fenêtre d’annulation vous dit ce qu’il en sera."
+      "answer": "Oui, depuis « Mes réservations », tant que la location n’a pas commencé. Jusqu’à {{freeCancellation}} avant son début, vous êtes remboursé en totalité ; après, vous pouvez toujours annuler, mais la somme prélevée n’est pas remboursée. Avant de confirmer, la fenêtre d’annulation vous dit ce qu’il en sera."
     },
     "ownerCancelsForDriver": {
       "question": "Et si le loueur annule ?",
@@ -55,7 +55,7 @@
     },
     "acceptRequests": {
       "question": "Dois-je accepter toutes les demandes ?",
-      "answer": "Non. Vous confirmez celles qui vous conviennent, depuis « Demandes reçues ». Une demande que vous ne confirmez pas expire au bout de 48 heures, et le conducteur ne paie rien."
+      "answer": "Non. Vous confirmez celles qui vous conviennent, depuis « Demandes reçues ». Une demande que vous ne confirmez pas expire au bout de {{expiry}}, et le conducteur ne paie rien."
     },
     "ownerCancels": {
       "question": "Puis-je annuler une location déjà confirmée ?",

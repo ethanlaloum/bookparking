@@ -1,0 +1,5 @@
+@import '../../front/src/index.css';
+
+/* Les composants empruntés au site portent leurs classes : Tailwind doit les
+   lire là où ils vivent, hors de cette app. */
+@source '../../front/src/components';

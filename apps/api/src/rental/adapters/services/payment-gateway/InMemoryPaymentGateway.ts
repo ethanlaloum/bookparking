@@ -10,6 +10,7 @@ import {
 interface MoneyCall {
   paymentId: string;
   idempotencyKey: string;
+  amountInCents?: number;
 }
 
 // Chaque tentative est notée avant l'échec simulé : c'est ce qui permet de
@@ -74,10 +75,15 @@ export class InMemoryPaymentGateway implements PaymentGateway {
   public async refund(
     paymentId: string,
     idempotencyKey: string,
+    amountInCents?: number,
   ): Promise<{ refundId: string }> {
     this.attempts.push({ operation: 'refund', paymentId, idempotencyKey });
     this.failWhenUnavailable();
-    this.refunds.push({ paymentId, idempotencyKey });
+    this.refunds.push(
+      amountInCents === undefined
+        ? { paymentId, idempotencyKey }
+        : { paymentId, idempotencyKey, amountInCents },
+    );
     return { refundId: `re_${paymentId}` };
   }
 

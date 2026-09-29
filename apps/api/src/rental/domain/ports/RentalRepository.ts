@@ -4,6 +4,7 @@ import { RentalPlace } from '../entities/RentalPlace';
 import { RentalRequest } from '../entities/RentalRequest';
 import { RentalPeriod } from '../services/computeRentalPrice';
 import { CancellingParty } from '../entities/RentalCancellation';
+import { RentalIssueState } from '../entities/RentalIssue';
 import {
   MoneyOwed,
   MoneyState,
@@ -58,6 +59,12 @@ export interface RentalRequestView {
   accessInstructions: string;
   platformFeeInCents: number | null;
   arrivedAt: Date | null;
+  // Le délai de réponse figé sur la demande, d'où l'échéance affichée.
+  requestExpiryHours: number;
+  // Si l'argent est déjà parti vers le loueur, et la réclamation du
+  // conducteur, s'il y en a une : ce qui décide s'il peut encore se plaindre.
+  transferred: boolean;
+  issue: RentalIssueState | null;
 }
 
 // Ce qu'une demande déjà créée sous un identifiant d'intention permet de
@@ -102,8 +109,9 @@ export interface RentalRepository {
   ): Promise<boolean>;
   // Rend les demandes que cet appel a expirées, et elles seules : une demande
   // déjà expirée n'y revient pas, ni ses parties n'en sont prévenues deux fois.
-  expireRequestsPendingSince(
-    deadline: Date,
+  // Chacune expire selon le délai figé sur elle, jamais selon le délai du jour.
+  expireLapsedPendingRequests(
+    now: Date,
     trx?: GenericTransaction,
   ): Promise<LapsedRentalRequest[]>;
   findAllByRenter(
@@ -178,8 +186,8 @@ export interface RentalRepository {
     deadline: Date,
     trx?: GenericTransaction,
   ): Promise<number>;
-  expireHoldsPlacedSince(
-    deadline: Date,
+  expireLapsedHolds(
+    now: Date,
     trx?: GenericTransaction,
   ): Promise<LapsedRentalRequest[]>;
   findMoneyOwed(trx?: GenericTransaction): Promise<MoneyOwed[]>;

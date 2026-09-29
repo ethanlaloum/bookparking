@@ -50,6 +50,11 @@ interface Props {
   // La commission de la plateforme, figée à la demande (Q-13) : un taux
   // changé plus tard ne la déplace pas. `null` quand aucun taux n'est donné.
   platformFeeInCents?: number | null;
+  // Le délai de réponse du loueur et celui de la libération de l'argent,
+  // figés à la demande comme la commission : `null` quand aucun n'est donné,
+  // et la base applique alors ses défauts.
+  requestExpiryHours?: number | null;
+  payoutReleaseDelayHours?: number | null;
 }
 
 // Au centime le plus proche : 15 % de 19,99 € font 3,00 €, pas 2,9985 €.
@@ -79,6 +84,8 @@ export class RentalRequest {
     idempotencyKey?: string | null;
     freeCancellationHours?: number;
     platformFeePercent?: number;
+    requestExpiryHours?: number;
+    payoutReleaseDelayHours?: number;
   }): Either.Either<
     RentalRequest,
     | InvalidRequestedPeriodError
@@ -120,6 +127,8 @@ export class RentalRequest {
           params.platformFeePercent === undefined
             ? null
             : platformFeeOf(price.amountInCents, params.platformFeePercent),
+        requestExpiryHours: params.requestExpiryHours ?? null,
+        payoutReleaseDelayHours: params.payoutReleaseDelayHours ?? null,
       }),
     );
   }

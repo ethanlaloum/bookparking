@@ -243,6 +243,35 @@ describe('RequestRental @SPEC-002', () => {
       sut.thenPendingRequestsExpired(1);
     });
 
+    it('keeps the answer delay frozen on a request when the back office shortens it', async () => {
+      const sut = arrange();
+      await sut.givenRequestWithoutPaymentAt('Léa T.', FIRST_REQUEST_AT);
+      sut.givenBackOfficeSettings({ requestExpiryHours: 1 });
+
+      await sut.whenRequestedAtInstantBy(
+        'Karim B.',
+        new Date('2026-10-01T10:00:00.000Z'),
+        { from: '2026-12-01', to: '2026-12-02' },
+      );
+
+      sut.thenPendingRequestsExpired(0);
+    });
+
+    it('expires a request on the shorter delay it was made under, whatever the setting now says', async () => {
+      const sut = arrange();
+      sut.givenBackOfficeSettings({ requestExpiryHours: 1 });
+      await sut.givenRequestWithoutPaymentAt('Léa T.', FIRST_REQUEST_AT);
+      sut.givenBackOfficeSettings({ requestExpiryHours: 48 });
+
+      await sut.whenRequestedAtInstantBy(
+        'Karim B.',
+        new Date('2026-10-01T09:00:00.001Z'),
+        { from: '2026-12-01', to: '2026-12-02' },
+      );
+
+      sut.thenPendingRequestsExpired(1);
+    });
+
     it('tells the renter and the owner of the request it expires', async () => {
       const sut = arrange();
       const lapsed = await sut.givenRequestWithoutPaymentAt(
@@ -501,6 +530,40 @@ describe('RequestRental — platform fee', () => {
 
     // 3 jours × 13,33 € = 39,99 € ; 15 % = 5,9985 €, soit 6,00 €.
     sut.thenPlatformFeeInCentsIs(600);
+  });
+});
+
+describe('RequestRental — the back-office settings frozen on the request', () => {
+  it('freezes the commission, the free cancellation deadline and both delays in force', async () => {
+    const sut = createRequestRentalSUT();
+    sut.givenListing({
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+      pricing: { day: 1333, week: null, month: null },
+    });
+    sut.givenBackOfficeSettings({
+      platformFeePercent: 12.5,
+      freeCancellationHours: 48,
+      requestExpiryHours: 24,
+      payoutReleaseDelayHours: 72,
+    });
+
+    await sut.whenRequestedBy('Léa T.', {
+      address: '12 rue Barla, 06300 Nice',
+      box: '12',
+      from: '2026-10-10',
+      to: '2026-10-12',
+      requestedAt: '2026-10-01',
+    });
+
+    // 39,99 € × 12,5 % = 4,99875 €, soit 5,00 € ; le 10 octobre commence à
+    // minuit à Paris, 22 h la veille en UTC, et 48 heures plus tôt c'est le 7.
+    sut.thenFrozenTermsAre({
+      platformFeeInCents: 500,
+      freeCancellationUntil: '2026-10-07T22:00:00.000Z',
+      requestExpiryHours: 24,
+      payoutReleaseDelayHours: 72,
+    });
   });
 });
 

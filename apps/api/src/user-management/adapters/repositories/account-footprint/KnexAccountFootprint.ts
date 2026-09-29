@@ -104,5 +104,27 @@ export class KnexAccountFootprint implements AccountFootprint {
     await run(
       this.connection('listing_photos').where({ owner_id: accountId }).delete(),
     );
+    // Les réclamations restent — elles expliquent où est allé l'argent —, mais
+    // pas ce que le compte y a écrit.
+    await run(
+      this.connection('rental_issues')
+        .whereIn(
+          'rental_request_id',
+          this.connection('rental_requests')
+            .where({ renter_id: accountId })
+            .select('id'),
+        )
+        .update({ message: null }),
+    );
+    await run(
+      this.connection('rental_issues')
+        .whereIn(
+          'rental_request_id',
+          this.connection('rental_requests')
+            .whereIn('listing_id', ownListingIds)
+            .select('id'),
+        )
+        .update({ owner_reply: null }),
+    );
   }
 }

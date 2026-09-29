@@ -1,3 +1,4 @@
+import type { RentalState } from '../../app/rental/store/RentalSlice';
 import type { RequestRentalPayload } from '../../app/rental/domain/ports/RentalGateway';
 import { createSelector } from '@reduxjs/toolkit';
 
@@ -105,3 +106,35 @@ export const selectReceivedCountByStatus = createSelector(
   [selectReceivedRentalRequests],
   countByStatus,
 );
+
+export const selectReportIssueLoading = (state: AppState): boolean =>
+  state.core.rental.reportIssue.state === 'pending';
+
+export const selectReportIssueError = (state: AppState): string | null =>
+  state.core.rental.reportIssue.state === 'failed'
+    ? (state.core.rental.reportIssue.errorCode ?? null)
+    : null;
+
+export const selectReportedRentalRequestId = (state: AppState): string | null =>
+  state.core.rental.reportedRequestId;
+
+export const selectAnswerIssue = (state: AppState): RentalState['answerIssue'] =>
+  state.core.rental.answerIssue;
+
+// L'état de la réponse à une réclamation, pour la seule demande qu'il concerne.
+export const answerIssueStateFor = (
+  answer: RentalState['answerIssue'],
+  requestId: string,
+): { pending: boolean; error: string | null } => {
+  if (answer.requestId !== requestId) return { pending: false, error: null };
+  return {
+    pending: answer.state === 'pending',
+    error: answer.state === 'failed' ? (answer.errorCode ?? null) : null,
+  };
+};
+
+export const selectAnswerIssueStateFor = (
+  state: AppState,
+  requestId: string,
+): { pending: boolean; error: string | null } =>
+  answerIssueStateFor(selectAnswerIssue(state), requestId);

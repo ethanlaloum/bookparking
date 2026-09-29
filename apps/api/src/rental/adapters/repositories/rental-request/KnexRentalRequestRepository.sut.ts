@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Either } from 'effect/index';
 import knex, { Knex } from 'knex';
 
+import { KnexPlatformSettingsReader } from '../../../../shared/platform-settings/adapters/repositories/KnexPlatformSettingsReader';
 import { KnexListingRepository } from '../../../../listing/adapters/repositories/listing/KnexListingRepository';
 import { SchemaListingRepository } from '../../../../listing/adapters/repositories/listing/SchemaListingRepository';
 import { ListingBuilder } from '../../../../listing/domain/builders/ListingBuilder';
@@ -138,9 +139,7 @@ export const createKnexRentalRequestRepositorySUT = () => {
       paymentGateway,
       new KnexNotificationOutbox(connection, new KnexEmailOutbox(connection)),
       new KnexUnitOfWork(connection),
-      testConstants.requestExpiryInHoursForTest,
-      24,
-      15,
+      new KnexPlatformSettingsReader(connection),
     ).execute({
       renterId: toAccountId(input.renter),
       address: input.address,
@@ -294,6 +293,18 @@ export const createKnexRentalRequestRepositorySUT = () => {
 
     repository() {
       return new KnexRentalRequestRepository(context.testDbConnection);
+    },
+
+    // Une version des réglages du back-office, telle que `ChangePlatformSettings`
+    // l'écrit : la dernière en date est celle qu'une nouvelle demande fige.
+    async givenBackOfficeSettingsFrom(at: string, requestExpiryHours: number) {
+      await context.testDbConnection('platform_settings').insert({
+        platform_fee_percent: 15,
+        free_cancellation_hours: 24,
+        request_expiry_hours: requestExpiryHours,
+        payout_release_delay_hours: 24,
+        effective_from: new Date(at),
+      });
     },
 
     async whenTwoRequestsUnderOneIntentAreWrittenAtOnce(params: {

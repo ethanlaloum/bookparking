@@ -25,7 +25,13 @@ import { RentalRequestNotFoundError } from '../../../../domain/errors/RentalRequ
 import { AbandonRentalRequest } from '../../../../domain/usecases/abandon-rental-request/AbandonRentalRequest';
 import { CancelRental } from '../../../../domain/usecases/cancel-rental/CancelRental';
 import { ConfirmArrival } from '../../../../domain/usecases/confirm-arrival/ConfirmArrival';
+import { ArrivalBlockedByIssueError } from '../../../../domain/usecases/confirm-arrival/errors/ArrivalBlockedByIssueError';
 import { ArrivalNotYetPossibleError } from '../../../../domain/usecases/confirm-arrival/errors/ArrivalNotYetPossibleError';
+import { InvalidIssueMessageError } from '../../../../domain/errors/InvalidIssueMessageError';
+import { AnswerRentalIssue } from '../../../../domain/usecases/answer-rental-issue/AnswerRentalIssue';
+import { RentalIssueNotAnswerableError } from '../../../../domain/usecases/answer-rental-issue/errors/RentalIssueNotAnswerableError';
+import { ReportRentalIssue } from '../../../../domain/usecases/report-rental-issue/ReportRentalIssue';
+import { RentalIssueNotReportableError } from '../../../../domain/usecases/report-rental-issue/errors/RentalIssueNotReportableError';
 import { RentalAlreadyStartedError } from '../../../../domain/usecases/cancel-rental/errors/RentalAlreadyStartedError';
 import { RentalNotCancellableError } from '../../../../domain/usecases/cancel-rental/errors/RentalNotCancellableError';
 import { RentalRequestAlreadyPaidError } from '../../../../domain/usecases/abandon-rental-request/errors/RentalRequestAlreadyPaidError';
@@ -37,6 +43,10 @@ import { RentalRequestBeingCreatedError } from '../../../../domain/usecases/requ
 import { RentalRequestMapper } from '../../../mappers/RentalRequestMapper';
 import { GetRentalRequestResponseDto } from '../../dtos/GetRentalRequestResponseDto';
 import { RequestRentalResponseDto } from '../../dtos/RequestRentalResponseDto';
+import {
+  AnswerRentalIssueSchema,
+  ReportRentalIssueSchema,
+} from '../../dtos/RentalIssueSchemas';
 import { RequestRentalSchema } from '../../dtos/RequestRentalSchema';
 
 @Controller('rental-request')
@@ -49,6 +59,8 @@ export class RentalRequestController {
     private readonly abandonRentalRequestUseCase: AbandonRentalRequest,
     private readonly cancelRentalUseCase: CancelRental,
     private readonly confirmArrivalUseCase: ConfirmArrival,
+    private readonly reportRentalIssueUseCase: ReportRentalIssue,
+    private readonly answerRentalIssueUseCase: AnswerRentalIssue,
   ) {}
 
   @Get()
@@ -286,7 +298,10 @@ export class RentalRequestController {
         const error = result.left;
         if (error instanceof RentalRequestNotFoundError)
           throw new HttpException(error.message, HttpStatus.NOT_FOUND);
-        if (error instanceof ArrivalNotYetPossibleError)
+        if (
+          error instanceof ArrivalNotYetPossibleError ||
+          error instanceof ArrivalBlockedByIssueError
+        )
           throw new HttpException(error.message, HttpStatus.CONFLICT);
         throw new HttpException(
           "Votre arrivée n'a pas pu être enregistrée",
@@ -300,6 +315,109 @@ export class RentalRequestController {
         userId: req.user.id,
       });
     }
+  }
+
+  // Le conducteur signale qu'il ne peut pas entrer, ou que la place est
+  // occupée : l'argent du loueur est gelé jusqu'à la décision de Bookparking.
+  @Post(':id/issue')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  public async reportIssue(
+    @Req() req: TokenRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<void> {
+    try {
+      const requestId = RentalRequestController.decodeRequestId(id);
+      const decoded = Schema.decodeUnknownEither(ReportRentalIssueSchema)(body);
+      if (Either.isLeft(decoded))
+        throw new HttpException(
+          parseSchemaError(decoded.left),
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const result = await this.reportRentalIssueUseCase.execute({
+        requestId,
+        renterId: req.user.id,
+        reason: decoded.right.reason,
+        message: decoded.right.message ?? null,
+        reportedAt: new Date(),
+      });
+      if (Either.isLeft(result))
+        throw RentalRequestController.issueFailureToHttp(
+          result.left,
+          "Votre réclamation n'a pas pu être enregistrée",
+        );
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'RentalRequestController',
+        method: 'reportIssue',
+        userId: req.user.id,
+      });
+    }
+  }
+
+  @Post(':id/issue/answer')
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public async answerIssue(
+    @Req() req: TokenRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<void> {
+    try {
+      const requestId = RentalRequestController.decodeRequestId(id);
+      const decoded = Schema.decodeUnknownEither(AnswerRentalIssueSchema)(body);
+      if (Either.isLeft(decoded))
+        throw new HttpException(
+          parseSchemaError(decoded.left),
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const result = await this.answerRentalIssueUseCase.execute({
+        requestId,
+        ownerId: req.user.id,
+        reply: decoded.right.reply,
+        answeredAt: new Date(),
+      });
+      if (Either.isLeft(result))
+        throw RentalRequestController.issueFailureToHttp(
+          result.left,
+          "Votre réponse n'a pas pu être enregistrée",
+        );
+    } catch (error: unknown) {
+      controllerErrorHandler(error, {
+        name: 'RentalRequestController',
+        method: 'answerIssue',
+        userId: req.user.id,
+      });
+    }
+  }
+
+  private static decodeRequestId(id: string): string {
+    const decode = Schema.decodeUnknownEither(Schema.UUID)(id);
+    if (Either.isLeft(decode))
+      throw new HttpException(
+        new RentalRequestNotFoundError().message,
+        HttpStatus.NOT_FOUND,
+      );
+    return decode.right;
+  }
+
+  private static issueFailureToHttp(
+    error: Error,
+    fallback: string,
+  ): HttpException {
+    if (error instanceof RentalRequestNotFoundError)
+      return new HttpException(error.message, HttpStatus.NOT_FOUND);
+    if (error instanceof InvalidIssueMessageError)
+      return new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    if (
+      error instanceof RentalIssueNotReportableError ||
+      error instanceof RentalIssueNotAnswerableError
+    )
+      return new HttpException(error.message, HttpStatus.CONFLICT);
+    return new HttpException(fallback, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   @Post(':id/cancellation')

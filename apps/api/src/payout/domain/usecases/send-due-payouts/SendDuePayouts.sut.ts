@@ -1,5 +1,6 @@
 import { Either } from 'effect/index';
 
+import { InMemoryPlatformSettingsReader } from '../../../../shared/platform-settings/adapters/repositories/InMemoryPlatformSettingsReader';
 import { InMemoryNotificationOutbox } from '../../../../shared/notification-outbox/adapters/repositories/InMemoryNotificationOutbox';
 import { InMemoryUnitOfWork } from '../../../../shared/unit-of-work/InMemoryUnitOfWork';
 import {
@@ -23,8 +24,7 @@ export const createSendDuePayoutsSUT = () => {
     provider,
     notificationOutbox,
     new InMemoryUnitOfWork(),
-    24,
-    15,
+    new InMemoryPlatformSettingsReader(),
   );
   let sequence = 0;
 

@@ -52,6 +52,7 @@ export class PayoutController {
       return {
         accountStatus: summary.accountStatus,
         feePercent: summary.feePercent,
+        releaseDelayHours: summary.releaseDelayHours,
         upcomingInCents: summary.upcomingInCents,
         sentInCents: summary.sentInCents,
         payouts: summary.payouts.map((payout) => ({

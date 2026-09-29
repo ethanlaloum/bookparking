@@ -9,6 +9,8 @@ export interface DuePayout {
   paymentId: string;
   priceInCents: number;
   platformFeeInCents: number | null;
+  // Ce que Bookparking a rendu au conducteur en tranchant une réclamation.
+  refundInCents: number;
   account: PayoutAccount | null;
 }
 
@@ -32,13 +34,10 @@ export interface PayoutRepository {
   ): Promise<void>;
   findEmailOf(accountId: string): Promise<string | null>;
   findPayoutsForOwner(ownerId: string): Promise<OwnerPayoutView[]>;
-  // Libéré (arrivée, ou premier instant + délai passé), prélevé chez Stripe
-  // (`CAPTURED`), et sans virement : l'argent attend d'être viré.
-  findDuePayouts(
-    now: Date,
-    releaseDelayInHours: number,
-    limit: number,
-  ): Promise<DuePayout[]>;
+  // Libéré (arrivée, ou premier instant + délai figé sur la demande passé),
+  // prélevé chez Stripe (`CAPTURED`), sans réclamation ouverte et sans
+  // virement : l'argent attend d'être viré.
+  findDuePayouts(now: Date, limit: number): Promise<DuePayout[]>;
   recordTransfer(
     transfer: OwnerTransfer,
     trx?: GenericTransaction,

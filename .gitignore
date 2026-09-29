@@ -16,3 +16,4 @@ graphify-out/
 # Variables locales de l'api (clé Resend, etc.), lues par `pnpm --filter bookparking-api start`.
 # Jamais commitées (SPEC-006). `.env.example`, lui, reste suivi.
 .env
+.vscode

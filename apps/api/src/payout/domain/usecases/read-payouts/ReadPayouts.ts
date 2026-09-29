@@ -1,6 +1,7 @@
 import { Either } from 'effect/index';
 
 import { UnknownError } from '../../../../shared/error/errors/UnknownError';
+import { PlatformSettingsReader } from '../../../../shared/platform-settings/domain/ports/PlatformSettingsReader';
 import { UseCase } from '../../../../shared/use-case/UseCase';
 import {
   ownerPayoutStatusOf,
@@ -37,7 +38,10 @@ export interface PayoutLine {
 
 export interface PayoutSummary {
   accountStatus: PayoutAccountStatus;
+  // Les conditions du jour, pour les locations à venir : chaque location déjà
+  // faite garde les siennes, figées à la demande.
   feePercent: number;
+  releaseDelayHours: number;
   upcomingInCents: number;
   sentInCents: number;
   payouts: PayoutLine[];
@@ -56,8 +60,7 @@ export class ReadPayouts implements UseCase<
   constructor(
     private readonly payoutRepository: PayoutRepository,
     private readonly payoutProvider: PayoutProvider,
-    private readonly releaseDelayInHours: number,
-    private readonly currentFeePercent: number,
+    private readonly platformSettingsReader: PlatformSettingsReader,
   ) {}
 
   public async execute(
@@ -69,6 +72,8 @@ export class ReadPayouts implements UseCase<
         props.now,
       );
       const accountStatus = payoutAccountStatusOf(account);
+      const { platformFeePercent, payoutReleaseDelayHours } =
+        await this.platformSettingsReader.current();
       const views = await this.payoutRepository.findPayoutsForOwner(
         props.accountId,
       );
@@ -85,18 +90,14 @@ export class ReadPayouts implements UseCase<
             ownerShareOf(
               view.priceInCents,
               view.platformFeeInCents,
-              this.currentFeePercent,
+              platformFeePercent,
+              view.refundInCents,
             ),
-          status: ownerPayoutStatusOf(
-            view,
-            props.now,
-            this.releaseDelayInHours,
-            accountStatus,
-          ),
+          status: ownerPayoutStatusOf(view, props.now, accountStatus),
           releaseAt: releaseAtOf(
             view.startsAt,
             view.arrivedAt,
-            this.releaseDelayInHours,
+            view.releaseDelayInHours,
           ),
           transferredAt: view.transferredAt,
         }))
@@ -107,7 +108,8 @@ export class ReadPayouts implements UseCase<
           .reduce((sum, payout) => sum + payout.amountInCents, 0);
       return Either.right({
         accountStatus,
-        feePercent: this.currentFeePercent,
+        feePercent: platformFeePercent,
+        releaseDelayHours: payoutReleaseDelayHours,
         upcomingInCents: total(false),
         sentInCents: total(true),
         payouts,

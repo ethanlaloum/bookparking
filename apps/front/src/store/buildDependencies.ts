@@ -1,7 +1,6 @@
 import { BookparkingRxAccountGateway } from '../app/account/adapters/RealAccountGateway';
 import { LocalStorageSessionStore } from '../app/auth/adapters/LocalStorageSessionStore';
 import { BookparkingRxSessionGateway } from '../app/auth/adapters/RealSessionGateway';
-import { BookparkingRxBackOfficeGateway } from '../app/back-office/adapters/RealBackOfficeGateway';
 import { LocalStorageConsentStore } from '../app/consent/adapters/LocalStorageConsentStore';
 import { SystemClock } from '../app/consent/adapters/SystemClock';
 import { BanGeocodingGateway } from '../app/listing/adapters/RealGeocodingGateway';
@@ -11,6 +10,7 @@ import { BookparkingRxNotificationGateway } from '../app/notification/adapters/R
 import { BookparkingRxPayoutGateway } from '../app/payout/adapters/RealPayoutGateway';
 import { BrowserPaymentPageNavigator } from '../app/rental/adapters/BrowserPaymentPageNavigator';
 import { BookparkingRxRentalGateway } from '../app/rental/adapters/RealRentalGateway';
+import { BookparkingRxRentalTermsGateway } from '../app/rental-terms/adapters/RealRentalTermsGateway';
 import { FetchHttpClient } from '../lib/http/FetchHttpClient';
 import type { Dependencies } from './dependencies.interface';
 
@@ -20,7 +20,6 @@ export const buildDependencies = (baseUrl: string): Dependencies => {
 
   return {
     accountGateway: new BookparkingRxAccountGateway(httpClient),
-    backOfficeGateway: new BookparkingRxBackOfficeGateway(httpClient),
     clock: new SystemClock(),
     consentStore: new LocalStorageConsentStore(),
     geocodingGateway: new BanGeocodingGateway(),
@@ -29,6 +28,7 @@ export const buildDependencies = (baseUrl: string): Dependencies => {
     paymentPageNavigator: new BrowserPaymentPageNavigator(),
     payoutGateway: new BookparkingRxPayoutGateway(httpClient),
     rentalGateway: new BookparkingRxRentalGateway(httpClient),
+    rentalTermsGateway: new BookparkingRxRentalTermsGateway(httpClient),
     sessionGateway: new BookparkingRxSessionGateway(httpClient),
     sessionStore,
   };

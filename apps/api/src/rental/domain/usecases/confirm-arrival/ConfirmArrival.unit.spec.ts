@@ -1,5 +1,6 @@
 import { RentalRequestNotFoundError } from '../../errors/RentalRequestNotFoundError';
 import { createConfirmArrivalSUT } from './ConfirmArrival.sut';
+import { ArrivalBlockedByIssueError } from './errors/ArrivalBlockedByIssueError';
 import { ArrivalNotYetPossibleError } from './errors/ArrivalNotYetPossibleError';
 
 const FIRST_INSTANT = '2026-10-09T22:00:00.000Z';
@@ -9,6 +10,28 @@ describe('ConfirmArrival', () => {
   it('records the arrival of the renter from the first instant of the rental', async () => {
     const sut = createConfirmArrivalSUT();
     const id = await sut.givenConfirmedRental();
+
+    const result = await sut.whenArrivingAs(sut.lea, id, FIRST_INSTANT);
+
+    sut.thenResultIsRight(result);
+    sut.thenArrivedAtIs(id, FIRST_INSTANT);
+  });
+
+  it('refuses the arrival while a reported problem freezes the money', async () => {
+    const sut = createConfirmArrivalSUT();
+    const id = await sut.givenConfirmedRental();
+    sut.givenIssue(id, 'OPEN');
+
+    const result = await sut.whenArrivingAs(sut.lea, id, FIRST_INSTANT);
+
+    sut.thenRefusedWith(result, ArrivalBlockedByIssueError);
+    sut.thenArrivedAtIs(id, null);
+  });
+
+  it('records the arrival once Bookparking has dismissed the problem', async () => {
+    const sut = createConfirmArrivalSUT();
+    const id = await sut.givenConfirmedRental();
+    sut.givenIssue(id, 'DISMISSED');
 
     const result = await sut.whenArrivingAs(sut.lea, id, FIRST_INSTANT);
 

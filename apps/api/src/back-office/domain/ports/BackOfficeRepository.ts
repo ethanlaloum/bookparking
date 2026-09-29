@@ -1,5 +1,10 @@
+import { PlatformSettings } from '../../../shared/platform-settings/domain/entities/PlatformSettings';
 import { GenericTransaction } from '../../../shared/unit-of-work/GenericTransaction';
-import { AdminAction } from '../entities/AdminAction';
+import {
+  AdminAction,
+  AdminActionKind,
+  AdminTargetType,
+} from '../entities/AdminAction';
 
 export interface OverviewCounts {
   accounts: number;
@@ -25,6 +30,7 @@ export interface OverviewAttention {
   requestsPendingOverADay: number;
   listingsWithoutAnyPrice: number;
   accountsWithoutAnyActivity: number;
+  openRentalIssues: number;
 }
 
 export interface AdminAccountView {
@@ -62,6 +68,78 @@ export interface AdminRentalRequestView {
   status: string;
   requestedAt: Date;
   confirmedAt: Date | null;
+}
+
+// Une ligne du journal d'administration, lisible sans autre lecture : qui, quoi,
+// sur quoi, pourquoi. `targetLabel` nomme la cible (l'adresse d'une annonce,
+// l'e-mail d'un compte) ; `null` quand elle a disparu depuis. Un changement de
+// réglages porte la version écrite et celle qu'elle a remplacée.
+export interface AdminJournalEntry {
+  id: string;
+  actedAt: Date;
+  adminEmail: string | null;
+  kind: AdminActionKind;
+  targetType: AdminTargetType;
+  targetId: string;
+  targetLabel: string | null;
+  reason: string | null;
+  settingsChange: {
+    before: PlatformSettings | null;
+    after: PlatformSettings;
+  } | null;
+}
+
+export type RentalIssueDecision =
+  'REFUNDED' | 'PARTIALLY_REFUNDED' | 'DISMISSED';
+
+// Une réclamation telle que Bookparking la lit pour trancher : les deux
+// versions, la réservation, et ce que le loueur touchera — le plafond d'un
+// remboursement partiel. Les adresses e-mail sont `null` pour un compte
+// supprimé depuis.
+export interface AdminRentalIssueView {
+  id: string;
+  requestId: string;
+  reason: string;
+  message: string | null;
+  reportedAt: Date;
+  status: string;
+  ownerReply: string | null;
+  ownerRepliedAt: Date | null;
+  refundInCents: number | null;
+  resolvedAt: Date | null;
+  resolutionReason: string | null;
+  address: string;
+  box: string;
+  fromDay: string;
+  toDay: string;
+  priceInCents: number;
+  ownerShareInCents: number;
+  renterEmail: string | null;
+  ownerEmail: string | null;
+}
+
+export interface IssueToResolve {
+  issueId: string;
+  requestId: string;
+  status: string;
+  priceInCents: number;
+  ownerShareInCents: number;
+  renterId: string;
+  ownerId: string;
+}
+
+export interface IssueResolution {
+  status: RentalIssueDecision;
+  refundInCents: number | null;
+  resolvedAt: Date;
+  resolvedBy: string;
+  reason: string;
+}
+
+export interface PlatformSettingsChange {
+  adminAccountId: string;
+  reason: string;
+  at: Date;
 }
 
 export interface CancelledRentalParties {
@@ -107,4 +185,27 @@ export interface BackOfficeRepository {
     limit: number,
     trx?: GenericTransaction,
   ): Promise<AdminAction[]>;
+  // Écrit une nouvelle version des réglages, qui devient celle en vigueur, et
+  // rend son identifiant.
+  savePlatformSettings(
+    settings: PlatformSettings,
+    change: PlatformSettingsChange,
+    trx?: GenericTransaction,
+  ): Promise<string>;
+  findJournal(
+    limit: number,
+    trx?: GenericTransaction,
+  ): Promise<AdminJournalEntry[]>;
+  // Les réclamations ouvertes d'abord, puis les plus récentes.
+  findRentalIssues(trx?: GenericTransaction): Promise<AdminRentalIssueView[]>;
+  findIssueToResolve(
+    issueId: string,
+    trx?: GenericTransaction,
+  ): Promise<IssueToResolve | null>;
+  // Rend `false` quand la réclamation n'était plus ouverte au moment d'écrire.
+  resolveRentalIssue(
+    issueId: string,
+    resolution: IssueResolution,
+    trx?: GenericTransaction,
+  ): Promise<boolean>;
 }

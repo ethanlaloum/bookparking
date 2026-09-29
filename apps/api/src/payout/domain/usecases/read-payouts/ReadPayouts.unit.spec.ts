@@ -31,7 +31,28 @@ describe('ReadPayouts', () => {
       summary.upcomingInCents,
       summary.sentInCents,
       summary.feePercent,
-    ]).toEqual([3825, 1275, 15]);
+      summary.releaseDelayHours,
+    ]).toEqual([3825, 1275, 15, 24]);
+  });
+
+  it('shows as held, past its release date, the money of a rental with an open report, and deducts a granted refund', async () => {
+    const sut = createOwnerPayoutsSUT();
+    sut.givenAccount(true);
+    sut.givenCapturedRental({ disputed: true });
+    sut.givenCapturedRental({
+      priceInCents: 1500,
+      platformFeeInCents: 225,
+      refundInCents: 500,
+    });
+
+    const summary = await sut.whenReadingAt(TWO_DAYS_AFTER);
+
+    expect(
+      summary.payouts.map((payout) => [payout.amountInCents, payout.status]),
+    ).toEqual([
+      [3825, 'HELD'],
+      [775, 'SENDING'],
+    ]);
   });
 
   it('tells an owner without bank details that released money waits for them', async () => {

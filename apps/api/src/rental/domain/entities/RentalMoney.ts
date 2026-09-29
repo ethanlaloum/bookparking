@@ -46,8 +46,13 @@ export const unpaidAbandonDeadlineAt = (now: Date): Date =>
     now.getTime() - ABANDON_UNPAID_REQUEST_AFTER_HOURS * MILLISECONDS_PER_HOUR,
   );
 
-export const holdExpiryDeadlineAt = (now: Date, expiryInHours: number): Date =>
-  new Date(now.getTime() - expiryInHours * MILLISECONDS_PER_HOUR);
+// L'échéance de réponse du loueur : le délai figé sur la demande, compté depuis
+// l'empreinte, ou depuis la demande pour celles d'avant l'encaissement.
+export const answerDeadlineOf = (
+  since: Date,
+  requestExpiryHours: number,
+): Date =>
+  new Date(since.getTime() + requestExpiryHours * MILLISECONDS_PER_HOUR);
 
 // Une clé par demande et par opération, jamais par tentative : c'est ce qui
 // fait qu'un prélèvement ou un remboursement rejoué après une coupure rend le

@@ -36,10 +36,25 @@ export const pendingRevenueInCents = (
 
 // Le conducteur confirme son arrivée à partir du premier instant loué, une
 // fois : c'est ce qui libère l'argent vers le loueur (D-22 côté api).
+// Une réclamation ouverte gèle l'argent du loueur : confirmer son arrivée le
+// libérerait, l'api le refuse, le bouton disparaît.
 export const canConfirmArrival = (request: RentalRequestView, now: Date): boolean =>
   request.status === 'CONFIRMED' &&
   request.arrivedAt === null &&
+  request.issue?.status !== 'OPEN' &&
   now.getTime() >= new Date(request.startsAt).getTime();
+
+export type RentalIssue = NonNullable<RentalRequestView['issue']>;
+export type RentalIssueReason = RentalIssue['reason'];
+
+// Les bornes de l'api (`RentalIssue.ts`) : un message de quelques mots, jamais
+// un roman.
+export const ISSUE_TEXT_MINIMUM_LENGTH = 10;
+export const ISSUE_TEXT_MAXIMUM_LENGTH = 2000;
+
+// Le loueur répond une fois, tant que Bookparking n'a pas tranché.
+export const isIssueAnswerable = (request: RentalRequestView): boolean =>
+  request.issue !== null && request.issue.status === 'OPEN' && request.issue.ownerReply === null;
 
 export const countByStatus = (
   requests: readonly RentalRequestView[],

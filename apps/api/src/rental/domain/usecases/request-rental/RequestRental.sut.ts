@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { Either } from 'effect/index';
 
+import { InMemoryPlatformSettingsReader } from '../../../../shared/platform-settings/adapters/repositories/InMemoryPlatformSettingsReader';
+import { PlatformSettings } from '../../../../shared/platform-settings/domain/entities/PlatformSettings';
 import { InMemoryPublishedListingReader } from '../../../adapters/repositories/published-listing/InMemoryPublishedListingReader';
 import { InMemoryRentalRepository } from '../../../adapters/repositories/rental/InMemoryRentalRepository';
 import { InMemoryPaymentGateway } from '../../../adapters/services/payment-gateway/InMemoryPaymentGateway';
@@ -66,6 +68,7 @@ export const createRequestRentalSUT = () => {
   const rentalRepository = new InMemoryRentalRepository();
   const paymentGateway = new InMemoryPaymentGateway();
   const notificationOutbox = new InMemoryNotificationOutbox();
+  const platformSettings = new InMemoryPlatformSettingsReader();
 
   const testConstants = {
     ownerNameForTest: 'Marc D.',
@@ -82,9 +85,7 @@ export const createRequestRentalSUT = () => {
     paymentGateway,
     notificationOutbox,
     new InMemoryUnitOfWork(),
-    testConstants.requestExpiryInHoursForTest,
-    24,
-    15,
+    platformSettings,
   );
 
   const accountIdsByPersonName: Record<string, string> = {
@@ -223,6 +224,29 @@ export const createRequestRentalSUT = () => {
         toAccountId(context.testConstants.ownerNameForTest),
       );
       return result.right.rentalRequest.id;
+    },
+
+    givenBackOfficeSettings(overrides: Partial<PlatformSettings>) {
+      platformSettings.given(overrides);
+    },
+
+    thenFrozenTermsAre(expected: {
+      platformFeeInCents: number;
+      freeCancellationUntil: string;
+      requestExpiryHours: number;
+      payoutReleaseDelayHours: number;
+    }) {
+      expect(
+        context.rentalRepository.rentalRequestList.map((request) => {
+          const state = request.toState();
+          return {
+            platformFeeInCents: state.platformFeeInCents,
+            freeCancellationUntil: state.freeCancellationUntil?.toISOString(),
+            requestExpiryHours: state.requestExpiryHours,
+            payoutReleaseDelayHours: state.payoutReleaseDelayHours,
+          };
+        }),
+      ).toEqual([expected]);
     },
 
     thenPlatformFeeInCentsIs(expected: number) {
